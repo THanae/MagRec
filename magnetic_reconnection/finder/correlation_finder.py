@@ -43,6 +43,7 @@ class CorrelationFinder(BaseFinder):
             # if (1 in bx and -1 in bx) or (1 in by and -1 in by) or (1 in bz and -1 in bz):
             #     events.append(_datetime)
 
+        # not always good take average and difference in addition to check
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
 
