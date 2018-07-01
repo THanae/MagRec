@@ -1,0 +1,99 @@
+[
+    {
+        "year": 1974,
+        "month": 12,
+        "day": 15,
+        "start_time": "1428",
+        "end_time": "1430",
+        "probe": 1
+    },
+    {
+        "year": 1974,
+        "month": 12,
+        "day": 15,
+        "start_time": "1958",
+        "end_time": "2004",
+        "probe": 1
+    },
+    {
+        "year": 1975,
+        "month": 1,
+        "day": 18,
+        "start_time": "1338",
+        "end_time": "1348",
+        "probe": 1
+    },
+    {
+        "year": 1975,
+        "month": 2,
+        "day": 7,
+        "start_time": "0121",
+        "end_time": "0125",
+        "probe": 1
+    },
+    {
+        "year": 1975,
+        "month": 9,
+        "day": 22,
+        "start_time": "0345",
+        "end_time": "0350",
+        "probe": 1
+    },
+    {
+        "year": 1975,
+        "month": 12,
+        "day": 19,
+        "start_time": "2052",
+        "end_time": "2100",
+        "probe": 1
+    },
+    {
+        "year": 1976,
+        "month": 1,
+        "day": 19,
+        "start_time": "0618",
+        "end_time": "0630",
+        "probe": 2
+    },
+    {
+        "year": 1976,
+        "month": 1,
+        "day": 27,
+        "start_time": "0702",
+        "end_time": "0707",
+        "probe": 2
+    },
+    {
+        "year": 1976,
+        "month": 1,
+        "day": 30,
+        "start_time": "0146",
+        "end_time": "0151",
+        "probe": 2
+    },
+    {
+        "year": 1976,
+        "month": 1,
+        "day": 30,
+        "start_time": "0216",
+        "end_time": "0221",
+        "probe": 2
+    },
+    {
+        "year": 1976,
+        "month": 3,
+        "day": 4,
+        "start_time": "0939",
+        "end_time": "0943",
+        "probe": 2
+    },
+    {
+        "year": 1976,
+        "month": 12,
+        "day": 15,
+        "start_time": "0134",
+        "end_time": "0139",
+        "probe": 2
+    }
+
+]
