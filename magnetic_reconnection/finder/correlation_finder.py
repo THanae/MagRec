@@ -1,5 +1,5 @@
 import itertools
-from datetime import timedelta
+from datetime import timedelta, datetime
 from typing import List
 
 import pandas as pd
@@ -20,24 +20,31 @@ class CorrelationFinder(BaseFinder):
     def find_magnetic_reconnections(self, imported_data: ImportedData):
         self.find_correlations(imported_data.data)
         datetimes_list = self.find_outliers(imported_data.data)
-        datetimes_list = self.b_changes(datetimes_list, imported_data)
+        datetimes_list = self.b_changes(datetimes_list, imported_data.data)
 
-    def b_changes(self, datetimes_list, imported_data):
+    def b_changes(self, datetimes_list, data):
         minutes_b = 3
-        events = []
+        filtered_datetimes_list: List[datetime] = []
         for _datetime in datetimes_list:
-            bx = np.sign(imported_data.data['Bx'].loc[
-                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
-            by = np.sign(imported_data.data['By'].loc[
-                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
-            bz = np.sign(imported_data.data['Bz'].loc[
-                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            interval = timedelta(minutes=minutes_b)
+            for coordinate in self.coordinates:
+                b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
+                if (b < 0).any() and (b > 0).any():
+                    filtered_datetimes_list.append(_datetime)
+                    break
+            #
+            # bx = np.sign(data['Bx'].loc[
+            #              _datetime - :_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            # by = np.sign(imported_data.data['By'].loc[
+            #              _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            # bz = np.sign(imported_data.data['Bz'].loc[
+            #              _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            #
+            # if (1 in bx and -1 in bx) or (1 in by and -1 in by) or (1 in bz and -1 in bz):
+            #     events.append(_datetime)
 
-            if (1 in bx and -1 in bx) or (1 in by and -1 in by) or (1 in bz and -1 in bz):
-                events.append(_datetime)
-
-        print(events)
-        return events
+        print('B sign change filter returned: ', filtered_datetimes_list)
+        return filtered_datetimes_list
 
         # maybe no need to check if outlier - always seems to be outlier
         # correlation_diff is outlier and
