@@ -13,15 +13,31 @@ from magnetic_reconnection.finder.base_finder import BaseFinder
 class CorrelationFinder(BaseFinder):
     coordinates = ['x', 'y', 'z']
 
-    def __init__(self, outlier_intersection_limit_minutes: int=3):
+    def __init__(self, outlier_intersection_limit_minutes: int = 3):
         super().__init__()
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
-
 
     def find_magnetic_reconnections(self, imported_data: ImportedData):
         self.find_correlations(imported_data.data)
         datetimes_list = self.find_outliers(imported_data.data)
+        datetimes_list = self.b_changes(datetimes_list, imported_data)
 
+    def b_changes(self, datetimes_list, imported_data):
+        minutes_b = 3
+        events = []
+        for _datetime in datetimes_list:
+            bx = np.sign(imported_data.data['Bx'].loc[
+                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            by = np.sign(imported_data.data['By'].loc[
+                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+            bz = np.sign(imported_data.data['Bz'].loc[
+                         _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
+
+            if (1 in bx and -1 in bx) or (1 in by and -1 in by) or (1 in bz and -1 in bz):
+                events.append(_datetime)
+
+        print(events)
+        return events
 
         # maybe no need to check if outlier - always seems to be outlier
         # correlation_diff is outlier and
@@ -55,32 +71,41 @@ class CorrelationFinder(BaseFinder):
         return data
 
     def find_outliers(self, data):
-        data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=2, ignore_minutes_around=3, reference=0)
+        data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=2,
+                                                        ignore_minutes_around=3, reference=0)
         data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=1.5)
 
         outlier_datetimes = []
         # find intersection
         for index, value in data['correlation_diff_outliers'].iteritems():
-            index:  pd.Timestamp = index
+            index: pd.Timestamp = index
             interval = timedelta(minutes=self.outlier_intersection_limit_minutes)
             sum_outliers = data.loc[index - interval:index + interval, 'correlation_sum_outliers']
             # ensure there is a positive and a negative value in sum_outliers
             if (sum_outliers > 0).any() and (sum_outliers < 0).any():
                 outlier_datetimes.append(index.to_pydatetime())
 
-        # group outliers:
+        n = 0
         grouped_outliers = []
+        groups = 0
+        while n < len(outlier_datetimes) - 1:
+            grouped_outliers.append([])
+            grouped_outliers[groups].append(outlier_datetimes[n])
+            n += 1
+            while (outlier_datetimes[n] - outlier_datetimes[n - 1]).total_seconds() < 130 and n < len(
+                    outlier_datetimes) - 1:
+                grouped_outliers[groups].append(outlier_datetimes[n])
+                n += 1
+            groups = groups + 1
 
-        for first_i in range(len(outlier_datetimes)):
-            _time_1 = outlier_datetimes[first_i]
+        # if grouped_outliers:
+        #     print(grouped_outliers, len(grouped_outliers))
 
-            if _time_1 not in [_dt for dt_list in grouped_outliers for _dt in dt_list]:
+        datetimes_list = []
+        for group in grouped_outliers:
+            # find max correlation_diff_outliers
+            maximum_in_group = data.loc[group, 'correlation_diff_outliers']
+            datetimes_list.append(maximum_in_group.idxmax())
 
-            for second_j in range(first_i, len(outlier_datetimes)):
-                _time_2 = outlier_datetimes[second_j]
-
-                if (_time_2 - _time_1) < timedelta(minutes=2 * self.outlier_intersection_limit_minutes):
-                    pass
-
-        if outlier_datetimes:
-            print(outlier_datetimes, type(outlier_datetimes[0]))
+        print('Outliers check returned: ', datetimes_list)
+        return datetimes_list
