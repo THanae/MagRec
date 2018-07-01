@@ -23,7 +23,7 @@ class CorrelationFinder(BaseFinder):
         datetimes_list = self.b_changes(datetimes_list, imported_data.data)
 
     def b_changes(self, datetimes_list, data):
-        minutes_b = 3
+        minutes_b = 2
         filtered_datetimes_list: List[datetime] = []
         for _datetime in datetimes_list:
             interval = timedelta(minutes=minutes_b)
@@ -32,27 +32,13 @@ class CorrelationFinder(BaseFinder):
                 if (b < 0).any() and (b > 0).any():
                     filtered_datetimes_list.append(_datetime)
                     break
-            #
-            # bx = np.sign(data['Bx'].loc[
-            #              _datetime - :_datetime + timedelta(minutes=minutes_b)].dropna().values)
-            # by = np.sign(imported_data.data['By'].loc[
-            #              _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
-            # bz = np.sign(imported_data.data['Bz'].loc[
-            #              _datetime - timedelta(minutes=minutes_b):_datetime + timedelta(minutes=minutes_b)].dropna().values)
-            #
-            # if (1 in bx and -1 in bx) or (1 in by and -1 in by) or (1 in bz and -1 in bz):
-            #     events.append(_datetime)
 
         # not always good take average and difference in addition to check
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
 
-        # maybe no need to check if outlier - always seems to be outlier
-        # correlation_diff is outlier and
-        # (min(correlation_sum left) < -0.5 and max(correlation_sum right) > 0.5) or (max(left) > 0.5 and min(right < 0.5))
-        # include actual point in left
 
-    def find_correlations(self, data: pd.DataFrame) -> List[pd.datetime]:
+    def find_correlations(self, data: pd.DataFrame):
         coordinate_correlation_column_names = []
 
         for coordinate in self.coordinates:
@@ -74,11 +60,11 @@ class CorrelationFinder(BaseFinder):
 
         data['correlation_sum'] = data.loc[:, coordinate_correlation_column_names].sum(axis=1)
         data['correlation_diff'] = get_derivative(data['correlation_sum']).abs()
-        print(data.columns.values)
-        print(data['correlation_diff'].max())
+        # print(data.columns.values)
+        # print(data['correlation_diff'].max())
         return data
 
-    def find_outliers(self, data):
+    def find_outliers(self, data) -> List[datetime]:
         data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=2,
                                                         ignore_minutes_around=3, reference=0)
         data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=1.5)
