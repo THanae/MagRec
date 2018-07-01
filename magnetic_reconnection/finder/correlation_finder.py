@@ -1,4 +1,6 @@
+import itertools
 from datetime import timedelta
+from typing import List
 
 import pandas as pd
 import numpy as np
@@ -18,7 +20,7 @@ class CorrelationFinder(BaseFinder):
 
     def find_magnetic_reconnections(self, imported_data: ImportedData):
         self.find_correlations(imported_data.data)
-        self.find_outliers(imported_data.data)
+        datetimes_list = self.find_outliers(imported_data.data)
 
 
         # maybe no need to check if outlier - always seems to be outlier
@@ -26,7 +28,7 @@ class CorrelationFinder(BaseFinder):
         # (min(correlation_sum left) < -0.5 and max(correlation_sum right) > 0.5) or (max(left) > 0.5 and min(right < 0.5))
         # include actual point in left
 
-    def find_correlations(self, data: pd.DataFrame):
+    def find_correlations(self, data: pd.DataFrame) -> List[pd.datetime]:
         coordinate_correlation_column_names = []
 
         for coordinate in self.coordinates:
@@ -66,8 +68,19 @@ class CorrelationFinder(BaseFinder):
             if (sum_outliers > 0).any() and (sum_outliers < 0).any():
                 outlier_datetimes.append(index.to_pydatetime())
 
-
         # group outliers:
+        grouped_outliers = []
+
+        for first_i in range(len(outlier_datetimes)):
+            _time_1 = outlier_datetimes[first_i]
+
+            if _time_1 not in [_dt for dt_list in grouped_outliers for _dt in dt_list]:
+
+            for second_j in range(first_i, len(outlier_datetimes)):
+                _time_2 = outlier_datetimes[second_j]
+
+                if (_time_2 - _time_1) < timedelta(minutes=2 * self.outlier_intersection_limit_minutes):
+                    pass
 
         if outlier_datetimes:
             print(outlier_datetimes, type(outlier_datetimes[0]))
