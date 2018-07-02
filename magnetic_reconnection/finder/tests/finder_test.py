@@ -21,6 +21,8 @@ def test_finder_with_known_events(finder: BaseFinder):
         finder.find_magnetic_reconnections(test_imported_data)
         plot_imported_data(test_imported_data,
                            DEFAULT_PLOTTED_COLUMNS + [
+                               'n_p',
+                               'Tp_par',
                                # 'correlation_x', 'correlation_y', 'correlation_z',
                                # 'correlation_sum',
                                ('correlation_sum', 'correlation_sum_outliers'),

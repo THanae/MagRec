@@ -94,6 +94,133 @@
         "start_time": "0134",
         "end_time": "0139",
         "probe": 2
+    },
+    {
+        "year": 1977,
+        "month": 4,
+        "day": 5,
+        "start_time": "2150",
+        "end_time": "2207",
+        "probe": 2
+    },
+    {
+        "year": 1977,
+        "month": 12,
+        "day": 17,
+        "start_time": "0054",
+        "end_time": "0058",
+        "probe": 1
+    },
+    {
+        "year": 1978,
+        "month": 1,
+        "day": 25,
+        "start_time": "0652",
+        "end_time": "0658",
+        "probe": 2
+    },
+    {
+        "year": 1978,
+        "month": 2,
+        "day": 26,
+        "start_time": "0428",
+        "end_time": "0435",
+        "probe": 2
+    },
+    {
+        "year": 1978,
+        "month": 3,
+        "day": 17,
+        "start_time": "1540",
+        "end_time": "1609",
+        "probe": 1
+    },
+    {
+        "year": 1979,
+        "month": 6,
+        "day": 21,
+        "start_time": "0107",
+        "end_time": "0304",
+        "probe": 1
+    },
+    {
+        "year": 1980,
+        "month": 1,
+        "day": 3,
+        "start_time": "1945",
+        "end_time": "1955",
+        "probe": 1
+    },
+    {
+        "year": 1980,
+        "month": 1,
+        "day": 16,
+        "start_time": "1418",
+        "end_time": "1426",
+        "probe": 1
+    },
+    {
+        "year": 1980,
+        "month": 2,
+        "day": 2,
+        "start_time": "0033",
+        "end_time": "0039",
+        "probe": 1
+    },
+    {
+        "year": 1980,
+        "month": 4,
+        "day": 12,
+        "start_time": "1310",
+        "end_time": "1321",
+        "probe": 1
+    },
+     {
+        "year": 1980,
+        "month": 6,
+        "day": 20,
+        "start_time": "2101",
+        "end_time": "2111",
+        "probe": 1
+    },
+     {
+        "year": 1981,
+        "month": 1,
+        "day": 11,
+        "start_time": "0729",
+        "end_time": "0735",
+        "probe": 1
+    },
+     {
+        "year": 1981,
+        "month": 1,
+        "day": 31,
+        "start_time": "0505",
+        "end_time": "0512",
+        "probe": 1
+    },
+     {
+        "year": 1981,
+        "month": 4,
+        "day": 26,
+        "start_time": "1339",
+        "end_time": "1349",
+        "probe": 1
+    },
+     {
+        "year": 1981,
+        "month": 5,
+        "day": 3,
+        "start_time": "0147",
+        "end_time": "0218",
+        "probe": 1
+    },
+    {
+        "year": 1981,
+        "month": 5,
+        "day": 29,
+        "start_time": "1434",
+        "end_time": "1444",
+        "probe": 1
     }
-
 ]

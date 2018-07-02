@@ -21,22 +21,72 @@ class CorrelationFinder(BaseFinder):
         self.find_correlations(imported_data.data)
         datetimes_list = self.find_outliers(imported_data.data)
         datetimes_list = self.b_changes(datetimes_list, imported_data.data)
+        datetimes_list = self.get_average_b(datetimes_list, imported_data.data)
+        datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
+        self.print_reconnection_events(datetimes_list)
 
     def b_changes(self, datetimes_list, data):
         minutes_b = 2
         filtered_datetimes_list: List[datetime] = []
-        for _datetime in datetimes_list:
-            interval = timedelta(minutes=minutes_b)
-            for coordinate in self.coordinates:
-                b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
-                if (b < 0).any() and (b > 0).any():
-                    filtered_datetimes_list.append(_datetime)
-                    break
+        try:
+            for _datetime in datetimes_list:
+                interval = timedelta(minutes=minutes_b)
+                for coordinate in self.coordinates:
+                    print(_datetime)
+                    print(interval)
+                    b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
+                    if (b < 0).any() and (b > 0).any():
+                        filtered_datetimes_list.append(_datetime)
+                        break
+        except Exception:
+            print('Sorry wont be possible for these dates')
 
         # not always good take average and difference in addition to check
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
 
+    def get_average_b(self, filtered_datetimes_list, data):
+        minutes_b = 2
+        # get average on left, average on right, take difference, compare to some value (want big value)
+        # compare to std on left or right? (min of them)
+        # need moving averageeeeeee
+        high_changes_datetime_list: List[datetime] = []
+        for _datetime in filtered_datetimes_list:
+            interval = timedelta(minutes = minutes_b)
+            for coordinate in self.coordinates:
+                b_left = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime].dropna()
+                b_right = data['B{}'.format(coordinate)].loc[_datetime:_datetime + interval].dropna()
+                moving_average_b_left = get_moving_average(b_left, minutes=1)
+                moving_average_b_right = get_moving_average(b_right, minutes=1)
+                average_b_left = np.mean(b_left.values)
+                average_b_right = np.mean(b_right.values)
+                # print(b_left.std(), b_right.std())
+                std_b = np.min([(b_left - moving_average_b_left).std(), (b_right - moving_average_b_right).std()])
+                # if the magnitude difference is bigger than std then there is a bigger chance that it is a reconnection
+                # if std is a nan, we just continue and add the date to the list
+                if np.abs(average_b_left - average_b_right) > 2*std_b or np.isnan(std_b):
+                    high_changes_datetime_list.append(_datetime)
+                    break
+        print('B magnitude change filter returned ', high_changes_datetime_list)
+        return high_changes_datetime_list
+
+    def n_and_t_changes(self, high_changes_datetime_list, data):
+        minutes_nt = 10
+        n_and_t_datetime_list: List[datetime] = []
+        for _datetime in high_changes_datetime_list:
+            interval = timedelta(minutes=minutes_nt)
+            n_around = data['n_p'].loc[_datetime - interval:_datetime + interval].dropna()
+            t_around = data['Tp_par'].loc[_datetime - interval:_datetime + interval].dropna()
+            n_diff = get_outliers(n_around, minutes = 10, standard_deviations = 2,ignore_minutes_around = 0, reference='median')
+            t_diff = get_outliers(t_around,  minutes = 10, standard_deviations = 2,ignore_minutes_around = 0, reference='median')
+            # std_n = (n_around - get_moving_average(n_around)).std()
+            # std_t = (t_around - get_moving_average(t_around)).std()
+            # if (n_diff.abs() > 2* std_n).any() or (t_diff.abs() > 2*std_t).any():
+            if (np.isfinite(n_diff)).any() or (np.isfinite(t_diff)).any():
+                n_and_t_datetime_list.append(_datetime)
+                break
+        print('Density and temperature changes filter returned ', n_and_t_datetime_list)
+        return n_and_t_datetime_list
 
     def find_correlations(self, data: pd.DataFrame):
         coordinate_correlation_column_names = []
@@ -103,3 +153,7 @@ class CorrelationFinder(BaseFinder):
 
         print('Outliers check returned: ', datetimes_list)
         return datetimes_list
+
+    def print_reconnection_events(self, reconnection_dates):
+        for reconnection_date in reconnection_dates:
+            print('event detected at ' + reconnection_date.strftime('%H:%M:%S %d/%m/%Y'))
