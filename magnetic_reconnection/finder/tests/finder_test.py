@@ -12,6 +12,11 @@ from magnetic_reconnection.magnetic_reconnection import MagneticReconnection
 import numpy as np
 
 def test_finder_with_known_events(finder: BaseFinder):
+    """
+    Checks whether the finder can detect known events
+    :param finder: for now CorrelationFinder
+    :return:
+    """
     known_events = get_known_magnetic_reconnections()
     for magnetic_reconnection in known_events:
         try:
@@ -62,36 +67,40 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data):
     start = imported_data.start_datetime
     probe = imported_data.probe
     for n in range(np.int(duration/interval)):
-        data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval, probe=probe)
+        try:
+            data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval, probe=probe)
 
-        reconnection = finder.find_magnetic_reconnections(data)
-        plot = False
-        if reconnection or plot:
-            plot_imported_data(data,
-                           DEFAULT_PLOTTED_COLUMNS  + [
-                               # 'correlation_x', 'correlation_y', 'correlation_z',
-                               # 'correlation_sum',
-                               ('correlation_sum', 'correlation_sum_outliers'),
-                               ('correlation_diff', 'correlation_diff_outliers')]
-                               )
+            reconnection = finder.find_magnetic_reconnections(data)
+            plot = False
+            if reconnection or plot:
+                plot_imported_data(data,
+                               DEFAULT_PLOTTED_COLUMNS  + [
+                                   # 'correlation_x', 'correlation_y', 'correlation_z',
+                                   # 'correlation_sum',
+                                   ('correlation_sum', 'correlation_sum_outliers'),
+                                   ('correlation_diff', 'correlation_diff_outliers')]
+                                   )
+        except Exception:
+            print('Exception')
         start = start + timedelta(hours=interval)
 
 
 if __name__ == '__main__':
-    test_finder_with_known_events(CorrelationFinder())
+    # test_finder_with_known_events(CorrelationFinder())
     #
     # imported_data = ImportedData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
     # maybe other event 27/01/1977 at around 2:19
 
-    # orbiter = kernel_loader(2)
-    # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
-    # orbit_generator(orbiter, times)
-    # data = find_radii(orbiter, radius=0.3)
-    # time_indices = get_time_indices(data)
-    # dates = get_dates(orbiter.times, time_indices)
-    # imported_data_sets = get_data(dates)
-    #
-    # imported_data = imported_data_sets[0]
-    # print('duration', imported_data.duration)
-    # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
+    orbiter = kernel_loader(2)
+    times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    orbit_generator(orbiter, times)
+    data = find_radii(orbiter, radius=0.3)
+    time_indices = get_time_indices(data)
+    dates = get_dates(orbiter.times, time_indices)
+    imported_data_sets = get_data(dates)
+
+    for n in range(len(imported_data_sets)):
+        imported_data = imported_data_sets[n]
+        print('duration', imported_data.duration)
+        test_finder_with_unknown_events(CorrelationFinder(), imported_data)
