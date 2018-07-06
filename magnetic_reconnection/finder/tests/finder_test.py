@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from data_handler.distances_with_spice import find_radii, get_time_indices, get_dates, get_data
 from data_handler.imported_data import ImportedData
@@ -9,7 +9,9 @@ from magnetic_reconnection.finder.correlation_finder import CorrelationFinder
 from magnetic_reconnection.finder.tests.known_events import get_known_magnetic_reconnections
 from magnetic_reconnection.magnetic_reconnection import MagneticReconnection
 
+import csv
 import numpy as np
+
 
 def test_finder_with_known_events(finder: BaseFinder):
     """
@@ -61,28 +63,72 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
     return test_data
 
 
-def test_finder_with_unknown_events(finder: BaseFinder, imported_data):
+def test_finder_with_unknown_events(finder: BaseFinder, imported_data, plot_reconnections=True):
+    """
+    Returns the possible reconnection times as well as the distance from the sun at this time
+    :param finder: method to find the reconnections, right now CorrelationFinder
+    :param imported_data: ImportedData
+    :return:
+    """
     interval = 6
     duration = imported_data.duration
     start = imported_data.start_datetime
     probe = imported_data.probe
-    for n in range(np.int(duration/interval)):
+    reconnections = []
+    for n in range(np.int(duration / interval)):
         try:
-            data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval, probe=probe)
+            data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
+                                probe=probe)
 
-            reconnection = finder.find_magnetic_reconnections(data)
-            plot = False
-            if reconnection or plot:
+            reconnection = finder.find_magnetic_reconnections(data, sigma_sum=3, sigma_diff=2.5, minutes_b=3)
+            if reconnection:
+                for event in reconnection:
+                    radius = data.data['r_sun'].loc[event]
+                    reconnections.append([event, radius])
+            # add timestamp to list of all reconnections
+
+            if reconnection and plot_reconnections:
                 plot_imported_data(data,
-                               DEFAULT_PLOTTED_COLUMNS  + [
-                                   # 'correlation_x', 'correlation_y', 'correlation_z',
-                                   # 'correlation_sum',
-                                   ('correlation_sum', 'correlation_sum_outliers'),
-                                   ('correlation_diff', 'correlation_diff_outliers')]
+                                   DEFAULT_PLOTTED_COLUMNS + [
+                                       # 'correlation_x', 'correlation_y', 'correlation_z',
+                                       # 'correlation_sum',
+                                       ('correlation_sum', 'correlation_sum_outliers'),
+                                       ('correlation_diff', 'correlation_diff_outliers')]
                                    )
         except Exception:
             print('Exception')
         start = start + timedelta(hours=interval)
+
+    return reconnections
+
+
+def send_reconnections_to_csv(reconnections_list, name='reconnections'):
+    with open(name + '.csv', 'w') as csv_file:
+        fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius']
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+        for reconnection_date, reconnection_radius in reconnections_list:
+            year = reconnection_date.year
+            month = reconnection_date.month
+            day = reconnection_date.day
+            hour = reconnection_date.hour
+            minutes = reconnection_date.minute
+            seconds = reconnection_date.second
+            writer.writerow(
+                {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds,
+                 'radius': reconnection_radius})
+
+
+def plot_csv(csv_file_name, interval=6):
+    with open(csv_file_name, newline='') as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            date = datetime(row['year'], row['month'], row['day'], row['hours'], row['minutes'], 0)
+            start_of_plot = date - timedelta(hours=interval / 2)
+            imported_data = ImportedData(start_date=start_of_plot.strftime('%d/%m/%Y'), start_hour=start_of_plot.hour,
+                                         duration=interval)
+            # print('radius: ', row['radius'])
+            plot_imported_data(imported_data)
 
 
 if __name__ == '__main__':
@@ -90,17 +136,26 @@ if __name__ == '__main__':
     #
     # imported_data = ImportedData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
-    # maybe other event 27/01/1977 at around 2:19
 
     orbiter = kernel_loader(2)
     times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
     orbit_generator(orbiter, times)
-    data = find_radii(orbiter, radius=0.3)
+    data = find_radii(orbiter, radius=1)
     time_indices = get_time_indices(data)
     dates = get_dates(orbiter.times, time_indices)
     imported_data_sets = get_data(dates)
 
+    all_reconnections = []
+
     for n in range(len(imported_data_sets)):
         imported_data = imported_data_sets[n]
         print('duration', imported_data.duration)
-        test_finder_with_unknown_events(CorrelationFinder(), imported_data)
+        reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data,
+                                                              plot_reconnections=False)
+        if reconnection_events:
+            for event in reconnection_events:
+                all_reconnections.append(event)
+
+    to_csv = True
+    if to_csv:
+        send_reconnections_to_csv(all_reconnections, 'reconnections_all_of_them')
