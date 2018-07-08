@@ -103,7 +103,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data, plot_reco
 
 
 def send_reconnections_to_csv(reconnections_list, name='reconnections'):
-    with open(name + '.csv', 'w') as csv_file:
+    with open(name + '.csv', 'w', newline='') as csv_file:
         fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()

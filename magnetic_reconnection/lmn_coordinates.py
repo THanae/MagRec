@@ -1,6 +1,7 @@
 import numpy as np
 from datetime import datetime, timedelta
 from numpy import linalg as LA
+import csv
 
 from data_handler.imported_data import ImportedData
 
@@ -61,17 +62,19 @@ def get_necessary_b(imported_data, event_date):
     b_y_2 = np.mean(data_2['By'].values)
     b_z_2 = np.mean(data_2['Bz'].values)
     B2 = np.array([b_x_2, b_y_2, b_z_2])
-    v_x_1 = np.mean(data_1['v_x'].values)
-    v_y_1 = np.mean(data_1['v_y'].values)
-    v_z_1 = np.mean(data_1['v_z'].values)
+    v_x_1 = np.mean(data_1['vp_x'].values)
+    v_y_1 = np.mean(data_1['vp_y'].values)
+    v_z_1 = np.mean(data_1['vp_z'].values)
     v1 = np.array([v_x_1, v_y_1, v_z_1])
-    v_x_2 = np.mean(data_2['v_x'].values)
-    v_y_2 = np.mean(data_2['v_y'].values)
-    v_z_2 = np.mean(data_2['v_z'].values)
+    v_x_2 = np.mean(data_2['vp_x'].values)
+    v_y_2 = np.mean(data_2['vp_y'].values)
+    v_z_2 = np.mean(data_2['vp_z'].values)
     v2 = np.array([v_x_2, v_y_2, v_z_2])
 
+    density_1 = np.mean(data_1['n_p'].values)
+    density_2 = np.mean(data_2['n_p'].values)
 
-    return B1, B2, v1, v2
+    return B1, B2, v1, v2, density_1, density_2
 
 
 def mva(B):
@@ -94,7 +97,7 @@ def mva(B):
     # maximum value gives L
     w_max = np.argmax(w)
     w_min = np.argmin(w)
-    w_intermediate = np.delete([0, 1, 2], [w_min, w_max])
+    w_intermediate = np.min(np.delete([0, 1, 2], [w_min, w_max]))
 
     L = np.zeros(3)
     for coordinate in range(len(v[:, w_max])):
@@ -127,11 +130,7 @@ def hybrid(_L, B1, B2):
     :param B2: mean magnetic field vector from inflow region 2
     :return:
     """
-    # take average b on the left
-    # take average b on the right
-    # take only average for stable regions, so maybe no more deviations than one or two sigmas
-    b_mean = np.array([np.mean(np.array([b[n] for b in B]))for n in range(3)])
-    cross_of_b = np.cross(b_mean, b_mean-np.array([1,1,1]))
+    cross_of_b = np.cross(B1, B2)
     # we want a normalised vector
     N = cross_of_b/np.sqrt(cross_of_b[0]**2+cross_of_b[1]**2+cross_of_b[2]**2)
     cross_n_l = np.cross(N, _L)
@@ -143,15 +142,81 @@ def hybrid(_L, B1, B2):
     return L, M, N
 
 
+def change_b_and_v(B1, B2, v1, v2, L, M, N):
+    B1_L = np.dot(L, B1)
+    B1_M = np.dot(M, B1)
+    B1_N = np.dot(N, B1)
+    B2_L = np.dot(L, B2)
+    B2_M = np.dot(M, B2)
+    B2_N = np.dot(N, B2)
+    v1_L = np.dot(L, v1)
+    v1_M = np.dot(M, v1)
+    v1_N = np.dot(N, v1)
+    v2_L = np.dot(L, v2)
+    v2_M = np.dot(M, v2)
+    v2_N = np.dot(N, v2)
+
+    # B1_changed = np.array([B1_L, B1_M, B1_N])
+    # B2_changed = np.array([B2_L, B2_M, B2_N])
+    # v1_changed = np.array([v1_L, v1_M, v1_N])
+    # v2_changed = np.array([v2_L, v2_M, v2_N])
+
+    return B1_L, B2_L, v1_L, v2_L
+
+
+def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2):
+    mu_0 = 4e-7 * np.pi
+    alpha_1 = 0
+    alpha_2 = 0
+    B1_part = B1_L * np.sqrt((1-alpha_1)/(mu_0*rho_1))
+    B2_part = B2_L * np.sqrt((1-alpha_2)/(mu_0*rho_2))
+    theoretical_v2_plus = v1_L + (B2_part - B1_part)
+    print('real', v2_L)
+    print('theory', theoretical_v2_plus)
+    theoretical_v2_minus = v1_L - (B2_part - B1_part)
+    print('theory', theoretical_v2_minus)
+    # the true v2 must be close to the predicted one
+    if np.sign(v2_L) == np.sign(theoretical_v2_plus):
+        if np.abs(v2_L) < np.abs(theoretical_v2_plus) < 10*np.abs(v2_L):
+            print('reconnection')
+        else:
+            print('no reconnection')
+    elif np.sign(v2_L) == np.sign(theoretical_v2_minus):
+        if np.abs(v2_L) < np.abs(theoretical_v2_minus) < 10*np.abs(v2_L):
+            print('reconnection')
+        else:
+            print('no reconnection')
+    else:
+        print('wrong result')
+
+
+def get_event_dates(file_name):
+    event_dates = []
+    with open(file_name) as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            year = np.int(row['year'])
+            month = np.int(row['month'])
+            day = np.int(row['day'])
+            hours = np.int(row['hours'])
+            minutes = np.int(row['minutes'])
+            event_dates.append(datetime(year, month, day, hours, minutes))
+    return event_dates
+
+
 if __name__ == '__main__':
-    imported_data = ImportedData(start_date='30/01/1976', start_hour=1, duration=1.5)
-    imported_data.data.dropna(inplace=True)
-    print(imported_data.data.keys())
-    # print(imported_data.data)
-    B = get_b(imported_data)
-    L = mva(B)
-    B1, B2, v1, v2 = get_necessary_b(imported_data, datetime(1976, 1, 30, 1, 40, 0))
-    L, M, N = hybrid(L, B1, B2)
-
-
-# need another function that applies the walen test
+    event_dates = get_event_dates('reconnections_all_of_them.csv')
+    duration = 1.5
+    for event_date in event_dates:
+        print('possible reconnection', str(event_date))
+        start_time = event_date - timedelta(hours=duration/2)
+        imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour, duration=duration, probe=2)
+        imported_data.data.dropna(inplace=True)
+        # print(imported_data.data.keys())
+        # print(imported_data.data)
+        B = get_b(imported_data)
+        L = mva(B)
+        B1, B2, v1, v2, density_1, density_2 = get_necessary_b(imported_data, event_date)
+        L, M, N = hybrid(L, B1, B2)
+        B1_L, B2_L, v1_L, v2_L = change_b_and_v(B1, B2, v1, v2, L, M, N)
+        walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
