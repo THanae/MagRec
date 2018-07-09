@@ -65,7 +65,7 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     """
     if column_name not in imported_data.data.columns.values:
         imported_data.create_processed_column(column_name)
-    ax.plot(imported_data.data[column_name], '.', markersize=2, label=column_name, color=colour)
+    ax.plot(imported_data.data[column_name], '-', markersize=2, label=column_name, color=colour)
     ax.set_ylabel(column_name, color=colour)
     ax.grid()
 
