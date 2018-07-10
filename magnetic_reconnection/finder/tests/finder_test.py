@@ -136,19 +136,21 @@ if __name__ == '__main__':
     #
     # imported_data = ImportedData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
-
-    orbiter = kernel_loader(2)
-    times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    helios = 1
+    orbiter = kernel_loader(helios)
+    # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    times = orbit_times_generator('15/12/1974', '15/02/1985', 1)
     orbit_generator(orbiter, times)
-    data = find_radii(orbiter, radius=1)
+    data = find_radii(orbiter, radius=0.32)
     time_indices = get_time_indices(data)
     dates = get_dates(orbiter.times, time_indices)
-    imported_data_sets = get_data(dates)
+    imported_data_sets = get_data(dates, probe=helios)
 
     all_reconnections = []
 
     for n in range(len(imported_data_sets)):
         imported_data = imported_data_sets[n]
+        print(imported_data)
         print('duration', imported_data.duration)
         reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data,
                                                               plot_reconnections=False)
@@ -156,6 +158,11 @@ if __name__ == '__main__':
             for event in reconnection_events:
                 all_reconnections.append(event)
 
-    to_csv = True
-    if to_csv:
-        send_reconnections_to_csv(all_reconnections, 'reconnections_all_of_them')
+    print(all_reconnections)
+
+    # to_csv = True
+    # if to_csv:
+    #     send_reconnections_to_csv(all_reconnections, 'reconnections_helios_1_all_of_them')
+
+    # Helios 1 : December 10, 1974 to February 18, 1985
+    # Helios 2 : January 15, 1976 to December 23, 1979

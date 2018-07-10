@@ -68,9 +68,10 @@ def get_dates(orbiter_times, time_indices):
     return all_dates
 
 
-def get_data(dates):
+def get_data(dates, probe=2):
     """
     Gets the data as ImportedData for the given start and end dates
+    Be careful, especially for Helios 1  where a lot of data is missing
     :param dates: list of start and end dates when the spacecraft is at a location smaller than the given radius
     :return: a list of ImportedData
     """
@@ -81,8 +82,10 @@ def get_data(dates):
         delta_t = end - start
         hours = np.int(delta_t.total_seconds() / 3600)
         start_date = start.strftime('%d/%m/%Y')
-        # start_date = datetime.strptime(str(start), '%d/%m/%Y')
-        imported_data.append(ImportedData(start_date=start_date, duration=hours, probe=2))
+        try:
+            imported_data.append(ImportedData(start_date=start_date, duration=hours, probe=probe))
+        except Exception:
+            print('no data between ' + str(start) + ' and ' + str(end))
     hours_to_analyse = 0
     for n in range(len(imported_data)):
         a = imported_data[n]

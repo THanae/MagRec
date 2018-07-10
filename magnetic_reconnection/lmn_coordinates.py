@@ -4,8 +4,12 @@ from numpy import linalg as LA
 import csv
 import matplotlib.pyplot as plt
 from datetime import timedelta
+import pandas as pd
 
 from data_handler.imported_data import ImportedData
+from data_handler.imported_data_plotter import plot_imported_data
+from data_handler.utils.column_creator import create_b_magnitude_column, create_vp_magnitude_column
+from data_handler.utils.column_processing import get_derivative
 
 # test data
 # B = [np.array([-13.6, -24.7, 54.6]),
@@ -24,21 +28,16 @@ from data_handler.imported_data import ImportedData
 #          np.array([19.1, 34.4, 20.1]),
 #          np.array([24.9, 50.1, 1.9]),
 #          np.array([29.2, 47.1, -10.6])]
-from data_handler.imported_data_plotter import plot_imported_data
-from data_handler.utils.column_creator import create_b_magnitude_column, create_vp_magnitude_column
-from data_handler.utils.column_processing import get_derivative
 
 
 def get_b(imported_data):
     """
     Returns the imported data in a suitable vector form to be analysed
-    :param imported_data:
+    :param imported_data: ImportedData
     :return:
     """
     B = []
-    b_x = imported_data.data['Bx'].values
-    b_y = imported_data.data['By'].values
-    b_z = imported_data.data['Bz'].values
+    b_x, b_y, b_z = imported_data.data['Bx'].values, imported_data.data['By'].values, imported_data.data['Bz'].values
     for n in range(len(b_x)):
         B.append(np.array([b_x[n], b_y[n], b_z[n]]))
     return B
@@ -51,42 +50,25 @@ def get_necessary_b(imported_data, event_date):
     :param event_date: date of possible reconnection
     :return:
     """
-    # now we want to make sure we take only the B we need
     # we need B to be stable over some period of time on both sides of the exhaust
-    # we take the average in that stability region
-    # we take off the reconnection event (few minutes on each side of the event)
-
-    # we want to find the time interval over which the data is stable
-    # for each coordinate we find an interval
-    # we then take the smallest one if it is not zero obviously
-    # if zero raise exception, walen test is not feasible
+    # we take the average in that stability region, without the reconnection event (few minutes on each side)
+    # hard/impossible to determine computationally, so use 10-2 intervals
 
     data_1 = imported_data.data[event_date - timedelta(minutes=10):event_date - timedelta(minutes=2)]
     data_2 = imported_data.data[event_date + timedelta(minutes=2):event_date + timedelta(minutes=10)]
-    b_x_1 = np.mean(data_1['Bx'].values)
-    b_y_1 = np.mean(data_1['By'].values)
-    b_z_1 = np.mean(data_1['Bz'].values)
+    b_x_1, b_y_1, b_z_1 = np.mean(data_1['Bx'].values), np.mean(data_1['By'].values), np.mean(data_1['Bz'].values)
     B1 = np.array([b_x_1, b_y_1, b_z_1])
-    b_x_2 = np.mean(data_2['Bx'].values)
-    b_y_2 = np.mean(data_2['By'].values)
-    b_z_2 = np.mean(data_2['Bz'].values)
+    b_x_2, b_y_2, b_z_2 = np.mean(data_2['Bx'].values), np.mean(data_2['By'].values), np.mean(data_2['Bz'].values)
     B2 = np.array([b_x_2, b_y_2, b_z_2])
-    v_x_1 = np.mean(data_1['vp_x'].values)
-    v_y_1 = np.mean(data_1['vp_y'].values)
-    v_z_1 = np.mean(data_1['vp_z'].values)
+
+    v_x_1, v_y_1, v_z_1 = np.mean(data_1['vp_x'].values), np.mean(data_1['vp_y'].values), np.mean(data_1['vp_z'].values)
     v1 = np.array([v_x_1, v_y_1, v_z_1])
-    v_x_2 = np.mean(data_2['vp_x'].values)
-    v_y_2 = np.mean(data_2['vp_y'].values)
-    v_z_2 = np.mean(data_2['vp_z'].values)
+    v_x_2, v_y_2, v_z_2 = np.mean(data_2['vp_x'].values), np.mean(data_2['vp_y'].values), np.mean(data_2['vp_z'].values)
     v2 = np.array([v_x_2, v_y_2, v_z_2])
 
-    density_1 = np.mean(data_1['n_p'].values)
-    density_2 = np.mean(data_2['n_p'].values)
-
-    T_par_1 = np.mean(data_1['Tp_par'].values)
-    T_perp_1 = np.mean(data_1['Tp_perp'].values)
-    T_par_2 = np.mean(data_2['Tp_par'].values)
-    T_perp_2 = np.mean(data_2['Tp_perp'].values)
+    density_1, density_2 = np.mean(data_1['n_p'].values), np.mean(data_2['n_p'].values)
+    T_par_1, T_perp_1 = np.mean(data_1['Tp_par'].values), np.mean(data_1['Tp_perp'].values)
+    T_par_2, T_perp_2 = np.mean(data_2['Tp_par'].values), np.mean(data_2['Tp_perp'].values)
 
     return B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2
 
@@ -97,7 +79,7 @@ def mva(B):
     :param B: field around interval that will be considered
     :return:
     """
-    # we want to solve the matrix
+    # we want to solve the magnetic matrix eigenvalue problem
     M_b = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
     for n in range(3):
         bn = np.array([b[n] for b in B])
@@ -107,31 +89,24 @@ def mva(B):
             M_b[n, m] = np.mean(bn * bm) - np.mean(bn) * np.mean(bm)
 
     w, v = LA.eig(M_b)
-    # minimum eigenvalue gives N
-    # maximum value gives L
-    w_max = np.argmax(w)
-    w_min = np.argmin(w)
+
+    w_max = np.argmax(w)  # maximum value gives L
+    w_min = np.argmin(w)  # minimum eigenvalue gives N
     w_intermediate = np.min(np.delete([0, 1, 2], [w_min, w_max]))
 
-    L = np.zeros(3)
+    L, N, M = np.zeros(3), np.zeros(3), np.zeros(3)
     for coordinate in range(len(v[:, w_max])):
         L[coordinate] = v[:, w_max][coordinate]
-
-    N = np.zeros(3)
-    for coordinate in range(len(v[:, w_min])):
         N[coordinate] = v[:, w_min][coordinate]
-
-    M = np.zeros(3)
-    for coordinate in range(len(v[:, w_intermediate])):
         M[coordinate] = v[:, w_intermediate][coordinate]
 
-    b_av = np.array([0, 0, 0])
+    b_mean = np.array([0, 0, 0])
     b_l = 0
     for n in range(3):
-        b_av[n] = np.mean(np.array([b[n] for b in B]))
+        b_mean[n] = np.mean(np.array([b[n] for b in B]))
 
     for n in range(3):
-        b_l = b_l + b_av[n] * L[n]
+        b_l = b_l + b_mean[n] * L[n]
     return L, M, N
 
 
@@ -175,51 +150,53 @@ def change_b_and_v(B1, B2, v1, v2, L, M, N):
 
 def v_l_at_event(imported_data, event_date, N):
     data_event = imported_data.data[event_date-timedelta(minutes=2):event_date+timedelta(minutes=2)]
-
     try:
         v = np.array([np.mean(data_event['vp_x'].values), np.mean(data_event['vp_y'].values), np.mean(data_event['vp_z'].values)])
         vl = np.dot(N, v)
     except Exception:
         print('Exception')
-        vl=0
+        vl = 0
     return vl
 
 
-def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2, vl):
+def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2):
     mu_0 = 4e-7 * np.pi
     k = 1.38e-23
-    # alpha is difference in thermal pressures divided by 2
-    # TODO make sure that's the correct equation
     proton_mass = 1.67e-27
-    # density is in cm-3, we want in km-3
-    rho_1 = rho_1   * proton_mass / 1e-15
-    rho_2 = rho_2  * proton_mass / 1e-15
+
+    minimum_fraction = 90 / 100
+    maximum_fraction = 110 / 100
+
+    rho_1 = rho_1 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
+    rho_2 = rho_2 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     alpha_1 = 0  # rho_1 * k * (T_par_1 - T_perp_1) / 2
     alpha_2 = 0  # rho_2 * k * (T_par_2 - T_perp_2) / 2
-    # b is in nanoteslas
-    B1_part = B1_L * np.sqrt((1 - alpha_1) / (mu_0 * rho_1))*10e-10
-    B2_part = B2_L * np.sqrt((1 - alpha_2) / (mu_0 * rho_2))*10e-10
+    B1_part = B1_L * np.sqrt((1 - alpha_1) / (mu_0 * rho_1))*10e-10  # b is in nanoteslas
+    B2_part = B2_L * np.sqrt((1 - alpha_2) / (mu_0 * rho_2))*10e-10  # b is in nanoteslas
+
+    # make sure that's the correct equation
     theoretical_v2_plus = v1_L + (B2_part - B1_part)
+    theoretical_v2_minus = v1_L - (B2_part - B1_part)
+
     print('real', v2_L)
     print('theory', theoretical_v2_plus)
-    theoretical_v2_minus = v1_L - (B2_part - B1_part)
     print('theory', theoretical_v2_minus)
-    # the true v2 must be close to the predicted one
-    # usually we will take the ones with same sign for comparison
+
+    # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
     # when they have all the same sign then we take the smallest one
     if np.sign(v2_L) == np.sign(theoretical_v2_plus) and np.sign(v2_L) == np.sign(theoretical_v2_minus):
         theoretical_v2 = np.min([np.abs(theoretical_v2_minus), np.abs(theoretical_v2_plus)])
-        if 90/100 * theoretical_v2 < np.abs(v2_L) < 110/100 * theoretical_v2:
+        if minimum_fraction * theoretical_v2 < np.abs(v2_L) < maximum_fraction * theoretical_v2:
             return True
     elif np.sign(v2_L) == np.sign(theoretical_v2_plus):
-        if 90/100 *np.abs(theoretical_v2_plus) < np.abs(v2_L) < 110/100 * np.abs(theoretical_v2_plus):
+        if minimum_fraction *np.abs(theoretical_v2_plus) < np.abs(v2_L) < maximum_fraction * np.abs(theoretical_v2_plus):
             return True
     elif np.sign(v2_L) == np.sign(theoretical_v2_minus):
-        if 90/100 *np.abs(theoretical_v2_minus) < np.abs(v2_L) < 110/100 * np.abs(theoretical_v2_minus):
+        if minimum_fraction *np.abs(theoretical_v2_minus) < np.abs(v2_L) < maximum_fraction * np.abs(theoretical_v2_minus):
             return True
     else:
         print('wrong result')
-    return False
+        return False
 
 
 def b_l_biggest(B1_L, B2_L, B1_M, B2_M):
@@ -228,26 +205,24 @@ def b_l_biggest(B1_L, B2_L, B1_M, B2_M):
     magnitude_change_L = B1_L ** 2 + B2_L ** 2
     magnitude_change_M = B1_M ** 2 + B2_M ** 2
 
-    # we do not want too close results, in which case it is not a reconnection
     if amplitude_change_L > 1 + amplitude_change_M or magnitude_change_L > 1 + magnitude_change_M:
-        return True
+        return True  # we do not want too close results, in which case it is not a reconnection
     else:
         return False
 
 
 def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date):
-    B1_L = B1[0]
-    B2_L = B2[0]
-    # BL changes sign before and after the exhaust
     reconnection_points = 0
+
+    # BL changes sign before and after the exhaust
+    B1_L, B2_L = B1[0], B2[0]
     if np.sign(B1_L) != np.sign(B2_L):
         reconnection_points = reconnection_points + 1
     else:
         print('sign error')
 
     # bn is small and nearly constant
-    B1_N = B1[2]
-    B2_N = B2[2]
+    B1_N, B2_N = B1[2],B2[2]
     if np.abs(B1_N) < 10e-15 and np.abs(B2_N) < 10e-15:
         reconnection_points = reconnection_points + 1
     else:
@@ -260,7 +235,6 @@ def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date):
     vL = imported_data.data['vp_magnitude']
     BL_diff = get_derivative(BL)
     vL_diff = get_derivative(vL)
-
     left_correlation = BL_diff.loc[
                        event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values * vL_diff.loc[
                                                                                                        event_date - timedelta(
@@ -299,7 +273,8 @@ def get_event_dates(file_name):
             day = np.int(row['day'])
             hours = np.int(row['hours'])
             minutes = np.int(row['minutes'])
-            event_dates.append(datetime(year, month, day, hours, minutes))
+            seconds = np.int(row['seconds'])
+            event_dates.append(datetime(year, month, day, hours, minutes, seconds))
     return event_dates
 
 
@@ -332,9 +307,31 @@ def send_reconnections_to_csv(event_list, possible_reconnections_list, name='rec
                  'radius': radius, 'satisfied tests': satisfied})
 
 
+def plot_lmn(imported_data, L, M, N):
+    bl, bm, bn = [], [], []
+    for n in range(len(imported_data.data)):
+        bl.append(
+            np.dot(np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]),
+                   L))
+        bm.append(
+            np.dot(np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]),
+                   M))
+        bn.append(
+            np.dot(np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]),
+                   N))
+
+    bl = pd.Series(np.array(bl), index=imported_data.data.index)
+    bm = pd.Series(np.array(bm), index=imported_data.data.index)
+    bn = pd.Series(np.array(bn), index=imported_data.data.index)
+    plt.plot(bl)
+    plt.plot(bm)
+    plt.plot(bn)
+    plt.show()
+
+
 if __name__ == '__main__':
     event_dates = get_event_dates('reconnections_all_of_them.csv')
-    duration = 2
+    duration = 3
     m = 0
     events_that_passed_test = []
     for event_date in event_dates:
@@ -345,22 +342,21 @@ if __name__ == '__main__':
         print(imported_data)
         imported_data.data.dropna(inplace=True)
         # print(imported_data.data.keys())
-        # print(imported_data.data)
         B = get_b(imported_data)
         L, M, N = mva(B)
-        # print('mva', L, M, N)
         B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_necessary_b(imported_data,
                                                                                                      event_date)
         L, M, N = hybrid(L, B1, B2)
-        # print('hybrid', L, M, N)
+
         B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
         B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
         v1_L, v2_L = v1_changed[0], v2_changed[0]
 
-        vl = v_l_at_event(imported_data, event_date, N)
+        # vl = v_l_at_event(imported_data, event_date, N)
 
-        # walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2)
-        walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2, vl)
+        # plot_lmn(imported_data, L, M, N)
+
+        walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
         BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
         B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data, event_date)
         if walen and BL_check and len(
@@ -368,7 +364,7 @@ if __name__ == '__main__':
             print('reconnection at ', str(event_date))
             m = m + 1
             events_that_passed_test.append(event_date)
-            # plot_imported_data(imported_data)
+            plot_imported_data(imported_data)
 
         else:
             print('no reconnection at ', str(event_date))
@@ -376,4 +372,4 @@ if __name__ == '__main__':
     print('reconnection number', m)
     print(events_that_passed_test)
 
-    # send_reconnections_to_csv(event_dates, events_that_passed_test, name='reconnections_tests2')
+    send_reconnections_to_csv(event_dates, events_that_passed_test, name='reconnections_tests_70_130')
