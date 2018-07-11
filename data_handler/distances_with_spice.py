@@ -84,6 +84,7 @@ def get_data(dates, probe=2):
         start_date = start.strftime('%d/%m/%Y')
         try:
             imported_data.append(ImportedData(start_date=start_date, duration=hours, probe=probe))
+            # print(imported_data)
         except Exception:
             print('no data between ' + str(start) + ' and ' + str(end))
     hours_to_analyse = 0

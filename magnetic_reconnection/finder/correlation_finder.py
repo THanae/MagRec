@@ -17,7 +17,7 @@ class CorrelationFinder(BaseFinder):
         super().__init__()
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
-    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum=2, sigma_diff=1.5, minutes_b=3):
+    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum=3, sigma_diff=2.5, minutes_b=3):
         """
         Finds possible events by running a series of tests on the data
         :param imported_data: ImportedData
@@ -143,7 +143,7 @@ class CorrelationFinder(BaseFinder):
         # print(data['correlation_diff'].max())
         return data
 
-    def find_outliers(self, data, sigma_sum=2, sigma_diff=1.5) -> List[datetime]:
+    def find_outliers(self, data, sigma_sum=3, sigma_diff=2.5) -> List[datetime]:
         """
         Finds all events which have high changes in correlation
         :param data: ImportedData
@@ -151,10 +151,8 @@ class CorrelationFinder(BaseFinder):
         :param sigma_diff: sigma faction used in finding the high changes in the difference of the total correlations
         :return: list of possible events
         """
-        # normally, for sum, std is 2
         data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=sigma_sum,
                                                         ignore_minutes_around=3, reference=0)
-        # normally, for diff, std is 1.5
         data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=sigma_diff)
 
         outlier_datetimes = []
