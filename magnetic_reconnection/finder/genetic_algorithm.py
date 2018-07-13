@@ -59,8 +59,11 @@ def genetic_algorithm(genes, first_population_size=10, best_samples_size=3, rand
 
     plt.plot(performances)
     plt.show()
-    # could use reverse= True is there were no nans but there happens to be nans
-    return sorted(performances, key=get_key, reverse=True)
+
+    # puts nans at the end of the performance list
+    performances_no_nans = [perf for perf in performances if not np.isnan(perf[0])]
+    performances_nans = [perf for perf in performances if np.isnan(perf[0])]
+    return sorted(performances_no_nans, key=get_key, reverse=True) + performances_nans
 
 
 def fitness(gene, event_list_split):
@@ -136,7 +139,10 @@ def performance_per_gene(population, event_list_split):
     def get_key(item):
         return item[0]
 
-    return sorted(performance, key=get_key, reverse=True)
+    # puts nans at the end of the performance list
+    performance_no_nans = [perf for perf in performance if not np.isnan(perf[0])]
+    performance_nans = [perf for perf in performance if np.isnan(perf[0])]
+    return sorted(performance_no_nans, key=get_key, reverse=True) + performance_nans
 
 
 def selection(sorted_population, best_samples, randomly_chosen_samples):
