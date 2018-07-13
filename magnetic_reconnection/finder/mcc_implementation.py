@@ -9,35 +9,35 @@ from multiprocessing import Pool
 import csv
 
 # list of known event dates, and dates with no reconnections (checked by hand)
-event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1], [datetime(1974, 12, 15, 20, 0, 0), 1],
-              [datetime(1975, 1, 18, 13, 0, 0), 1],
-              [datetime(1975, 2, 7, 1, 0, 0), 1], [datetime(1975, 9, 22, 3, 30, 0), 1],
-              [datetime(1975, 12, 19, 21, 0, 0), 1],
-              [datetime(1976, 1, 19, 6, 0, 0), 2], [datetime(1976, 1, 27, 7, 0, 0), 2],
-              [datetime(1976, 1, 30, 2, 0, 0), 2],
-              [datetime(1976, 3, 4, 9, 0, 0), 2], [datetime(1976, 12, 15, 1, 0, 0), 2],
-              [datetime(1977, 4, 5, 22, 0, 0), 2],
-              [datetime(1978, 1, 25, 7, 0, 0), 2], [datetime(1978, 2, 26, 4, 0, 0), 2],
-              [datetime(1977, 4, 23, 3, 0, 0), 2],
-              [datetime(1977, 12, 17, 1, 0, 0), 1], [datetime(1978, 3, 17, 16, 0, 0), 1],
-              [datetime(1979, 6, 21, 2, 0, 0), 1],
-              [datetime(1980, 1, 3, 20, 0, 0), 1], [datetime(1980, 1, 16, 14, 0, 0), 1],
+# lists [event, probe, number of reconnections]
+event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 20, 0, 0), 1, 1],
+              [datetime(1975, 1, 18, 13, 0, 0), 1, 1],
+              [datetime(1975, 2, 7, 1, 0, 0), 1, 1], [datetime(1975, 9, 22, 3, 30, 0), 1, 1],
+              [datetime(1975, 12, 19, 21, 0, 0), 1, 1],
+              [datetime(1976, 1, 19, 6, 0, 0), 2, 1], [datetime(1976, 1, 27, 7, 0, 0), 2, 1],
+              [datetime(1976, 1, 30, 2, 0, 0), 2, 2],
+              [datetime(1976, 3, 4, 9, 0, 0), 2, 1], [datetime(1976, 12, 15, 1, 0, 0), 2, 1],
+              [datetime(1977, 4, 5, 22, 0, 0), 2, 1],
+              [datetime(1978, 1, 25, 7, 0, 0), 2, 1], [datetime(1978, 2, 26, 4, 0, 0), 2, 1],
+              [datetime(1977, 4, 23, 3, 0, 0), 2, 1],
+              [datetime(1977, 12, 17, 1, 0, 0), 1, 1], [datetime(1978, 3, 17, 16, 0, 0), 1, 1],
+              [datetime(1979, 6, 21, 2, 0, 0), 1, 1],
+              [datetime(1980, 1, 3, 20, 0, 0), 1, 1], [datetime(1980, 1, 16, 14, 0, 0), 1, 1],
 
-              [datetime(1976, 1, 18, 6, 0, 0), 2], [datetime(1976, 2, 2, 7, 0, 0), 2],
-              [datetime(1977, 4, 22, 3, 0, 0), 2],
-              [datetime(1976, 2, 4, 7, 0, 0), 2], [datetime(1976, 3, 5, 9, 0, 0), 2],
-              [datetime(1976, 12, 16, 1, 0, 0), 2],
-              [datetime(1977, 4, 6, 22, 0, 0), 2], [datetime(1977, 12, 19, 1, 0, 0), 2],
-              [datetime(1978, 1, 5, 10, 0, 0), 2],
-              [datetime(1974, 12, 17, 14, 0, 0), 1], [datetime(1974, 12, 17, 20, 0, 0), 1],
-              [datetime(1975, 1, 19, 13, 0, 0), 1],
-              [datetime(1975, 2, 8, 1, 0, 0), 1], [datetime(1975, 9, 24, 3, 30, 0), 1],
-              [datetime(1975, 12, 20, 21, 0, 0), 1],
-              [datetime(1977, 12, 18, 1, 0, 0), 1], [datetime(1978, 3, 22, 16, 0, 0), 1],
-              [datetime(1976, 12, 1, 2, 0, 0), 1],
-              [datetime(1980, 1, 4, 20, 0, 0), 1], [datetime(1980, 1, 18, 14, 0, 0), 1]
+              [datetime(1976, 1, 18, 6, 0, 0), 2, 0], [datetime(1976, 2, 2, 7, 0, 0), 2, 0],
+              [datetime(1977, 4, 22, 3, 0, 0), 2, 0],
+              [datetime(1976, 2, 4, 7, 0, 0), 2, 0], [datetime(1976, 3, 5, 9, 0, 0), 2, 0],
+              [datetime(1976, 12, 16, 1, 0, 0), 2, 0],
+              [datetime(1977, 4, 6, 22, 0, 0), 2, 0], [datetime(1977, 12, 19, 1, 0, 0), 2, 0],
+              [datetime(1978, 1, 5, 10, 0, 0), 2, 0],
+              [datetime(1974, 12, 17, 14, 0, 0), 1, 0], [datetime(1974, 12, 17, 20, 0, 0), 1, 0],
+              [datetime(1975, 1, 19, 13, 0, 0), 1, 0],
+              [datetime(1975, 2, 8, 1, 0, 0), 1, 0], [datetime(1975, 9, 24, 3, 30, 0), 1, 0],
+              [datetime(1975, 12, 20, 21, 0, 0), 1, 0],
+              [datetime(1977, 12, 18, 1, 0, 0), 1, 0], [datetime(1978, 3, 22, 16, 0, 0), 1, 0],
+              [datetime(1976, 12, 1, 2, 0, 0), 1, 0],
+              [datetime(1980, 1, 4, 20, 0, 0), 1, 0], [datetime(1980, 1, 18, 14, 0, 0), 1, 0]
               ]
-
 
 
 def test_with_values(sigma_and_mins):
@@ -49,13 +49,8 @@ def test_with_values(sigma_and_mins):
     sigma_sum = sigma_and_mins[0]
     sigma_diff = sigma_and_mins[1]
     minutes_b = sigma_and_mins[2]
-    print('hey')
-    m = 0
-    f_n = 0
-    t_n = 0
-    t_p = 0
-    f_p = 0
-    for event, probe in event_list:
+    f_n, t_n, t_p, f_p = 0, 0, 0, 0
+    for event, probe, reconnection_number in event_list:
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
@@ -66,31 +61,20 @@ def test_with_values(sigma_and_mins):
                                                                      sigma_sum=sigma_sum,
                                                                      sigma_diff=sigma_diff,
                                                                      minutes_b=minutes_b)
-        if m < 20:  # the 20 first elements in th list are real reconnections
-            # apart from the 30/01/1976, where we expect two events
-            # right now it's m =8, but change for not hardcoded version later - now we are just checking mcc
-            if m == 8:
-                if len(reconnection) > 0 and len(reconnection) < 3:
-                    t_p = t_p + len(reconnection)
-                elif len(reconnection) > 2:
-                    t_p = t_p + 2
-                    f_p = f_p + len(reconnection) - 2
-                else:
-                    f_n = f_n + 1
+        if reconnection_number == 0:
+            if len(reconnection) == 0:
+                t_n += 1
             else:
-                if len(reconnection) > 0:
-                    t_p = t_p + 1
-                    if len(reconnection) > 1:
-                        f_p = f_p + len(reconnection) - 1  # -1 because one of them is a real thing
-                else:
-                    f_n = f_n + 1
-
-        else:  # the rest of the elements are not events
-            if len(reconnection) > 0:
-                f_p = f_p + len(reconnection)
-            else:
-                t_n = t_n + 1
-        m += 1
+                f_p += len(reconnection)
+        else:
+            if len(reconnection) < reconnection_number:
+                f_n += reconnection_number - len(reconnection)
+                t_p += len(reconnection)
+            elif len(reconnection) == reconnection_number:
+                t_p += len(reconnection)
+            else:  # more detected than real
+                f_p += len(reconnection) - reconnection_number
+                t_p += reconnection_number
     mcc = (t_p * t_n + f_n * f_p) / np.sqrt((t_p + f_p) * (t_p + f_n) * (t_n + f_p) * (t_n + f_n))
     return [mcc, sigma_sum, sigma_diff, minutes_b]
 
@@ -120,20 +104,16 @@ def plot_relationships(mcc, all_sigma_sum, all_sigma_diff, all_minutes_b):
     :return:
     """
     fig, axs = plt.subplots(3, 1, sharex=True)
-
     axs[0].plot(all_sigma_sum, mcc)
     axs[0].set_xlabel('Sigma Sum')
-
     axs[1].plot(all_sigma_diff, mcc)
     axs[1].set_xlabel('Sigma Diff')
-
     axs[2].plot(all_minutes_b, mcc)
     axs[2].set_xlabel('Minutes B')
-
     plt.show()
 
 
-def send_to_csv(name, sigma_sum, sigma_diff, minutes_b):
+def send_to_csv(name, mcc, sigma_sum, sigma_diff, minutes_b):
     """
     Sends the data to a csv file
     :param name: string, name of the file (without the .csv part)
@@ -142,7 +122,7 @@ def send_to_csv(name, sigma_sum, sigma_diff, minutes_b):
     :param minutes_b: minutes during which the magnetic field is considered around the possible event
     :return:
     """
-    with open(name+'.csv', 'w') as csv_file:
+    with open(name + '.csv', 'w') as csv_file:
         fieldnames = ['mcc', 'sigma_sum', 'sigma_diff', 'minutes_b']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
@@ -165,7 +145,5 @@ if __name__ == '__main__':
     sigma_sum = [result[1] for result in results]
     sigma_diff = [result[2] for result in results]
     minutes_b = [result[3] for result in results]
-    send_to_csv('mcc', mcc, sigma_sum, sigma_diff, minutes_b)
 
     find_best_combinations(mcc, sigma_sum, sigma_diff, minutes_b)
-    plot_relationships(mcc, sigma_sum, sigma_diff, minutes_b)

@@ -365,7 +365,8 @@ def plot_all(imported_data, L, M, N):
 
     # fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(15, 10))
     fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(15, 10))
-
+    plt.suptitle('Helios ' + str(imported_data.probe) + ' between ' + str(imported_data.start_datetime) + ' and ' + str(
+        imported_data.end_datetime) + ' at ' + str(imported_data.data['r_sun'].values[0]) + ' astronomical units')
     # axes[0, 0].plot(imported_data.data['Bx'], color='m')
     # axes[0, 0] = axes[0, 0].twinx()
     # axes[0, 0].plot(imported_data.data['vp_x'], color='b')
@@ -418,14 +419,12 @@ def plot_all(imported_data, L, M, N):
     axes[2, 1].plot(vn, color='b')
     axes[2, 1].set_ylabel('vn', color='b')
 
-
-
     plt.show()
 
 
 if __name__ == '__main__':
-    event_dates = get_event_dates('reconnections_all_of_them.csv')
-    probe = 2
+    event_dates = get_event_dates('reconnections_helios_1_below08.csv')
+    probe = 1
     duration = 3
     m = 0
 
@@ -452,7 +451,6 @@ if __name__ == '__main__':
             # vl = v_l_at_event(imported_data, event_date, N)
 
             # plot_lmn(imported_data, L, M, N)
-
 
             walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
             BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)

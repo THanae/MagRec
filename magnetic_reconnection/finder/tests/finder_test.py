@@ -140,8 +140,9 @@ if __name__ == '__main__':
     orbiter = kernel_loader(helios)
     # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
     times = orbit_times_generator('15/12/1974', '15/08/1984', 1)
+    # times = orbit_times_generator(start_date='27/01/1976', end_date='01/07/1976', interval=1)
     orbit_generator(orbiter, times)
-    data = find_radii(orbiter, radius=0.8)
+    data = find_radii(orbiter, radius=1)
     time_indices = get_time_indices(data)
     dates = get_dates(orbiter.times, time_indices)
     imported_data_sets = get_data(dates, probe=helios)
@@ -162,7 +163,7 @@ if __name__ == '__main__':
 
     to_csv = True
     if to_csv:
-        send_reconnections_to_csv(all_reconnections, 'reconnections_helios_1_below08')
+        send_reconnections_to_csv(all_reconnections, 'reconnections_helios1_all')
 
     # Helios 1 : December 10, 1974 to February 18, 1985
     # BUT the data available from berkeley is from 13 December 1974 to 16 August 1984

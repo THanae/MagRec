@@ -2,6 +2,7 @@ from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, 
 import numpy as np
 import pandas as pd
 from data_handler.imported_data import ImportedData
+from datetime import timedelta
 
 
 def find_radii(orbiter, radius=0.4):
@@ -86,7 +87,47 @@ def get_data(dates, probe=2):
             imported_data.append(ImportedData(start_date=start_date, duration=hours, probe=probe))
             # print(imported_data)
         except Exception:
-            print('no data between ' + str(start) + ' and ' + str(end))
+            print('easy method is not working')
+            hard_to_get_data = []
+            interval = 24
+            number_of_loops = np.int(hours/interval)
+            for n in range(number_of_loops):
+                try:
+                    hard_to_get_data.append(ImportedData(start_date=start.strftime('%d/%m/%Y'), duration=interval, probe=probe))
+                except Exception:
+                    print('not possible to download data between ' + str(start) + ' and ' +str(start+timedelta(hours=interval)))
+                start = start + timedelta(hours=interval)
+
+            for n in range(len(hard_to_get_data)):
+                imported_data.append(hard_to_get_data[n])
+            #
+            # grouped_data = []
+            # n = 0
+            # m = 0
+            # while n < len(hard_to_get_data)-1:
+            #     print(len(hard_to_get_data))
+            #     grouped_data.append([])
+            #     grouped = False
+            #     while not grouped:
+            #         if len(hard_to_get_data) == 1:
+            #             grouped_data[m].append(hard_to_get_data[n])
+            #             m += 1
+            #             n += 1
+            #             grouped = True
+            #         elif hard_to_get_data[n].end_datetime == hard_to_get_data[n+1].start_datetime:
+            #             grouped_data[m].append([hard_to_get_data[n], hard_to_get_data[n+1]])
+            #             n = n+1
+            #         else:
+            #             grouped = True
+            #             m += 1
+            #             n += 1
+            # for groups in grouped_data:
+            #     start = groups[0][0].start_datetime
+            #     end = groups[-1][1].end_datetime
+            #     delta_t = end - start
+            #     hours = np.int(delta_t.total_seconds() / 3600)
+            #     imported_data.append(ImportedData(start_date=start.strftime('%d/%m/%Y'), duration=hours, probe=probe))
+
     hours_to_analyse = 0
     for n in range(len(imported_data)):
         a = imported_data[n]
