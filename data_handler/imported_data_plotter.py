@@ -71,4 +71,4 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
 
 
 if __name__ == '__main__':
-    plot_imported_data(ImportedData(start_date='08/01/1975', start_hour=11, duration=3, probe=1))
+    plot_imported_data(ImportedData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))

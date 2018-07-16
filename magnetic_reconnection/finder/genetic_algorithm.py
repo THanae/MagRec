@@ -8,56 +8,52 @@ import matplotlib.pyplot as plt
 
 # lists [event, probe, number of reconnections]
 event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 20, 0, 0), 1, 1],
-              [datetime(1975, 1, 18, 13, 0, 0), 1, 1],
-              [datetime(1975, 2, 7, 1, 0, 0), 1, 1], [datetime(1975, 9, 22, 3, 30, 0), 1, 1],
-              [datetime(1975, 12, 19, 21, 0, 0), 1, 1],
+              [datetime(1975, 1, 18, 13, 0, 0), 1, 1], [datetime(1975, 2, 7, 1, 0, 0), 1, 1],
+              [datetime(1975, 9, 22, 3, 30, 0), 1, 1], [datetime(1975, 12, 19, 21, 0, 0), 1, 1],
               [datetime(1976, 1, 19, 6, 0, 0), 2, 1], [datetime(1976, 1, 27, 7, 0, 0), 2, 1],
-              [datetime(1976, 1, 30, 2, 0, 0), 2, 2],
-              [datetime(1976, 3, 4, 9, 0, 0), 2, 1], [datetime(1976, 12, 15, 1, 0, 0), 2, 1],
-              [datetime(1977, 4, 5, 22, 0, 0), 2, 1],
+              [datetime(1976, 1, 30, 2, 0, 0), 2, 2], [datetime(1976, 3, 4, 9, 0, 0), 2, 1],
+              [datetime(1976, 12, 15, 1, 0, 0), 2, 1], [datetime(1977, 4, 5, 22, 0, 0), 2, 1],
               [datetime(1978, 1, 25, 7, 0, 0), 2, 1], [datetime(1978, 2, 26, 4, 0, 0), 2, 1],
-              [datetime(1977, 4, 23, 3, 0, 0), 2, 1],
-              [datetime(1977, 12, 17, 1, 0, 0), 1, 1], [datetime(1978, 3, 17, 16, 0, 0), 1, 1],
-              [datetime(1979, 6, 21, 2, 0, 0), 1, 1],
+              [datetime(1977, 4, 23, 3, 0, 0), 2, 1], [datetime(1977, 12, 17, 1, 0, 0), 1, 1],
+              [datetime(1978, 3, 17, 16, 0, 0), 1, 1], [datetime(1979, 6, 21, 2, 0, 0), 1, 1],
               [datetime(1980, 1, 3, 20, 0, 0), 1, 1], [datetime(1980, 1, 16, 14, 0, 0), 1, 1],
 
               [datetime(1976, 1, 18, 6, 0, 0), 2, 0], [datetime(1976, 2, 2, 7, 0, 0), 2, 0],
-              [datetime(1977, 4, 22, 3, 0, 0), 2, 0],
-              [datetime(1976, 2, 4, 7, 0, 0), 2, 0], [datetime(1976, 3, 5, 9, 0, 0), 2, 0],
-              [datetime(1976, 12, 16, 1, 0, 0), 2, 0],
+              [datetime(1977, 4, 22, 3, 0, 0), 2, 0], [datetime(1976, 2, 4, 7, 0, 0), 2, 0],
+              [datetime(1976, 3, 5, 9, 0, 0), 2, 0], [datetime(1976, 12, 16, 1, 0, 0), 2, 0],
               [datetime(1977, 4, 6, 22, 0, 0), 2, 0], [datetime(1977, 12, 19, 1, 0, 0), 2, 0],
-              [datetime(1978, 1, 5, 10, 0, 0), 2, 0],
-              [datetime(1974, 12, 17, 14, 0, 0), 1, 0], [datetime(1974, 12, 17, 20, 0, 0), 1, 0],
-              [datetime(1975, 1, 19, 13, 0, 0), 1, 0],
+              [datetime(1978, 1, 5, 10, 0, 0), 2, 0], [datetime(1974, 12, 17, 14, 0, 0), 1, 0],
+              [datetime(1974, 12, 17, 20, 0, 0), 1, 0], [datetime(1975, 1, 19, 13, 0, 0), 1, 0],
               [datetime(1975, 2, 8, 1, 0, 0), 1, 0], [datetime(1975, 9, 24, 3, 30, 0), 1, 0],
-              [datetime(1975, 12, 20, 21, 0, 0), 1, 0],
-              [datetime(1977, 12, 18, 1, 0, 0), 1, 0], [datetime(1978, 3, 22, 16, 0, 0), 1, 0],
-              [datetime(1976, 12, 1, 2, 0, 0), 1, 0],
+              [datetime(1975, 12, 20, 21, 0, 0), 1, 0], [datetime(1977, 12, 18, 1, 0, 0), 1, 0],
+              [datetime(1978, 3, 22, 16, 0, 0), 1, 0], [datetime(1976, 12, 1, 2, 0, 0), 1, 0],
               [datetime(1980, 1, 4, 20, 0, 0), 1, 0], [datetime(1980, 1, 18, 14, 0, 0), 1, 0]
               ]
 
 
 def genetic_algorithm(genes, first_population_size=10, best_samples_size=3, randomly_chosen_sample_size=2,
-                      number_of_descendants=5, mutation_probability=0.1, event_list_split=10, iterations=20):
+                      number_of_descendants=3, mutation_probability=0.1, event_list_split=20, iterations=20):
     # not a genetic algorithm yet, still in implementation phase
     # fitness score will be mcc
 
     population = generate_first_population(first_population_size, genes)
     performances = []
     for loop in range(iterations):
+        print('GENERATION', loop)
         np.random.shuffle(event_list)
         sorted_by_performance = performance_per_gene(population, event_list_split)
         performances.append(sorted_by_performance[0])
         print('performance', sorted_by_performance)
         next_generation = selection(sorted_by_performance, best_samples=best_samples_size,
                                     randomly_chosen_samples=randomly_chosen_sample_size)
-        descendants = crossover(next_generation, descendants_number=number_of_descendants)
+        descendants = crossover(next_generation, descendants_number=number_of_descendants, best_genes=best_samples_size)
         population = mutation(descendants, mutation_probability)
 
     def get_key(item):
         return item[0]
 
-    plt.plot(performances)
+    best_mcc = [performance[0] for performance in performances]
+    plt.plot(best_mcc)
     plt.show()
 
     # puts nans at the end of the performance list
@@ -158,7 +154,7 @@ def selection(sorted_population, best_samples, randomly_chosen_samples):
         next_generation.append(sorted_population[n][1])
     for n in range(randomly_chosen_samples):
         next_generation.append(sorted_population[np.random.randint(0, len(sorted_population) - 1)][1])
-    np.random.shuffle(next_generation)
+
     return next_generation
 
 
@@ -178,7 +174,7 @@ def create_descendant(gene1, gene2):
     return descendant
 
 
-def crossover(genes, descendants_number):
+def crossover(genes, descendants_number, best_genes):
     """
     Create children from parent genes
     :param genes: parent genes (chosen from the previous population)
@@ -186,6 +182,9 @@ def crossover(genes, descendants_number):
     :return:
     """
     next_population = []
+    for n in range(best_genes):
+        next_population.append(genes[n])
+    np.random.shuffle(genes)
     # can do in len(genes) and have random parents but might take longer
     for n in range(len(genes)):
         # for n in range(int(len(genes) / 2)):

@@ -63,7 +63,7 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
     return test_data
 
 
-def test_finder_with_unknown_events(finder: BaseFinder, imported_data, plot_reconnections=True):
+def test_finder_with_unknown_events(finder: BaseFinder, imported_data, sigma_sum, sigma_diff, minutes_b, plot_reconnections=True):
     """
     Returns the possible reconnection times as well as the distance from the sun at this time
     :param finder: method to find the reconnections, right now CorrelationFinder
@@ -80,7 +80,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data, plot_reco
             data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
                                 probe=probe)
 
-            reconnection = finder.find_magnetic_reconnections(data, sigma_sum=3, sigma_diff=2.5, minutes_b=3)
+            reconnection = finder.find_magnetic_reconnections(data, sigma_sum=sigma_sum, sigma_diff=sigma_diff, minutes_b=minutes_b)
             if reconnection:
                 for event in reconnection:
                     radius = data.data['r_sun'].loc[event]
@@ -136,13 +136,13 @@ if __name__ == '__main__':
     #
     # imported_data = ImportedData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
-    helios = 1
+    helios = 2
     orbiter = kernel_loader(helios)
-    # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
-    times = orbit_times_generator('15/12/1974', '15/08/1984', 1)
+    times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    # times = orbit_times_generator('15/12/1974', '15/08/1984', 1)
     # times = orbit_times_generator(start_date='27/01/1976', end_date='01/07/1976', interval=1)
     orbit_generator(orbiter, times)
-    data = find_radii(orbiter, radius=1)
+    data = find_radii(orbiter, radius=0.5)
     time_indices = get_time_indices(data)
     dates = get_dates(orbiter.times, time_indices)
     imported_data_sets = get_data(dates, probe=helios)
@@ -153,7 +153,8 @@ if __name__ == '__main__':
         imported_data = imported_data_sets[n]
         print(imported_data)
         print('duration', imported_data.duration)
-        reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data,
+        reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data, sigma_sum=2.4641859422774792,
+                                                              sigma_diff=2.0547187963000382, minutes_b=5.7353481651640479,
                                                               plot_reconnections=False)
         if reconnection_events:
             for event in reconnection_events:
@@ -163,7 +164,7 @@ if __name__ == '__main__':
 
     to_csv = True
     if to_csv:
-        send_reconnections_to_csv(all_reconnections, 'reconnections_helios1_all')
+        send_reconnections_to_csv(all_reconnections, 'reconnectionshelios2testdata')
 
     # Helios 1 : December 10, 1974 to February 18, 1985
     # BUT the data available from berkeley is from 13 December 1974 to 16 August 1984

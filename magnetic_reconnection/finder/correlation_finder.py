@@ -139,8 +139,7 @@ class CorrelationFinder(BaseFinder):
 
         data['correlation_sum'] = data.loc[:, coordinate_correlation_column_names].sum(axis=1)
         data['correlation_diff'] = get_derivative(data['correlation_sum']).abs()
-        # print(data.columns.values)
-        # print(data['correlation_diff'].max())
+
         return data
 
     def find_outliers(self, data, sigma_sum=3, sigma_diff=2.5) -> List[datetime]:
@@ -223,13 +222,7 @@ def get_average_b2(_datetime, data_column, minutes_b=4):
     # want to get rid of high middle value that might skew the results
     average_b_left = np.mean(b_left.iloc[:-1].values)
     average_b_right = np.mean(b_right.iloc[1:].values)
-    # print(b_left, b_right)
-    # print(len(b_left), len(b_right), 'ohdgdstghsdiohgsdihsdg')
-    # print(average_b_left, average_b_right, str(_datetime))
     std_b = np.max([(b_left - moving_average_b_left).std(), (b_right - moving_average_b_right).std()])
-    # print(str(_datetime))
-    # print(std_b)
-    # print(np.abs(average_b_left - average_b_right))
     # sigma fraction might need to be higher but we also need small events to be taken into account
     if (np.abs(average_b_left - average_b_right) > 2 * std_b or np.isnan(std_b)) and (
             np.sign(average_b_right) != np.sign(average_b_left)):
