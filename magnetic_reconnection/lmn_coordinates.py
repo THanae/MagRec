@@ -114,9 +114,9 @@ def change_b_and_v(B1, B2, v1, v2, L, M, N):
     B2_L, B2_M, B2_N = np.dot(L, B2), np.dot(M, B2), np.dot(N, B2)
     v1_L, v1_M, v1_N = np.dot(L, v1), np.dot(M, v1), np.dot(N, v1)
     v2_L, v2_M, v2_N = np.dot(L, v2), np.dot(M, v2), np.dot(N, v2)
-    print('bl', B1_L, B2_L)
-    print('bm', B1_M, B2_M)
-    print('bn', B1_N, B2_N)
+    # print('bl', B1_L, B2_L)
+    # print('bm', B1_M, B2_M)
+    # print('bn', B1_N, B2_N)
 
     B1_changed, B2_changed = np.array([B1_L, B1_M, B1_N]), np.array([B2_L, B2_M, B2_N])
     v1_changed, v2_changed = np.array([v1_L, v1_M, v1_N]), np.array([v2_L, v2_M, v2_N])
@@ -124,13 +124,10 @@ def change_b_and_v(B1, B2, v1, v2, L, M, N):
     return B1_changed, B2_changed, v1_changed, v2_changed
 
 
-def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2):
+def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2, minimum_fraction=0.9, maximum_fraction=1.1):
     mu_0 = 4e-7 * np.pi
     k = 1.38e-23
     proton_mass = 1.67e-27
-
-    minimum_fraction = 90 / 100
-    maximum_fraction = 110 / 100
 
     rho_1 = rho_1 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     rho_2 = rho_2 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
@@ -143,12 +140,10 @@ def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2):
     theoretical_v2_plus = v1_L + (B2_part - B1_part)
     theoretical_v2_minus = v1_L - (B2_part - B1_part)
 
-    print('real', v2_L)
-    print('theory', theoretical_v2_plus)
-    print('theory', theoretical_v2_minus)
+
 
     # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
-    # if they al ahve the same sign, we compare to both v_plus and v_minus
+    # if they all have the same sign, we compare to both v_plus and v_minus
     if np.sign(v2_L) == np.sign(theoretical_v2_plus) and np.sign(v2_L) == np.sign(theoretical_v2_minus):
         theoretical_v2 = np.min([np.abs(theoretical_v2_minus), np.abs(theoretical_v2_plus)])
         if minimum_fraction * theoretical_v2 < np.abs(v2_L) < maximum_fraction * theoretical_v2:
@@ -163,7 +158,10 @@ def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2):
             return True
     else:
         print('wrong result')
-        return False
+    # print('real', v2_L)
+    # print('theory', theoretical_v2_plus)
+    # print('theory', theoretical_v2_minus)
+    return False
 
 
 def b_l_biggest(B1_L, B2_L, B1_M, B2_M):
@@ -338,11 +336,43 @@ def plot_all(imported_data, L, M, N):
     plt.show()
 
 
-if __name__ == '__main__':
-    event_dates = get_event_dates('reconnectionshelios2testdata.csv')
-    probe = 2
+def test_reconnection_lmn(event_dates, probe, minimum_fraction, maximum_fraction):
     duration = 3
+    events_that_passed_test = []
+    for event_date in event_dates:
+        try:
+            start_time = event_date - timedelta(hours=duration / 2)
+            imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                                         duration=duration, probe=probe)
+            imported_data.data.dropna(inplace=True)
+            B = get_b(imported_data)
+            L, M, N = mva(B)
+            B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_necessary_b(imported_data,
+                                                                                                         event_date)
+            L, M, N = hybrid(L, B1, B2)
+            B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
+            B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
+            v1_L, v2_L = v1_changed[0], v2_changed[0]
 
+            walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2, minimum_fraction, maximum_fraction)
+            BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
+            B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data,
+                                                event_date, L)
+            if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
+                print('RECONNECTION AT ', str(event_date))
+                events_that_passed_test.append(event_date)
+            # else:
+            #     print('NO RECONNECTION AT ', str(event_date))
+        except Exception:
+            print('could not recover the data')
+    return events_that_passed_test
+
+
+def test_reconnections_from_csv(file='reconnectionshelios2testdata1.csv', probe=2, to_csv=False):
+    event_dates = get_event_dates(file)
+    probe = probe
+
+    duration = 3
     number_of_events = 0
     events_that_passed_test = []
     for event_date in event_dates:
@@ -351,14 +381,12 @@ if __name__ == '__main__':
             start_time = event_date - timedelta(hours=duration / 2)
             imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                          duration=duration, probe=probe)
-            print(imported_data)
             imported_data.data.dropna(inplace=True)
             B = get_b(imported_data)
             L, M, N = mva(B)
             B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_necessary_b(imported_data,
                                                                                                          event_date)
             L, M, N = hybrid(L, B1, B2)
-
             B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
             B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
             v1_L, v2_L = v1_changed[0], v2_changed[0]
@@ -367,8 +395,7 @@ if __name__ == '__main__':
             BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
             B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data,
                                                 event_date, L)
-            if walen and BL_check and len(
-                    imported_data.data) > 70 and B_and_v_checks:  # no good results for too low a number of data points
+            if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
                 print('reconnection at ', str(event_date))
                 number_of_events += 1
                 events_that_passed_test.append(event_date)
@@ -381,4 +408,9 @@ if __name__ == '__main__':
     print('reconnection number', number_of_events)
     print(events_that_passed_test)
 
-    # send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests_90_110_h1')
+    if to_csv:
+        send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests')
+
+
+if __name__ == '__main__':
+    test_reconnections_from_csv('reconnectionshelios2testdata2.csv', 2)

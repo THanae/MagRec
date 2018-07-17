@@ -17,7 +17,7 @@ class CorrelationFinder(BaseFinder):
         super().__init__()
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
-    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum=3, sigma_diff=2.5, minutes_b=3):
+    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum=3, sigma_diff=2.5, minutes_b=3, nt_test=False):
         """
         Finds possible events by running a series of tests on the data
         :param imported_data: ImportedData
@@ -30,7 +30,8 @@ class CorrelationFinder(BaseFinder):
         datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff)
         datetimes_list = self.b_changes(datetimes_list, imported_data.data, minutes_b=minutes_b)
         # datetimes_list = self.get_average_b(datetimes_list, imported_data.data, minutes_b=minutes_b)
-        datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
+        if nt_test:
+            datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
         # self.print_reconnection_events(datetimes_list)
         return datetimes_list
 
@@ -48,7 +49,6 @@ class CorrelationFinder(BaseFinder):
                 interval = timedelta(minutes=minutes_b)
                 for coordinate in self.coordinates:
                     b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
-                    # print(b)
                     if (b < 0).any() and (b > 0).any() and _datetime in get_average_b2(_datetime,
                                                                                        data['B{}'.format(coordinate)],
                                                                                        minutes_b=minutes_b):
@@ -57,7 +57,6 @@ class CorrelationFinder(BaseFinder):
             except Exception:
                 print('Some dates were in invalid format')  # There was a nan
 
-        # not always good take average and difference in addition to check
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
 
@@ -79,7 +78,6 @@ class CorrelationFinder(BaseFinder):
                 # if std is a nan, we just continue and add the date to the list
                 if (np.abs(average_b_left - average_b_right) > 2 * std_b or np.isnan(std_b)) and (
                         np.sign(average_b_right) != np.sign(average_b_left)):
-                    # print(std_b)
                     high_changes_datetime_list.append(_datetime)
                     break
         print('B magnitude change filter returned ', high_changes_datetime_list)
@@ -106,7 +104,7 @@ class CorrelationFinder(BaseFinder):
                                       reference='median')
             if (np.isfinite(n_outliers)).any() and (np.isfinite(t_outliers)).any():
                 n_and_t_datetime_list.append(_datetime)
-        print('Density and temperature changes filter returned ', n_and_t_datetime_list)
+        print('Density and temperature changes filter returned: ', n_and_t_datetime_list)
         return n_and_t_datetime_list
 
     def find_correlations(self, data: pd.DataFrame):
