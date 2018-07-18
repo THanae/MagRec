@@ -1,3 +1,5 @@
+from functools import partial
+
 from data_handler.imported_data import ImportedData
 
 from datetime import timedelta, datetime
@@ -15,7 +17,7 @@ event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 
               [datetime(1976, 1, 30, 2, 0, 0), 2, 2], [datetime(1976, 3, 4, 9, 0, 0), 2, 1],
               [datetime(1976, 12, 15, 1, 0, 0), 2, 1], [datetime(1977, 4, 5, 22, 0, 0), 2, 1],
               [datetime(1978, 1, 25, 7, 0, 0), 2, 1], [datetime(1978, 2, 26, 4, 0, 0), 2, 1],
-              [datetime(1977, 4, 23, 3, 0, 0), 2, 1],  [datetime(1977, 12, 17, 1, 0, 0), 1, 1],
+              [datetime(1977, 4, 23, 3, 0, 0), 2, 1], [datetime(1977, 12, 17, 1, 0, 0), 1, 1],
               [datetime(1978, 3, 17, 16, 0, 0), 1, 1], [datetime(1979, 6, 21, 2, 0, 0), 1, 1],
               [datetime(1980, 1, 3, 20, 0, 0), 1, 1], [datetime(1980, 1, 16, 14, 0, 0), 1, 1],
 
@@ -32,27 +34,23 @@ event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 
               ]
 
 
-def test_with_values(sigma_and_mins):
+def test_with_values(sigma_and_mins: dict, finder: BaseFinder) -> list:
     """
     Returns the mcc with corresponding sigma_sum, sigma_diff and minutes_b
     :param sigma_and_mins: tuple of sigma_sum, sigma_diff and minutes_b
     :return:
     """
-    sigma_sum = sigma_and_mins[0]
-    sigma_diff = sigma_and_mins[1]
-    minutes_b = sigma_and_mins[2]
     f_n, t_n, t_p, f_p = 0, 0, 0, 0
-    for event, probe, reconnection_number in event_list:
+    for event, probe, reconnection_number in event_list[:1]:
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
         data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
                             duration=interval, probe=probe)
-        reconnection = CorrelationFinder.find_magnetic_reconnections(self=CorrelationFinder(),
-                                                                     imported_data=data,
-                                                                     sigma_sum=sigma_sum,
-                                                                     sigma_diff=sigma_diff,
-                                                                     minutes_b=minutes_b)
+
+        # making sure this function can possibly be used with other finders
+        # this way we unfold the arguments necessary for the finder, that are fed in the function
+        reconnection = finder.find_magnetic_reconnections(data, **sigma_and_mins)
         if reconnection_number == 0:
             if len(reconnection) == 0:
                 t_n += 1
@@ -67,56 +65,63 @@ def test_with_values(sigma_and_mins):
             else:  # more detected than real
                 f_p += len(reconnection) - reconnection_number
                 t_p += reconnection_number
-    mcc = (t_p * t_n + f_n * f_p) / np.sqrt((t_p + f_p) * (t_p + f_n) * (t_n + f_p) * (t_n + f_n))
-    return [mcc, sigma_sum, sigma_diff, minutes_b]
+    mcc = get_mcc(t_p, t_n, f_p, f_n)
+    return [mcc, sigma_and_mins]
 
 
-def find_best_combinations(all_mcc, sigma_sum, sigma_diff, minutes_b):
+def get_mcc(true_positives: int, true_negatives: int, false_positives: int, false_negatives: int) -> float:
+    mcc = (true_positives * true_negatives + false_positives * false_negatives) / np.sqrt(
+        (true_positives + false_positives) * (true_positives + false_negatives) * (true_negatives + false_negatives) * (
+                true_positives + false_positives))
+    return mcc
+
+
+def find_best_combinations(all_mcc: list, params: dict):
     """
     Finds the maximum mcc and its corresponding parameters
     :param all_mcc: Matthews Correlation Coefficient
-    :param sigma_sum: sigma above which the sum of correlation changes is considered significant
-    :param sigma_diff: sigma above which the difference in correlation is considered significant
-    :param minutes_b: minutes during which the magnetic field is considered around the possible event
+    :param params: parameters tested in the mcc implementation
     :return:
     """
     maximum_mcc = np.argmax(all_mcc)
     mcc_max = np.max(all_mcc)
     print('The best mcc value is ', mcc_max)
-    print(sigma_diff[maximum_mcc], sigma_sum[maximum_mcc], minutes_b[maximum_mcc])
+    print(params[maximum_mcc])
 
 
-def send_to_csv(name, mcc, sigma_sum, sigma_diff, minutes_b):
+def send_to_csv(name: str, mcc: list, params: dict, keys:list):
     """
     Sends the data to a csv file
     :param name: string, name of the file (without the .csv part)
-    :param sigma_sum: sigma above which the sum of correlation changes is considered significant
-    :param sigma_diff: sigma above which the difference in correlation is considered significant
-    :param minutes_b: minutes during which the magnetic field is considered around the possible event
+    :param params: parameters tested in the mcc implementation
     :return:
     """
-    with open(name + '.csv', 'w') as csv_file:
-        fieldnames = ['mcc', 'sigma_sum', 'sigma_diff', 'minutes_b']
+    with open(name + '.csv', 'w', newline='') as csv_file:
+        fieldnames = ['mcc'] + keys
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
         for n in range(len(mcc)):
-            writer.writerow(
-                {'mcc': mcc[n], 'sigma_sum': sigma_sum[n], 'sigma_diff': sigma_diff[n], 'minutes_b': minutes_b[n]})
+            mcc_info = {'mcc': mcc[n]}
+            for key in keys:
+                mcc_info[key] = params[n][key]
+            writer.writerow(mcc_info)
 
 
 if __name__ == '__main__':
     # multiprocessing is faster if your laptop can take it
     # check max number of processes another laptop could take
 
-    sigma_sum = np.arange(1, 4, 0.5)
-    sigma_diff = np.arange(1, 4, 0.5)
-    minutes_b = [3, 4, 5, 6, 7, 8]
-    test_args = [(sigma_s, sigma_d, mins_b) for sigma_s in sigma_sum for sigma_d in sigma_diff for mins_b in minutes_b]
+    parameters = {'sigma_sum': np.arange(1.5, 3, 0.2), 'sigma_diff': np.arange(1.5, 3, 0.2),
+                  'minutes_b': [4, 5, 6, 7]}
+    parameters_keys = list(parameters.keys())
+    test_args = [{'sigma_sum': sigma_s, 'sigma_diff': sigma_d, 'minutes_b': mins_b} for sigma_s in
+                 parameters['sigma_sum'] for
+                 sigma_d in parameters['sigma_diff'] for mins_b in parameters['minutes_b']]
     pool = Pool(processes=2)
-    results = pool.map(test_with_values, test_args)
+    with_finder = partial(test_with_values, finder=CorrelationFinder())
+    results = pool.map(with_finder, test_args)
     mcc = [result[0] for result in results]
-    sigma_sum = [result[1] for result in results]
-    sigma_diff = [result[2] for result in results]
-    minutes_b = [result[3] for result in results]
+    params = [result[1] for result in results]
 
-    find_best_combinations(mcc, sigma_sum, sigma_diff, minutes_b)
+    find_best_combinations(mcc, params)
+    # send_to_csv('mcc_more_detailed', mcc, params, parameters_keys)

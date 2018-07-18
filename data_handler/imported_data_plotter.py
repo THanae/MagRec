@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import List
 import matplotlib.pyplot as plt
 from data_handler.imported_data import ImportedData
@@ -10,7 +11,7 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('b_magnitude', 'vp_magnitude')]
 
 
-def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False):
+def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None):
     """
     Plots given set of columns for a given ImportedData
     :param imported_data: ImportedData
@@ -19,7 +20,8 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
     :return:
     """
     fig, axs = plt.subplots(len(columns_to_plot), 1, sharex=True, figsize=(15, 8.5))
-    colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    colours = ['m', 'b'] + plt.rcParams['axes.prop_cycle'].by_key()['color']
     axs[0].set_title('Helios ' + str(imported_data.probe) + ' between ' + str(
         imported_data.start_datetime.strftime('%d/%m/%Y')) + ' and ' + str(
         imported_data.end_datetime.strftime('%d/%m/%Y')) + ' at ' + str(
@@ -39,19 +41,22 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
                     ax = ax.twinx()  # creates new ax which shares x
                     subplot_plot_count += 1
         # ax.legend(loc=1)
+        if event_date is not None:
+            # ax.axvline(x=event_date-timedelta(minutes=3), linewidth=2)
+            # ax.axvline(x=event_date + timedelta(minutes=3), linewidth=2)
+            ax.axvline(x=event_date, linewidth=1.5, color='k')
 
     if not save:
         plt.show()
     else:
         fig.set_size_inches((15, 10), forward=False)
-        plt.savefig('helios_{}_{:%Y_%m_%d_%H}_interval_{}_hours.png'.format(imported_data.probe,
+        if event_date is None:
+            plt.savefig('helios_{}_{:%Y_%m_%d_%H}_interval_{}_hours.png'.format(imported_data.probe,
                                                                             imported_data.start_datetime,
                                                                             imported_data.duration),
                     bbox_inches='tight')
-        # plt.savefig('helios' + str(imported_data.probe) + '_' + str(
-        #     imported_data.start_datetime.strftime('%Y_%m_%d_%H')) + '_interval_' + str(
-        #     imported_data.duration) + '_hours' + '.png',
-        #             bbox_inches='tight')
+        else:
+            plt.savefig('h{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
 
 
 def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):

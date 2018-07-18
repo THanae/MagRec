@@ -5,8 +5,10 @@ import csv
 import matplotlib.pyplot as plt
 from datetime import timedelta
 import pandas as pd
+from typing import List
 
 from data_handler.imported_data import ImportedData
+from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
 
 
@@ -19,7 +21,7 @@ from data_handler.utils.column_processing import get_derivative
 #          np.array([29.2, 47.1, -10.6])]
 
 
-def get_b(imported_data):
+def get_b(imported_data: ImportedData) -> List[np.ndarray]:
     """
     Returns the imported data in a suitable vector form to be analysed
     :param imported_data: ImportedData
@@ -32,7 +34,7 @@ def get_b(imported_data):
     return B
 
 
-def get_necessary_b(imported_data, event_date):
+def get_side_data(imported_data: ImportedData, event_date: datetime):
     """
     Returns B around the reconnection event
     :param imported_data: ImportedData
@@ -61,7 +63,7 @@ def get_necessary_b(imported_data, event_date):
     return B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2
 
 
-def mva(B):
+def mva(B: List[np.ndarray]):
     """
     Finds the LMN component of the new coordinates system
     :param B: field around interval that will be considered
@@ -90,7 +92,7 @@ def mva(B):
     return L, M, N
 
 
-def hybrid(_L, B1, B2):  # hybrid mva necessary if eigenvalues not well resolved
+def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray):  # hybrid mva necessary if eigenvalues not well resolved
     """
     Finds the other components of the new coordinates system
     :param _L: L vector found with mva
@@ -103,13 +105,11 @@ def hybrid(_L, B1, B2):  # hybrid mva necessary if eigenvalues not well resolved
     cross_n_l = np.cross(N, _L)
     M = cross_n_l / np.sqrt(cross_n_l[0] ** 2 + cross_n_l[1] ** 2 + cross_n_l[2] ** 2)
     L = np.cross(M, N)
-    # print('L', L)
-    # print('M', M)
-    # print('N', N)
     return L, M, N
 
 
-def change_b_and_v(B1, B2, v1, v2, L, M, N):
+def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarray, L: np.ndarray, M: np.ndarray,
+                   N: np.ndarray):
     B1_L, B1_M, B1_N = np.dot(L, B1), np.dot(M, B1), np.dot(N, B1)
     B2_L, B2_M, B2_N = np.dot(L, B2), np.dot(M, B2), np.dot(N, B2)
     v1_L, v1_M, v1_N = np.dot(L, v1), np.dot(M, v1), np.dot(N, v1)
@@ -124,7 +124,8 @@ def change_b_and_v(B1, B2, v1, v2, L, M, N):
     return B1_changed, B2_changed, v1_changed, v2_changed
 
 
-def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2, minimum_fraction=0.9, maximum_fraction=1.1):
+def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64,
+               minimum_fraction: float = 0.9, maximum_fraction: float = 1.1) -> bool:
     mu_0 = 4e-7 * np.pi
     k = 1.38e-23
     proton_mass = 1.67e-27
@@ -139,8 +140,6 @@ def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2, minimum_fraction=0.9, maxim
     # make sure that's the correct equation
     theoretical_v2_plus = v1_L + (B2_part - B1_part)
     theoretical_v2_minus = v1_L - (B2_part - B1_part)
-
-
 
     # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
     # if they all have the same sign, we compare to both v_plus and v_minus
@@ -164,7 +163,7 @@ def walen_test(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2, minimum_fraction=0.9, maxim
     return False
 
 
-def b_l_biggest(B1_L, B2_L, B1_M, B2_M):
+def b_l_biggest(B1_L: float, B2_L: float, B1_M: float, B2_M: float) -> bool:
     amplitude_change_L = np.abs(B1_L - B2_L)
     amplitude_change_M = np.abs(B1_M - B2_M)
     magnitude_change_L = B1_L ** 2 + B2_L ** 2
@@ -176,7 +175,8 @@ def b_l_biggest(B1_L, B2_L, B1_M, B2_M):
         return False
 
 
-def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date, L):
+def changes_in_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarray, imported_data: ImportedData,
+                       event_date: datetime, L: np.ndarray) -> bool:
     reconnection_points = 0
 
     # BL changes sign before and after the exhaust
@@ -211,6 +211,7 @@ def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date, L):
     vL = pd.Series(np.array(vL), index=imported_data.data.index)
     BL_diff = get_derivative(BL)
     vL_diff = get_derivative(vL)
+
     left_correlation = BL_diff.loc[
                        event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values * vL_diff.loc[
                                                                                                        event_date - timedelta(
@@ -221,6 +222,7 @@ def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date, L):
                                                                                                        event_date + timedelta(
                                                                                                            minutes=2):event_date + timedelta(
                                                                                                            minutes=15)].values
+
     if np.sign(np.mean(left_correlation)) != np.sign(np.mean(right_correlation)):
         reconnection_points = reconnection_points + 1
     else:
@@ -232,22 +234,19 @@ def changes_in_b_and_v(B1, B2, v1, v2, imported_data, event_date, L):
         return False
 
 
-def get_event_dates(file_name):
+def get_event_dates(file_name: str):
     event_dates = []
     with open(file_name) as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            year = np.int(row['year'])
-            month = np.int(row['month'])
-            day = np.int(row['day'])
-            hours = np.int(row['hours'])
-            minutes = np.int(row['minutes'])
-            seconds = np.int(row['seconds'])
+            year, month, day = np.int(row['year']), np.int(row['month']), np.int(row['day'])
+            hours, minutes, seconds = np.int(row['hours']), np.int(row['minutes']), np.int(row['seconds'])
             event_dates.append(datetime(year, month, day, hours, minutes, seconds))
     return event_dates
 
 
-def send_reconnections_to_csv(event_list, possible_reconnections_list, probe, name='reconnections_tests'):
+def send_reconnections_to_csv(event_list: List[datetime], possible_reconnections_list: List[datetime], probe: int,
+                              name: str = 'reconnections_tests'):
     with open(name + '.csv', 'w', newline='') as csv_file:
         fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius', 'satisfied tests']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -273,7 +272,7 @@ def send_reconnections_to_csv(event_list, possible_reconnections_list, probe, na
                  'radius': radius, 'satisfied tests': satisfied})
 
 
-def plot_all(imported_data, L, M, N):
+def plot_all(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.ndarray, event_date: datetime):
     bl, bm, bn = [], [], []
     vl, vm, vn = [], [], []
     for n in range(len(imported_data.data)):
@@ -297,46 +296,19 @@ def plot_all(imported_data, L, M, N):
     vm = pd.Series(np.array(vm), index=imported_data.data.index)
     vn = pd.Series(np.array(vn), index=imported_data.data.index)
 
-    fig, axes = plt.subplots(3, 2, sharex=True, sharey=True, figsize=(15, 10))
-    plt.suptitle('Helios ' + str(imported_data.probe) + ' between ' + str(imported_data.start_datetime) + ' and ' + str(
-        imported_data.end_datetime) + ' at ' + str(imported_data.data['r_sun'].values[0]) + ' astronomical units')
+    imported_data.data['Bl'] = bl
+    imported_data.data['Bm'] = bm
+    imported_data.data['Bn'] = bn
+    imported_data.data['v_l'] = vl
+    imported_data.data['v_m'] = vm
+    imported_data.data['v_n'] = vn
 
-    axes[0, 0].plot(imported_data.data['Bx'], color='m')
-    axes[0, 0].set_ylabel('Bx', color='m')
-    axes[0, 0] = axes[0, 0].twinx()
-    axes[0, 0].plot(imported_data.data['vp_x'], color='b')
-    axes[0, 0].set_ylabel('vp_x', color='b')
-    axes[1, 0].plot(imported_data.data['By'], color='m')
-    axes[1, 0].set_ylabel('By', color='m')
-    axes[1, 0] = axes[1, 0].twinx()
-    axes[1, 0].plot(imported_data.data['vp_y'], color='b')
-    axes[1, 0].set_ylabel('vp_y', color='b')
-    axes[2, 0].plot(imported_data.data['Bz'], color='m')
-    axes[2, 0].set_ylabel('Bz', color='m')
-    axes[2, 0] = axes[2, 0].twinx()
-    axes[2, 0].plot(imported_data.data['vp_z'], color='b')
-    axes[2, 0].set_ylabel('vp_z', color='b')
-
-    axes[0, 1].plot(bl, color='m')
-    axes[0, 1].set_ylabel('Bl', color='m')
-    axes[0, 1] = axes[0, 1].twinx()
-    axes[0, 1].plot(vl, color='b')
-    axes[0, 1].set_ylabel('vl', color='b')
-    axes[1, 1].plot(bm, color='m')
-    axes[1, 1].set_ylabel('Bm', color='m')
-    axes[1, 1] = axes[1, 1].twinx()
-    axes[1, 1].plot(vm, color='b')
-    axes[1, 1].set_ylabel('vm', color='b')
-    axes[2, 1].plot(bn, color='m')
-    axes[2, 1].set_ylabel('Bn', color='m')
-    axes[2, 1] = axes[2, 1].twinx()
-    axes[2, 1].plot(vn, color='b')
-    axes[2, 1].set_ylabel('vn', color='b')
-
-    plt.show()
+    plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
+                       save=False, event_date=event_date)
 
 
-def test_reconnection_lmn(event_dates, probe, minimum_fraction, maximum_fraction):
+def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fraction: float, maximum_fraction: float,
+                          plot: bool = False):
     duration = 3
     events_that_passed_test = []
     for event_date in event_dates:
@@ -347,8 +319,8 @@ def test_reconnection_lmn(event_dates, probe, minimum_fraction, maximum_fraction
             imported_data.data.dropna(inplace=True)
             B = get_b(imported_data)
             L, M, N = mva(B)
-            B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_necessary_b(imported_data,
-                                                                                                         event_date)
+            B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
+                                                                                                       event_date)
             L, M, N = hybrid(L, B1, B2)
             B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
             B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
@@ -361,6 +333,9 @@ def test_reconnection_lmn(event_dates, probe, minimum_fraction, maximum_fraction
             if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
                 print('RECONNECTION AT ', str(event_date))
                 events_that_passed_test.append(event_date)
+                if plot:
+                    plot_all(imported_data, L, M, N, event_date)
+
             # else:
             #     print('NO RECONNECTION AT ', str(event_date))
         except Exception:
@@ -368,49 +343,15 @@ def test_reconnection_lmn(event_dates, probe, minimum_fraction, maximum_fraction
     return events_that_passed_test
 
 
-def test_reconnections_from_csv(file='reconnectionshelios2testdata1.csv', probe=2, to_csv=False):
+def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv', probe: int = 2, to_csv: bool = False,
+                                plot: bool = True):
     event_dates = get_event_dates(file)
     probe = probe
-
-    duration = 3
-    number_of_events = 0
-    events_that_passed_test = []
-    for event_date in event_dates:
-        print('possible reconnection', str(event_date))
-        try:
-            start_time = event_date - timedelta(hours=duration / 2)
-            imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                         duration=duration, probe=probe)
-            imported_data.data.dropna(inplace=True)
-            B = get_b(imported_data)
-            L, M, N = mva(B)
-            B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_necessary_b(imported_data,
-                                                                                                         event_date)
-            L, M, N = hybrid(L, B1, B2)
-            B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
-            B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
-            v1_L, v2_L = v1_changed[0], v2_changed[0]
-
-            walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
-            BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
-            B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data,
-                                                event_date, L)
-            if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
-                print('reconnection at ', str(event_date))
-                number_of_events += 1
-                events_that_passed_test.append(event_date)
-                plot_all(imported_data, L, M, N)
-            else:
-                print('no reconnection at ', str(event_date))
-        except Exception:
-            print('could not recover the data')
-
-    print('reconnection number', number_of_events)
-    print(events_that_passed_test)
-
+    min_walen, max_walen = 0.9, 1.1
+    events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot)
     if to_csv:
         send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests')
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnectionshelios2testdata2.csv', 2)
+    test_reconnections_from_csv('reconnections_helios1_all.csv', 1)

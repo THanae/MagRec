@@ -33,18 +33,21 @@ event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 
               [datetime(1980, 1, 4, 20, 0, 0), 1, 0], [datetime(1980, 1, 18, 14, 0, 0), 1, 0]
               ]
 
-DEFAULT_GENES = [[1,4], [1,4], [3,8], [0.5, 0.95], [1.05, 1.5]]
+DEFAULT_GENES = [[1, 4], [1, 4], [3, 8], [0.5, 0.95], [1.05, 1.5]]
 
 
-def genetic_algorithm(genes, first_population_size=10, best_samples_size=3, randomly_chosen_sample_size=3,
-                      number_of_descendants=2, mutation_probability=0.1, event_list_split=30, iterations=40):
+def genetic_algorithm(genes_dict: dict, first_population_size=10, best_samples_size=3, randomly_chosen_sample_size=3,
+                      number_of_descendants=2, mutation_probability=0.1, event_list_split=30, iterations=40,
+                      finder=CorrelationFinder()):
+    genes_keys = list(genes_dict.keys())
+    genes = [genes_dict[key] for key in genes_keys]
 
     population = generate_first_population(first_population_size, genes)
     performances = []
     for loop in range(iterations):
         print('GENERATION', loop)
         np.random.shuffle(event_list)
-        sorted_by_performance = performance_per_gene(population, event_list_split)
+        sorted_by_performance = performance_per_gene(population, event_list_split, finder)
         performances.append(sorted_by_performance[0])
         print('performance', sorted_by_performance)
         next_generation = selection(sorted_by_performance, best_samples=best_samples_size,
@@ -65,11 +68,11 @@ def genetic_algorithm(genes, first_population_size=10, best_samples_size=3, rand
     sorted_performances = sorted(performances_no_nans, key=get_key, reverse=True) + performances_nans
     print('SORTED PERFORMANCES')
     print(sorted_performances)
-    send_perf_to_csv(sorted_performances, name='performances_genalg_culling')
+    send_perf_to_csv(sorted_performances, keys=genes_keys, name='performances_genalg_culling')
     return sorted_performances
 
 
-def fitness(gene, event_list_split):
+def fitness(gene, event_list_split, finder):
     """
     Calculates the mcc for a given gene
     :param gene: gene of a given population
@@ -80,21 +83,16 @@ def fitness(gene, event_list_split):
     # this could avoid over-fitting and allow more iterations of the algorithm in less time
     events = event_list[:event_list_split]
     f_n, t_n, t_p, f_p = 0, 0, 0, 0
-    sigma_s, sigma_d, mins_b = gene[0], gene[1], gene[2]
-    minimum_walen, maximum_walen = gene[3], gene[4]
+    # find where the split is between the finder test and the lmn test (which takes two arguments)
+    gene_split = len(gene) - 2
     for event, probe, reconnection_number in events:
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
         data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
                             duration=interval, probe=probe)
-        reconnection_corr = CorrelationFinder.find_magnetic_reconnections(self=CorrelationFinder(),
-                                                                     imported_data=data,
-                                                                     sigma_sum=sigma_s,
-                                                                     sigma_diff=sigma_d,
-                                                                     minutes_b=mins_b,
-                                                                     nt_test=False)
-        reconnection = test_reconnection_lmn(reconnection_corr, probe, minimum_walen, maximum_walen)
+        reconnection_corr = finder.find_magnetic_reconnections(data, *gene[:gene_split])
+        reconnection = test_reconnection_lmn(reconnection_corr, probe, *gene[gene_split:])
 
         if reconnection_number == 0:
             if len(reconnection) == 0:
@@ -133,7 +131,7 @@ def generate_first_population(population_size, genes):
     return population
 
 
-def performance_per_gene(population, event_list_split):
+def performance_per_gene(population, event_list_split, finder):
     """
     Finds the mcc performance of the given gens
     :param population: all the genes that are being considered
@@ -142,7 +140,7 @@ def performance_per_gene(population, event_list_split):
     performance = []
     for gene in population:
         print('GENE', gene)
-        performance.append([fitness(gene, event_list_split), gene])
+        performance.append([fitness(gene, event_list_split, finder), gene])
 
     def get_key(item):
         return item[0]
@@ -194,7 +192,7 @@ def crossover(genes, descendants_number, best_genes):
     next_population = []
     for n in range(best_genes):
         next_population.append(genes[n])  # elitism
-    genes = genes[0:len(genes)-best_genes]  # remove worse ones
+    genes = genes[0:len(genes) - best_genes]  # remove worse ones
 
     np.random.shuffle(genes)
     # can do in len(genes) and have random parents but might take longer
@@ -210,10 +208,10 @@ def crossover(genes, descendants_number, best_genes):
     for n in range(len(next_population)):
         if next_population[n] not in _next_population:
             _next_population.append(next_population[n])
-    culling_number = len(next_population)-len(_next_population)
+    culling_number = len(next_population) - len(_next_population)
     next_population = _next_population
 
-    for n in range(best_genes+culling_number):  # add random ones
+    for n in range(best_genes + culling_number):  # add random ones
         next_population.append(gene_generation(DEFAULT_GENES))
     return next_population
 
@@ -246,27 +244,25 @@ def mutation(genes, probability):
     return genes
 
 
-def send_perf_to_csv(performance_list, name='performances_genalg'):
+def send_perf_to_csv(performance_list, keys, name='performances_genalg'):
     with open(name + '.csv', 'w', newline='') as csv_file:
-        fieldnames = ['mcc', 'sigma sum', 'sigma diff', 'minutes b', 'minimum walen', 'maximum walen']
+        fieldnames = ['mcc'] + keys
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
         for mcc, gene in performance_list:
-            sigma_s = gene[0]
-            sigma_d = gene[1]
-            mins_b = gene[2]
-            min_wal = gene[3]
-            max_wal = gene[4]
-            writer.writerow(
-                {'mcc': mcc, 'sigma sum': sigma_s, 'sigma diff': sigma_d, 'minutes b': mins_b,
-                 'minimum walen': min_wal, 'maximum walen': max_wal})
+            mcc_info = {'mcc': mcc}
+            for n in range(len(gene)):
+                mcc_info[keys[n]] = gene[n]
+            writer.writerow(mcc_info)
 
 
 if __name__ == '__main__':
-
-    sigma_sum = np.arange(1, 4, 0.5)
-    sigma_diff = np.arange(1, 4, 0.5)
+    sigma_sum = [1, 3]
+    sigma_diff = [1, 3]
     minutes_b = [3, 4, 5, 6, 7, 8]
     maximum_walen_fraction = [1.05, 1.5]
     minimum_walen_fraction = [0.5, 0.95]
-    genetic_algorithm([sigma_sum, sigma_diff, minutes_b, minimum_walen_fraction, maximum_walen_fraction])
+    # be careful, fitness is defined to take only two lmn arguments so far
+    genes_dictionary = {'sigma sum': sigma_sum, 'sigma diff': sigma_diff, 'minutes b': minutes_b,
+                        'minimum walen': minimum_walen_fraction, 'maximum walen': maximum_walen_fraction}
+    genetic_algorithm(genes_dictionary)

@@ -17,7 +17,8 @@ class CorrelationFinder(BaseFinder):
         super().__init__()
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
-    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum=3, sigma_diff=2.5, minutes_b=3, nt_test=False):
+    def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum: float = 3, sigma_diff: float = 2.5,
+                                    minutes_b: float = 3, nt_test: bool = False) -> List[datetime]:
         """
         Finds possible events by running a series of tests on the data
         :param imported_data: ImportedData
@@ -29,13 +30,12 @@ class CorrelationFinder(BaseFinder):
         self.find_correlations(imported_data.data)
         datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff)
         datetimes_list = self.b_changes(datetimes_list, imported_data.data, minutes_b=minutes_b)
-        # datetimes_list = self.get_average_b(datetimes_list, imported_data.data, minutes_b=minutes_b)
         if nt_test:
             datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
         # self.print_reconnection_events(datetimes_list)
         return datetimes_list
 
-    def b_changes(self, datetimes_list, data, minutes_b=4):
+    def b_changes(self, datetimes_list: list, data: pd.DataFrame, minutes_b: float) -> List[datetime]:
         """
         Tests whether there is a change in the magnitude of b around the considered event
         :param datetimes_list: list of possible events
@@ -43,6 +43,7 @@ class CorrelationFinder(BaseFinder):
         :param minutes_b: number of minutes around the considered event where b will be considered
         :return: filtered list of possible events
         """
+        # TODO check if b_average should depend on same minutes_b as b_changes
         filtered_datetimes_list: List[datetime] = []
         for _datetime in datetimes_list:
             try:
@@ -50,8 +51,7 @@ class CorrelationFinder(BaseFinder):
                 for coordinate in self.coordinates:
                     b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
                     if (b < 0).any() and (b > 0).any() and _datetime in get_average_b2(_datetime,
-                                                                                       data['B{}'.format(coordinate)],
-                                                                                       minutes_b=minutes_b):
+                                                                                       data['B{}'.format(coordinate)]):
                         filtered_datetimes_list.append(_datetime)
                         break
             except Exception:
@@ -60,30 +60,7 @@ class CorrelationFinder(BaseFinder):
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
 
-    def get_average_b(self, filtered_datetimes_list, data, minutes_b=4):
-        # get average on left, average on right, take difference, compare to some value (want big value)
-        high_changes_datetime_list: List[datetime] = []
-        for _datetime in filtered_datetimes_list:
-            interval = timedelta(minutes=minutes_b)
-            for coordinate in self.coordinates:
-                b_left = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime].dropna()
-                b_right = data['B{}'.format(coordinate)].loc[_datetime:_datetime + interval].dropna()
-                moving_average_b_left = get_moving_average(b_left, minutes=1)
-                moving_average_b_right = get_moving_average(b_right, minutes=1)
-                average_b_left = np.mean(b_left.values)
-                average_b_right = np.mean(b_right.values)
-                # print(b_left.std(), b_right.std())
-                std_b = np.min([(b_left - moving_average_b_left).std(), (b_right - moving_average_b_right).std()])
-                # if the magnitude difference is bigger than std then there is a bigger chance that it is a reconnection
-                # if std is a nan, we just continue and add the date to the list
-                if (np.abs(average_b_left - average_b_right) > 2 * std_b or np.isnan(std_b)) and (
-                        np.sign(average_b_right) != np.sign(average_b_left)):
-                    high_changes_datetime_list.append(_datetime)
-                    break
-        print('B magnitude change filter returned ', high_changes_datetime_list)
-        return high_changes_datetime_list
-
-    def n_and_t_changes(self, high_changes_datetime_list, data):
+    def n_and_t_changes(self, high_changes_datetime_list: List[datetime], data: pd.DataFrame) -> List[datetime]:
         """
         Checks whether there is a change in density and temperature at a time close to the event time
         :param high_changes_datetime_list: lsit of possible events
@@ -107,7 +84,7 @@ class CorrelationFinder(BaseFinder):
         print('Density and temperature changes filter returned: ', n_and_t_datetime_list)
         return n_and_t_datetime_list
 
-    def find_correlations(self, data: pd.DataFrame):
+    def find_correlations(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Finds all the correlations by multiplying the diffs of b and v together (divided by the time between the data
         points in question)
@@ -140,7 +117,7 @@ class CorrelationFinder(BaseFinder):
 
         return data
 
-    def find_outliers(self, data, sigma_sum=3, sigma_diff=2.5) -> List[datetime]:
+    def find_outliers(self, data: pd.DataFrame, sigma_sum: float, sigma_diff: float) -> List[datetime]:
         """
         Finds all events which have high changes in correlation
         :param data: ImportedData
@@ -187,7 +164,7 @@ class CorrelationFinder(BaseFinder):
         print('Outliers check returned: ', datetimes_list)
         return datetimes_list
 
-    def print_reconnection_events(self, reconnection_dates):
+    def print_reconnection_events(self, reconnection_dates: List[datetime]):
         """
         Prints the events dates in a more readable form
         Can be used later when logs from each tests are not outputted anymore
@@ -200,10 +177,9 @@ class CorrelationFinder(BaseFinder):
             print("No reconnections were found")
 
 
-def get_average_b2(_datetime, data_column, minutes_b=4):
+def get_average_b2(_datetime: datetime, data_column) -> List[datetime]:
     """
-    Checks whether b really changes magnitude before and after a given event (sometimes just a random point might bias
-    the previous tests
+    Checks whether b really changes magnitude before and after a given event
     :param _datetime: list of possible event
     :param data_column: column that we check
     :param minutes_b: not used - might need to be changed
@@ -221,7 +197,6 @@ def get_average_b2(_datetime, data_column, minutes_b=4):
     average_b_left = np.mean(b_left.iloc[:-1].values)
     average_b_right = np.mean(b_right.iloc[1:].values)
     std_b = np.max([(b_left - moving_average_b_left).std(), (b_right - moving_average_b_right).std()])
-    # sigma fraction might need to be higher but we also need small events to be taken into account
     if (np.abs(average_b_left - average_b_right) > 2 * std_b or np.isnan(std_b)) and (
             np.sign(average_b_right) != np.sign(average_b_left)):
         high_changes_datetime_list.append(_datetime)

@@ -39,7 +39,7 @@ def test_finder_with_known_events(finder: BaseFinder):
     # test on data
 
 
-def get_test_data(known_event: MagneticReconnection, additional_data_padding_hours=(1, 2)) -> ImportedData:
+def get_test_data(known_event: MagneticReconnection, additional_data_padding_hours: tuple = (1, 2)) -> ImportedData:
     """
 
     :param known_event: MagneticReconnection with a start_datetime
@@ -51,19 +51,13 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
     start_hour = int(start_datetime.strftime('%H'))
     duration_hours = known_event.duration.seconds // (60 * 60) + sum(additional_data_padding_hours)
     # print(known_event)
-    # print({
-    #     'start_date': start_date,
-    #     'start_hour': start_hour,
-    #     'duration': duration_hours
-    # })
-    test_data = ImportedData(start_date=start_date,
-                             start_hour=start_hour,
-                             probe=known_event.probe,
+    test_data = ImportedData(start_date=start_date, start_hour=start_hour, probe=known_event.probe,
                              duration=duration_hours)
     return test_data
 
 
-def test_finder_with_unknown_events(finder: BaseFinder, imported_data, sigma_sum, sigma_diff, minutes_b, plot_reconnections=True):
+def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedData, parameters: list,
+                                    plot_reconnections: bool = True) -> list:
     """
     Returns the possible reconnection times as well as the distance from the sun at this time
     :param finder: method to find the reconnections, right now CorrelationFinder
@@ -79,19 +73,16 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data, sigma_sum
         try:
             data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
                                 probe=probe)
-
-            reconnection = finder.find_magnetic_reconnections(data, sigma_sum=sigma_sum, sigma_diff=sigma_diff, minutes_b=minutes_b)
+            print(parameters)
+            reconnection = finder.find_magnetic_reconnections(data, *parameters)
             if reconnection:
                 for event in reconnection:
                     radius = data.data['r_sun'].loc[event]
                     reconnections.append([event, radius])
-            # add timestamp to list of all reconnections
 
             if reconnection and plot_reconnections:
                 plot_imported_data(data,
                                    DEFAULT_PLOTTED_COLUMNS + [
-                                       # 'correlation_x', 'correlation_y', 'correlation_z',
-                                       # 'correlation_sum',
                                        ('correlation_sum', 'correlation_sum_outliers'),
                                        ('correlation_diff', 'correlation_diff_outliers')]
                                    )
@@ -102,7 +93,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data, sigma_sum
     return reconnections
 
 
-def send_reconnections_to_csv(reconnections_list, name='reconnections'):
+def send_reconnections_to_csv(reconnections_list: list, name: str = 'reconnections'):
     with open(name + '.csv', 'w', newline='') as csv_file:
         fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
@@ -119,7 +110,7 @@ def send_reconnections_to_csv(reconnections_list, name='reconnections'):
                  'radius': reconnection_radius})
 
 
-def plot_csv(csv_file_name, interval=6):
+def plot_csv(csv_file_name: str, interval: int = 6):
     with open(csv_file_name, newline='') as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
@@ -138,9 +129,9 @@ if __name__ == '__main__':
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
     helios = 2
     orbiter = kernel_loader(helios)
-    times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
     # times = orbit_times_generator('15/12/1974', '15/08/1984', 1)
-    # times = orbit_times_generator(start_date='27/01/1976', end_date='01/07/1976', interval=1)
+    times = orbit_times_generator(start_date='27/01/1976', end_date='01/02/1976', interval=1)
     orbit_generator(orbiter, times)
     data = find_radii(orbiter, radius=1)
     time_indices = get_time_indices(data)
@@ -160,20 +151,37 @@ if __name__ == '__main__':
         # [0.56377144873581087, [2.4641859422774792, 1.8348170104492854, 7.7111085077107582]],
         # [0.56377144873581087, [2.4641859422774792, 2.0547187963000382, 4.8325134468920439]]
 
+        # [0.6415029025857748, [2.6218234455767924, 3.095027734156329, 7.2593589782476995, 0.70195081788266145, 2.2455507200639859]]
+        # [0.60733816702295851, [2.6218234455767924, 2.6336660039080351, 7.2593589782476995, 0.62350710758313632, 2.2455507200639859]]
+        # [0.60567724060434713, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.5865557254410011, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.58208550008719917, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.57570773308979784, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.56781364048140137, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.5661385170722979, [2.6092274374199254, 1.6706268020860184, 6.5797744662938911, 0.50402008003822241, 1.3497446427829947]]
+        # [0.5661385170722979, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.5661385170722979, [2.6218234455767924, 2.6336660039080351, 5.5394039335768328, 0.70195081788266145, 1.2122919887662766]],
+        # [0.5657484434338037, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+        # [0.56182433421813216, [2.6218234455767924, 2.6336660039080351, 7.2593589782476995, 0.62350710758313632, 2.2455507200639859]]
+        # [0.56152597329519949, [2.6092274374199254, 1.6706268020860184, 6.5797744662938911, 0.50402008003822241, 1.3497446427829947]]
+        # [0.56147782942977942, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+
         # for temperature and density check
         # [0.57966713380524337, [2.2123901689753174, 1.1033447004561121, 7.8832162705192079]],
         # [0.57966713380524337, [2.2123901689753174, 1.2000893028353374, 7.8832162705192079]],
         # [0.57966713380524337, [2.2123901689753174, 1.1033447004561121, 5.386013326987813]],
-        reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data, sigma_sum=2.4641859422774792,
-                                                              sigma_diff=2.0547187963000382, minutes_b=4.8325134468920439,
-                                                              plot_reconnections=False)
+        parameters = {'sigma_sum': 2.4641859422774792, 'sigma_diff': 2.0547187963000382,
+                      'minutes_b': 4.8325134468920439}
+        params = [parameters[key] for key in list(parameters.keys())]
+        reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data,
+                                                              params, plot_reconnections=False)
         if reconnection_events:
             for event in reconnection_events:
                 all_reconnections.append(event)
 
     print(all_reconnections)
 
-    to_csv = True
+    to_csv = False
     if to_csv:
         send_reconnections_to_csv(all_reconnections, 'reconnectionshelios2testdata2')
 

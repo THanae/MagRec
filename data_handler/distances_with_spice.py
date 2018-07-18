@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 from data_handler.imported_data import ImportedData
 from datetime import timedelta
+import heliopy.spice as spice
 
 
-def find_radii(orbiter, radius=0.4):
+def find_radii(orbiter: spice.Trajectory, radius: float = 0.4):
     """
     Finds all dates at which the radius from the sun is smaller than a given radius
     Much faster than other methods because different way of importing data
@@ -23,7 +24,7 @@ def find_radii(orbiter, radius=0.4):
     return reduced_data
 
 
-def get_time_indices(reduced_data):
+def get_time_indices(reduced_data: pd.DataFrame) -> list:
     """
     We want to make shorter lists of dates that follow each other in order to finally get the data
     :param reduced_data:
@@ -32,26 +33,26 @@ def get_time_indices(reduced_data):
     completed = False
     m = 0
     n = 0
-    list_of_stuff = [[]]
+    list_of_indices = [[]]
     while not completed:
         if m == len(reduced_data.index) - 2:
             completed = True
         if reduced_data.index[m] == reduced_data.index[m + 1] - 1:
-            list_of_stuff[n].append(reduced_data.index[m])
-            list_of_stuff[n].append(reduced_data.index[m + 1])
+            list_of_indices[n].append(reduced_data.index[m])
+            list_of_indices[n].append(reduced_data.index[m + 1])
         else:
             n = n + 1
-            list_of_stuff.append([])
+            list_of_indices.append([])
         m = m + 1
     time_indices = []
-    for n in range(len(list_of_stuff)):
-        start = min(list_of_stuff[n])
-        end = max(list_of_stuff[n])
+    for n in range(len(list_of_indices)):
+        start = min(list_of_indices[n])
+        end = max(list_of_indices[n])
         time_indices.append([start, end])
     return time_indices
 
 
-def get_dates(orbiter_times, time_indices):
+def get_dates(orbiter_times: pd.DataFrame, time_indices: list) -> list:
     """
     Function that finds the start and end dates of
     :param reduced_data: data frame, where the times are in the column 'Time'
@@ -69,7 +70,7 @@ def get_dates(orbiter_times, time_indices):
     return all_dates
 
 
-def get_data(dates, probe=2):
+def get_data(dates: list, probe: int = 2) -> ImportedData:
     """
     Gets the data as ImportedData for the given start and end dates
     Be careful, especially for Helios 1  where a lot of data is missing
