@@ -73,7 +73,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
         try:
             data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
                                 probe=probe)
-            print(parameters)
+            # print(parameters)
             reconnection = finder.find_magnetic_reconnections(data, *parameters)
             if reconnection:
                 for event in reconnection:
@@ -129,9 +129,9 @@ if __name__ == '__main__':
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
     helios = 2
     orbiter = kernel_loader(helios)
-    # times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
+    times = orbit_times_generator('17/01/1976', '17/01/1979', 1)
     # times = orbit_times_generator('15/12/1974', '15/08/1984', 1)
-    times = orbit_times_generator(start_date='27/01/1976', end_date='01/02/1976', interval=1)
+    # times = orbit_times_generator(start_date='27/01/1976', end_date='01/02/1976', interval=1)
     orbit_generator(orbiter, times)
     data = find_radii(orbiter, radius=1)
     time_indices = get_time_indices(data)
@@ -170,8 +170,8 @@ if __name__ == '__main__':
         # [0.57966713380524337, [2.2123901689753174, 1.1033447004561121, 7.8832162705192079]],
         # [0.57966713380524337, [2.2123901689753174, 1.2000893028353374, 7.8832162705192079]],
         # [0.57966713380524337, [2.2123901689753174, 1.1033447004561121, 5.386013326987813]],
-        parameters = {'sigma_sum': 2.4641859422774792, 'sigma_diff': 2.0547187963000382,
-                      'minutes_b': 4.8325134468920439}
+        parameters = {'sigma_sum': 2.9, 'sigma_diff': 2.5,
+                      'minutes_b': 7}
         params = [parameters[key] for key in list(parameters.keys())]
         reconnection_events = test_finder_with_unknown_events(CorrelationFinder(), imported_data,
                                                               params, plot_reconnections=False)
@@ -181,9 +181,9 @@ if __name__ == '__main__':
 
     print(all_reconnections)
 
-    to_csv = False
+    to_csv = True
     if to_csv:
-        send_reconnections_to_csv(all_reconnections, 'reconnectionshelios2testdata2')
+        send_reconnections_to_csv(all_reconnections, 'reconnectionshelios2testdata3')
 
     # Helios 1 : December 10, 1974 to February 18, 1985
     # BUT the data available from berkeley is from 13 December 1974 to 16 August 1984

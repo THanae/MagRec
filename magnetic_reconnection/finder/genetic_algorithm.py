@@ -238,7 +238,7 @@ def mutation(genes, probability):
     :param probability: probability that the genes will be mutated
     :return: mutated population
     """
-    for n in range(len(genes)):
+    for n in range(len(genes)-2):  # to avoid getting weird values for the walen test
         if np.random.rand() < probability:
             genes[n] = mutate_gene(genes[n])
     return genes

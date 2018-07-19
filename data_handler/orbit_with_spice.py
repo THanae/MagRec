@@ -20,7 +20,7 @@ def kernel_loader(spacecraft: int = 2) -> spice.Trajectory:
     return orbiter
 
 
-def orbit_times_generator(start_date: str = '20/01/1976', end_date: str = '01/10/1979', interval: int = 1) -> List[
+def orbit_times_generator(start_date: str = '20/01/1976', end_date: str = '01/10/1979', interval: float = 1) -> List[
     datetime]:
     """
     Generates a list of times between the start and end dates, with 1 day intervals

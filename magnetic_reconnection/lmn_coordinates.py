@@ -336,8 +336,8 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
                 if plot:
                     plot_all(imported_data, L, M, N, event_date)
 
-            # else:
-            #     print('NO RECONNECTION AT ', str(event_date))
+            else:
+                print('NO RECONNECTION AT ', str(event_date))
         except Exception:
             print('could not recover the data')
     return events_that_passed_test
@@ -349,9 +349,10 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
     probe = probe
     min_walen, max_walen = 0.9, 1.1
     events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot)
+    print('number of reconections: ', len(events_that_passed_test))
     if to_csv:
         send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests')
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnections_helios1_all.csv', 1)
+    test_reconnections_from_csv('reconnectionshelios2testdata_29_25_7.csv', 2, plot=False)

@@ -14,6 +14,6 @@ class BaseFinder:
         # raise NotImplementedError("Finder classes should have an __init__ that initialises parameters")
         pass
 
-    def find_magnetic_reconnections(self, imported_data: ImportedData, **kwargs):
+    def find_magnetic_reconnections(self, imported_data: ImportedData, *args):
         raise NotImplementedError("Finder classes should have a find_magnetic_reconnections.")
 

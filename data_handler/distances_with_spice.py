@@ -4,6 +4,7 @@ import pandas as pd
 from data_handler.imported_data import ImportedData
 from datetime import timedelta
 import heliopy.spice as spice
+from typing import List
 
 
 def find_radii(orbiter: spice.Trajectory, radius: float = 0.4):
@@ -70,7 +71,7 @@ def get_dates(orbiter_times: pd.DataFrame, time_indices: list) -> list:
     return all_dates
 
 
-def get_data(dates: list, probe: int = 2) -> ImportedData:
+def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
     """
     Gets the data as ImportedData for the given start and end dates
     Be careful, especially for Helios 1  where a lot of data is missing
