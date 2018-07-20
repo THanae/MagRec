@@ -14,7 +14,6 @@ class ImportedData:
         :param duration: int in hours
         :param start_hour: int from 0 to 23 indicating starting hour of given start_date
         :param probe: 1 for Helios 1, 2 for Helios 2
-        :return:
         """
         self.probe = probe
         self.duration = duration

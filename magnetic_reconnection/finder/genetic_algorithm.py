@@ -33,6 +33,8 @@ event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 
               [datetime(1980, 1, 4, 20, 0, 0), 1, 0], [datetime(1980, 1, 18, 14, 0, 0), 1, 0]
               ]
 
+test_data = []  # try best elements on test data too to avoid over-fitting
+
 DEFAULT_GENES = [[1, 4], [1, 4], [3, 8], [0.5, 0.95], [1.05, 1.5]]
 
 

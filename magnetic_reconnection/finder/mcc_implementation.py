@@ -36,6 +36,8 @@ event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 
               [datetime(1980, 1, 4, 20, 0, 0), 1, 0], [datetime(1980, 1, 18, 14, 0, 0), 1, 0]
               ]
 
+test_data = []  # try some of the best mcc's on the test data and hope for the same kinds of results
+
 
 def test_with_values(parameters: dict, finder: BaseFinder) -> list:
     """
@@ -72,6 +74,7 @@ def test_with_values(parameters: dict, finder: BaseFinder) -> list:
                 f_p += len(reconnection) - reconnection_number
                 t_p += reconnection_number
     mcc = get_mcc(t_p, t_n, f_p, f_n)
+    print('MCC', mcc, parameters)
     return [mcc, parameters]
 
 
@@ -89,6 +92,7 @@ def find_best_combinations(all_mcc: list, params: List[dict]):
     :param params: parameters tested in the mcc implementation
     :return:
     """
+    all_mcc = [mcc for mcc in all_mcc if not np.isnan(mcc[0])]
     maximum_mcc = np.argmax(all_mcc)
     mcc_max = np.max(all_mcc)
     print('The best mcc value is ', mcc_max)
@@ -117,8 +121,8 @@ if __name__ == '__main__':
     # multiprocessing is faster if your laptop can take it
     # check max number of processes another laptop could take
 
-    parameters = {'sigma_sum': np.arange(1.9, 3.1, 0.2), 'sigma_diff': np.arange(1.9, 3.1, 0.2),
-                  'minutes_b': [5, 6, 7], 'minimum walen': [0.7, 1, 0.1], 'maximum walen': [1.1, 1.4, 0.1]}
+    parameters = {'sigma_sum': np.arange(1.9, 3.1, 0.2), 'sigma_diff': np.arange(1.9, 3.1, 0.2), 'minutes_b': [5, 6, 7],
+                  'minimum walen': np.arange(0.7, 1, 0.1), 'maximum walen': np.arange(1.1, 1.4, 0.1)}
     parameters_keys = list(parameters.keys())
     test_args = [{'sigma_sum': sigma_s, 'sigma_diff': sigma_d, 'minutes_b': mins_b, 'minimum walen': min_wal,
                   'maximum walen': max_wal} for sigma_s in parameters['sigma_sum'] for sigma_d in
@@ -131,4 +135,4 @@ if __name__ == '__main__':
     params = [result[1] for result in results]
 
     find_best_combinations(mcc, params)
-    send_to_csv('mcc_corr_lmn', mcc, params, parameters_keys)
+    send_to_csv('mcc_corr_lmn2', mcc, params, parameters_keys)

@@ -5,6 +5,7 @@ import csv
 import matplotlib.pyplot as plt
 from datetime import timedelta
 import pandas as pd
+from pandas import Timestamp
 from typing import List
 
 from data_handler.imported_data import ImportedData
@@ -338,8 +339,10 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
 
             else:
                 print('NO RECONNECTION AT ', str(event_date))
+            # plot_all(imported_data, L, M, N, event_date)
         except Exception:
             print('could not recover the data')
+
     return events_that_passed_test
 
 
@@ -355,4 +358,4 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnectionshelios2testdata_29_25_7.csv', 2, plot=False)
+    test_reconnections_from_csv('reconnections_helios1_all.csv', 1, plot=False)
