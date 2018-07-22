@@ -1,8 +1,6 @@
 from datetime import datetime, timedelta
-
 import numpy as np
 import pandas as pd
-from heliopy.data import helios
 
 from data_handler.utils.column_creator import SUPPORTED_COLUMNS
 
@@ -19,7 +17,7 @@ class ImportedData:
         self.duration = duration
         self.start_datetime = datetime.strptime(start_date + '/%i' % start_hour, '%d/%m/%Y/%H')
         self.end_datetime = self.start_datetime + timedelta(hours=duration)
-        self.data = helios.corefit(probe, self.start_datetime, self.end_datetime)
+        self.data = self.get_imported_data()
 
         if len(self.data) == 0:
             raise RuntimeWarning('Created ImportedData object has retrieved no data: {}'.format(self))
@@ -29,6 +27,9 @@ class ImportedData:
                                                                                    self.start_datetime,
                                                                                    self.probe,
                                                                                    len(self.data))
+
+    def get_imported_data(self):
+        raise NotImplementedError('Need to implement get_imorted_data that imports the data for a given spacecraft')
 
     def create_processed_column(self, column_to_create: str):
         if column_to_create not in SUPPORTED_COLUMNS:
@@ -53,7 +54,3 @@ class ImportedData:
                 self.data.loc[start_time:end_time, column_name])
             # print(index)
 
-
-if __name__ == '__main__':
-    x = ImportedData()
-    print(x.data)

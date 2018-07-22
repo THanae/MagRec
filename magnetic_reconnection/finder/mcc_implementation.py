@@ -1,6 +1,6 @@
 from functools import partial
 
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
 
 from datetime import timedelta, datetime
 import numpy as np
@@ -50,7 +50,7 @@ def test_with_values(parameters: dict, finder: BaseFinder) -> list:
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
-        data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
+        data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
                             duration=interval, probe=probe)
 
         # making sure this function can possibly be used with other finders
@@ -60,15 +60,15 @@ def test_with_values(parameters: dict, finder: BaseFinder) -> list:
         reconnection_corr = finder.find_magnetic_reconnections(data, *list_of_params[:split_of_params])
         reconnection = test_reconnection_lmn(reconnection_corr, probe, *list_of_params[split_of_params:])
         if reconnection_number == 0:
-            if len(reconnection) == 0:
+            if len(reconnection) == 0:  # nothing detected, which is good
                 t_n += 1
-            else:
+            else:  # too many things detected
                 f_p += len(reconnection)
         else:
-            if len(reconnection) < reconnection_number:
+            if len(reconnection) < reconnection_number:  # not enough detected
                 f_n += reconnection_number - len(reconnection)
                 t_p += len(reconnection)
-            elif len(reconnection) == reconnection_number:
+            elif len(reconnection) == reconnection_number:  # just enough events detected
                 t_p += len(reconnection)
             else:  # more detected than real
                 f_p += len(reconnection) - reconnection_number
@@ -92,7 +92,7 @@ def find_best_combinations(all_mcc: list, params: List[dict]):
     :param params: parameters tested in the mcc implementation
     :return:
     """
-    all_mcc = [mcc for mcc in all_mcc if not np.isnan(mcc[0])]
+    # all_mcc = [mcc for mcc in all_mcc if not np.isnan(mcc)]
     maximum_mcc = np.argmax(all_mcc)
     mcc_max = np.max(all_mcc)
     print('The best mcc value is ', mcc_max)
@@ -134,5 +134,9 @@ if __name__ == '__main__':
     mcc = [result[0] for result in results]
     params = [result[1] for result in results]
 
-    find_best_combinations(mcc, params)
     send_to_csv('mcc_corr_lmn2', mcc, params, parameters_keys)
+    find_best_combinations(mcc, params)
+
+    # MCC 0.737711113563
+    # {'sigma_sum': 3.100000000000001, 'sigma_diff': 1.8999999999999999, 'minutes_b': 7,
+    # 'minimum walen': 0.99999999999999989, 'maximum walen': 1.2000000000000002}

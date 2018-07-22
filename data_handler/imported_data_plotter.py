@@ -1,7 +1,8 @@
-from datetime import timedelta
 from typing import List
 import matplotlib.pyplot as plt
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.imported_data import ImportedData
+from data_handler.data_importer.ulysses_data import UlyssesData
 
 DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('Tp_perp', 'Tp_par'),
@@ -59,7 +60,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
             plt.savefig('h{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
 
 
-def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
+def plot_to_ax(imported_data: HeliosData, ax, column_name: str, colour='b'):
     """
     Plots given column of given ImportedData to a given ax.
     :param imported_data: ImportedData
@@ -76,4 +77,6 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
 
 
 if __name__ == '__main__':
-    plot_imported_data(ImportedData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
+    # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
+    # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24), columns_to_plot=[('B_n', 'v_n'), ('B_r', 'v_r'), ('B_t', 'v_t'), 'n_p'])
+    plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6), columns_to_plot=[('B_n', 'v_n'), ('B_r', 'v_r'), ('B_t', 'v_t'), 'n_p'])

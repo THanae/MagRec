@@ -1,4 +1,4 @@
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.imported_data import ImportedData
 
 
 class BaseFinder:

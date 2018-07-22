@@ -1,14 +1,13 @@
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from numpy import linalg as LA
 import csv
-import matplotlib.pyplot as plt
 from datetime import timedelta
 import pandas as pd
-from pandas import Timestamp
 from typing import List
 
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.imported_data import ImportedData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
 
@@ -315,7 +314,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
     for event_date in event_dates:
         try:
             start_time = event_date - timedelta(hours=duration / 2)
-            imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+            imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                          duration=duration, probe=probe)
             imported_data.data.dropna(inplace=True)
             B = get_b(imported_data)
@@ -358,4 +357,4 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnections_helios1_all.csv', 1, plot=False)
+    test_reconnections_from_csv('reconnections_helios_1_no_nt_29_25_7.csv', 1, plot=True)

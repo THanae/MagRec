@@ -6,7 +6,7 @@ from typing import List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
 # from magnetic_reconnection.lmn_coordinates import hybrid
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
 
@@ -22,9 +22,8 @@ def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = 
     for event in events_list:
         start_time = event
 
-        imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                     duration=1,
-                                     probe=probe)
+        imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                                   duration=1, probe=probe)
         try:
             radius = imported_data.data['r_sun'].loc[event]
         except Exception:
@@ -259,7 +258,7 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
         if event.year == year:
             if month == 0 or event.month == month:
                 start_time = event
-                imported_data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                              duration=1, probe=probe)
                 radius = imported_data.data['r_sun'].loc[event]
                 time_radius.append([event, radius])
@@ -312,7 +311,9 @@ if __name__ == '__main__':
     mode = 'yearly'
     # file = 'helios2_magrec.csv'
     events = get_events_dates(file)
-    st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
-    print(st.pop('total time', None))
-    plot_trend(st, mode)
+    # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
+    # print(st.pop('total time', None))
+    # plot_trend(st, mode)
     # time_spent_at_date(probe, start_date=analysis_start_date, end_date=analysis_end_date, mode=mode)
+    analyse_by_radii(events, probe, analysis_start_date, analysis_end_date)
+    analyse_dates(events, probe, analysis_start_date, analysis_end_date, mode='monthly')

@@ -2,7 +2,9 @@ from datetime import timedelta, datetime
 from typing import List
 
 from data_handler.distances_with_spice import find_radii, get_time_indices, get_dates, get_data
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.ulysses_data import UlyssesData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
 from magnetic_reconnection.finder.base_finder import BaseFinder
@@ -52,7 +54,7 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
     start_hour = int(start_datetime.strftime('%H'))
     duration_hours = known_event.duration.seconds // (60 * 60) + sum(additional_data_padding_hours)
     # print(known_event)
-    test_data = ImportedData(start_date=start_date, start_hour=start_hour, probe=known_event.probe,
+    test_data = HeliosData(start_date=start_date, start_hour=start_hour, probe=known_event.probe,
                              duration=duration_hours)
     return test_data
 
@@ -71,7 +73,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
     reconnections = []
     for n in range(np.int(duration / interval)):
         try:
-            data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
+            data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
                                 probe=probe)
             # print(parameters)
             reconnection = finder.find_magnetic_reconnections(data, *parameters)
@@ -122,7 +124,7 @@ def plot_csv(csv_file_name: str, interval: int = 6):
         for row in reader:
             date = datetime(row['year'], row['month'], row['day'], row['hours'], row['minutes'], 0)
             start_of_plot = date - timedelta(hours=interval / 2)
-            imported_data = ImportedData(start_date=start_of_plot.strftime('%d/%m/%Y'), start_hour=start_of_plot.hour,
+            imported_data = HeliosData(start_date=start_of_plot.strftime('%d/%m/%Y'), start_hour=start_of_plot.hour,
                                          duration=interval)
             # print('radius: ', row['radius'])
             plot_imported_data(imported_data)
@@ -203,7 +205,7 @@ def get_possible_reconnections(probe: int, parameters: dict, start_time: str = '
 
 if __name__ == '__main__':
     # test_finder_with_known_events(CorrelationFinder())
-    # imported_data = ImportedData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
+    # imported_data = HeliosData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
 
     helios = 1

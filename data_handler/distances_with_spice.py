@@ -1,7 +1,9 @@
-from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator, plot_orbit
+from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
 import numpy as np
 import pandas as pd
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.ulysses_data import UlyssesData
 from datetime import timedelta
 import heliopy.spice as spice
 from typing import List
@@ -86,7 +88,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         hours = np.int(delta_t.total_seconds() / 3600)
         start_date = start.strftime('%d/%m/%Y')
         try:
-            imported_data.append(ImportedData(start_date=start_date, duration=hours, probe=probe))
+            imported_data.append(HeliosData(start_date=start_date, duration=hours, probe=probe))
             # print(imported_data)
         except Exception:
             print('easy method is not working')
@@ -95,7 +97,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
             number_of_loops = np.int(hours/interval)
             for n in range(number_of_loops):
                 try:
-                    hard_to_get_data.append(ImportedData(start_date=start.strftime('%d/%m/%Y'), duration=interval, probe=probe))
+                    hard_to_get_data.append(HeliosData(start_date=start.strftime('%d/%m/%Y'), duration=interval, probe=probe))
                 except Exception:
                     print('not possible to download data between ' + str(start) + ' and ' +str(start+timedelta(hours=interval)))
                 start = start + timedelta(hours=interval)

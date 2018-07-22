@@ -1,6 +1,8 @@
 from datetime import timedelta, datetime
 
-from data_handler.imported_data import ImportedData
+from data_handler.data_importer.imported_data import ImportedData
+from data_handler.data_importer.helios_data import HeliosData
+from magnetic_reconnection.finder.base_finder import BaseFinder
 from magnetic_reconnection.finder.correlation_finder import CorrelationFinder
 
 import numpy as np
@@ -38,9 +40,9 @@ test_data = []  # try best elements on test data too to avoid over-fitting
 DEFAULT_GENES = [[1, 4], [1, 4], [3, 8], [0.5, 0.95], [1.05, 1.5]]
 
 
-def genetic_algorithm(genes_dict: dict, first_population_size=10, best_samples_size=3, randomly_chosen_sample_size=3,
-                      number_of_descendants=2, mutation_probability=0.1, event_list_split=30, iterations=40,
-                      finder=CorrelationFinder()):
+def genetic_algorithm(genes_dict: dict, first_population_size: int = 10, best_samples_size: int = 3, randomly_chosen_sample_size: int = 3,
+                      number_of_descendants: int = 2, mutation_probability: float = 0.1, event_list_split: int = 30, iterations: int = 40,
+                      finder: BaseFinder = CorrelationFinder()):
     genes_keys = list(genes_dict.keys())
     genes = [genes_dict[key] for key in genes_keys]
 
@@ -74,7 +76,7 @@ def genetic_algorithm(genes_dict: dict, first_population_size=10, best_samples_s
     return sorted_performances
 
 
-def fitness(gene, event_list_split, finder):
+def fitness(gene: list, event_list_split: int, finder: BaseFinder):
     """
     Calculates the mcc for a given gene
     :param gene: gene of a given population
@@ -91,7 +93,7 @@ def fitness(gene, event_list_split, finder):
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
-        data = ImportedData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
+        data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
                             duration=interval, probe=probe)
         reconnection_corr = finder.find_magnetic_reconnections(data, *gene[:gene_split])
         reconnection = test_reconnection_lmn(reconnection_corr, probe, *gene[gene_split:])
@@ -114,7 +116,7 @@ def fitness(gene, event_list_split, finder):
     return mcc
 
 
-def gene_generation(genes):
+def gene_generation(genes: list):
     dna_strand = []
     for n in range(len(genes)):
         chromosome = (np.max(genes[n]) - np.min(genes[n])) * np.random.random_sample() + np.min(genes[n])
@@ -125,7 +127,7 @@ def gene_generation(genes):
 # for now, the following code follows the reasoning of the genetic algorithm tutorial available at
 # https://blog.sicara.com/getting-started-genetic-algorithms-python-tutorial-81ffa1dd72f9
 # but adapted for this particular use
-def generate_first_population(population_size, genes):
+def generate_first_population(population_size: int, genes: list):
     population = []
     for n in range(population_size):
         population.append(gene_generation(genes))
@@ -133,7 +135,7 @@ def generate_first_population(population_size, genes):
     return population
 
 
-def performance_per_gene(population, event_list_split, finder):
+def performance_per_gene(population: list, event_list_split: int, finder: BaseFinder):
     """
     Finds the mcc performance of the given gens
     :param population: all the genes that are being considered
@@ -153,7 +155,7 @@ def performance_per_gene(population, event_list_split, finder):
     return sorted(performance_no_nans, key=get_key, reverse=True) + performance_nans
 
 
-def selection(sorted_population, best_samples, randomly_chosen_samples):
+def selection(sorted_population: list, best_samples: int, randomly_chosen_samples: int):
     """
     Takes the best performing individuals as well as some randomly chosen individuals
     :param sorted_population: list of mcc performance and genes, sorted by best performance
@@ -170,7 +172,7 @@ def selection(sorted_population, best_samples, randomly_chosen_samples):
     return next_generation
 
 
-def create_descendant(gene1, gene2):
+def create_descendant(gene1: list, gene2: list):
     """
     :param gene1: parent gene
     :param gene2: parent gene
@@ -185,7 +187,7 @@ def create_descendant(gene1, gene2):
     return descendant
 
 
-def crossover(genes, descendants_number, best_genes):
+def crossover(genes: list, descendants_number: int, best_genes: int):
     """
     :param genes: parent genes (chosen from the previous population)
     :param descendants_number: number of children we want to create for parent genes
@@ -218,7 +220,7 @@ def crossover(genes, descendants_number, best_genes):
     return next_population
 
 
-def mutate_gene(gene):
+def mutate_gene(gene: list):
     """
     :param gene: gene that we want to change
     :return: mutated gene
@@ -234,7 +236,7 @@ def mutate_gene(gene):
     return gene
 
 
-def mutation(genes, probability):
+def mutation(genes: list, probability: float):
     """
     :param genes: this generation's genes, that might be mutated
     :param probability: probability that the genes will be mutated
@@ -246,7 +248,7 @@ def mutation(genes, probability):
     return genes
 
 
-def send_perf_to_csv(performance_list, keys, name='performances_genalg'):
+def send_perf_to_csv(performance_list: list, keys: list, name: str = 'performances_genalg'):
     with open(name + '.csv', 'w', newline='') as csv_file:
         fieldnames = ['mcc'] + keys
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
