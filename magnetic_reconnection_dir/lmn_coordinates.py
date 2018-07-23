@@ -108,6 +108,19 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray):  # hybrid mva necess
     return L, M, N
 
 
+def hybrid_mva(event_date, probe):
+    duration = 4
+    start_time = event_date - timedelta(hours=duration / 2)
+    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                               duration=duration, probe=probe)
+    imported_data.data.dropna(inplace=True)
+    B = get_b(imported_data)
+    L, M, N = mva(B)
+    B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
+                                                                                               event_date)
+    L, M, N = hybrid(L, B1, B2)
+    return L, M, N
+
 def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarray, L: np.ndarray, M: np.ndarray,
                    N: np.ndarray):
     B1_L, B1_M, B1_N = np.dot(L, B1), np.dot(M, B1), np.dot(N, B1)

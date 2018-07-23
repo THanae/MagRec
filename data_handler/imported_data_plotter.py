@@ -78,5 +78,5 @@ def plot_to_ax(imported_data: HeliosData, ax, column_name: str, colour='b'):
 
 if __name__ == '__main__':
     # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
-    # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24), columns_to_plot=[('B_n', 'v_n'), ('B_r', 'v_r'), ('B_t', 'v_t'), 'n_p'])
-    plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6), columns_to_plot=[('B_n', 'v_n'), ('B_r', 'v_r'), ('B_t', 'v_t'), 'n_p'])
+    # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24))
+    plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6))

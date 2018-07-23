@@ -24,6 +24,8 @@ def find_radii(orbiter: spice.Trajectory, radius: float = 0.4):
 
     reduced = orbiter_data['radius'] < radius
     reduced_data = orbiter_data[reduced]
+    if len(reduced_data) <2:
+        raise IndexError('The data is too small')
     return reduced_data
 
 
@@ -88,7 +90,12 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         hours = np.int(delta_t.total_seconds() / 3600)
         start_date = start.strftime('%d/%m/%Y')
         try:
-            imported_data.append(HeliosData(start_date=start_date, duration=hours, probe=probe))
+            if probe == 1 or probe == 2:
+                imported_data.append(HeliosData(start_date=start_date, duration=hours, probe=probe))
+            elif probe == 'ulysses':
+                imported_data.append(UlyssesData(start_date=start_date, duration=hours))
+            else:
+                raise NotImplementedError('The data from this probe cannot be imported')
             # print(imported_data)
         except Exception:
             print('easy method is not working')

@@ -8,7 +8,7 @@ from data_handler.data_importer.imported_data import ImportedData
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.data_importer.ulysses_data import UlyssesData
 from data_handler.utils.column_processing import get_moving_average, get_derivative, get_outliers
-from magnetic_reconnection.finder.base_finder import BaseFinder
+from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 
 
 class CorrelationFinder(BaseFinder):

@@ -14,9 +14,18 @@ def kernel_loader(spacecraft: int = 2) -> spice.Trajectory:
     :param spacecraft: 1 or 2 for Helios 1  or 2
     :return:
     """
-    orbiter_kernel = spice_data.get_kernel('helios' + str(spacecraft))
-    spice.furnish(orbiter_kernel)
-    orbiter = spice.Trajectory('Helios ' + str(spacecraft))
+    # orbiter_kernel = spice_data.get_kernel('helios' + str(spacecraft))
+    # spice.furnish(orbiter_kernel)
+    if spacecraft == 1 or spacecraft == 2:
+        orbiter_kernel = spice_data.get_kernel('helios' + str(spacecraft))
+        spice.furnish(orbiter_kernel)
+        orbiter = spice.Trajectory('Helios ' + str(spacecraft))
+    elif spacecraft == 'ulysses':
+        orbiter_kernel = spice_data.get_kernel(str(spacecraft))
+        spice.furnish(orbiter_kernel)
+        orbiter = spice.Trajectory(spacecraft)
+    else:
+        raise NotImplementedError('The only probes that can be imported are Helios 1 , Helios 2 , Ulysses')
     return orbiter
 
 

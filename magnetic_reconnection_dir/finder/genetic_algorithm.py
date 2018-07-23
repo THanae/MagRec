@@ -2,15 +2,15 @@ from datetime import timedelta, datetime
 
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.data_importer.helios_data import HeliosData
-from magnetic_reconnection.finder.base_finder import BaseFinder
-from magnetic_reconnection.finder.correlation_finder import CorrelationFinder
+from magnetic_reconnection_dir.finder.base_finder import BaseFinder
+from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
 # lists [event, probe, number of reconnections]
-from magnetic_reconnection.lmn_coordinates import test_reconnection_lmn
+from magnetic_reconnection_dir.lmn_coordinates import test_reconnection_lmn
 
 event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 20, 0, 0), 1, 1],
               [datetime(1975, 1, 18, 13, 0, 0), 1, 1], [datetime(1975, 2, 7, 1, 0, 0), 1, 1],

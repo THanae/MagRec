@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import json
 from typing import List
 
-from magnetic_reconnection.magnetic_reconnection import MagneticReconnection
+from magnetic_reconnection_dir.magnetic_reconnection import MagneticReconnection
 
 
 def get_known_magnetic_reconnections() -> List[MagneticReconnection]:

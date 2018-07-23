@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 from data_handler.data_importer.helios_data import HeliosData
-# from magnetic_reconnection.lmn_coordinates import hybrid
+# from magnetic_reconnection_dir.lmn_coordinates import hybrid
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
 
 

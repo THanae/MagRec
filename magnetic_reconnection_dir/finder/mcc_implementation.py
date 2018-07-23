@@ -4,14 +4,14 @@ from data_handler.data_importer.helios_data import HeliosData
 
 from datetime import timedelta, datetime
 import numpy as np
-from magnetic_reconnection.finder.base_finder import BaseFinder
-from magnetic_reconnection.finder.correlation_finder import CorrelationFinder
+from magnetic_reconnection_dir.finder.base_finder import BaseFinder
+from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from multiprocessing import Pool
 import csv
 from typing import List
 
 # lists [event, probe, number of reconnections]
-from magnetic_reconnection.lmn_coordinates import test_reconnection_lmn
+from magnetic_reconnection_dir.lmn_coordinates import test_reconnection_lmn
 
 event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 20, 0, 0), 1, 1],
               [datetime(1975, 1, 18, 13, 0, 0), 1, 1], [datetime(1975, 2, 7, 1, 0, 0), 1, 1],
@@ -121,8 +121,10 @@ if __name__ == '__main__':
     # multiprocessing is faster if your laptop can take it
     # check max number of processes another laptop could take
 
-    parameters = {'sigma_sum': np.arange(1.9, 3.1, 0.2), 'sigma_diff': np.arange(1.9, 3.1, 0.2), 'minutes_b': [5, 6, 7],
-                  'minimum walen': np.arange(0.7, 1, 0.1), 'maximum walen': np.arange(1.1, 1.4, 0.1)}
+    # in np.arange, if args are floats, length of output is ceil((stop - start) / step)
+    # eg for np.arange(0.7, 1, 0.1), we get 0.7, 0.8, 0.9, 1.0
+    parameters = {'sigma_sum': np.arange(19, 31, 2)/10, 'sigma_diff': np.arange(19, 31, 2)/10, 'minutes_b': [5, 6, 7],
+                  'minimum walen': np.arange(7, 10, 1)/10, 'maximum walen': np.arange(11, 14, 1)/10}
     parameters_keys = list(parameters.keys())
     test_args = [{'sigma_sum': sigma_s, 'sigma_diff': sigma_d, 'minutes_b': mins_b, 'minimum walen': min_wal,
                   'maximum walen': max_wal} for sigma_s in parameters['sigma_sum'] for sigma_d in
@@ -139,4 +141,8 @@ if __name__ == '__main__':
 
     # MCC 0.737711113563
     # {'sigma_sum': 3.100000000000001, 'sigma_diff': 1.8999999999999999, 'minutes_b': 7,
+    # 'minimum walen': 0.99999999999999989, 'maximum walen': 1.2000000000000002}
+
+    # MCC 0.737711113563
+    # {'sigma_sum': 2.7000000000000006, 'sigma_diff': 1.8999999999999999, 'minutes_b': 5,
     # 'minimum walen': 0.99999999999999989, 'maximum walen': 1.2000000000000002}

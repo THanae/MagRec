@@ -37,16 +37,16 @@ class UlyssesData(ImportedData):
             interval = 2
             if iteration != 0 and iteration != len(indices)-1:
                 interval = (indices[iteration + 1] - indices[iteration - 1]).total_seconds()/60
-            combined_data.loc[index, 'v_r'] = data_v.loc[index, 'v_r']
-            combined_data.loc[index, 'v_t'] = data_v.loc[index, 'v_t']
-            combined_data.loc[index, 'v_n'] = data_v.loc[index, 'v_n']
+            combined_data.loc[index, 'vp_x'] = data_v.loc[index, 'v_r']
+            combined_data.loc[index, 'vp_y'] = data_v.loc[index, 'v_t']
+            combined_data.loc[index, 'vp_z'] = data_v.loc[index, 'v_n']
             combined_data.loc[index, 'n_p'] = data_v.loc[index, 'n_p']
             combined_data.loc[index, 'Tp_par'] = data_v.loc[index, 'T_p_large']
             combined_data.loc[index, 'Tp_perp'] = data_v.loc[index, 'T_p_small']
             combined_data.loc[index, 'r_sun'] = data_v.loc[index, 'r']
-            combined_data.loc[index, 'B_r'] = np.mean(data_b.loc[index-timedelta(minutes=interval):index+timedelta(minutes=interval), 'Bx'])
-            combined_data.loc[index, 'B_t'] = np.mean(data_b.loc[index-timedelta(minutes=interval):index+timedelta(minutes=interval), 'By'])
-            combined_data.loc[index, 'B_n'] = np.mean(data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'Bz'])
+            combined_data.loc[index, 'Bx'] = np.mean(data_b.loc[index-timedelta(minutes=interval):index+timedelta(minutes=interval), 'Bx'])
+            combined_data.loc[index, 'By'] = np.mean(data_b.loc[index-timedelta(minutes=interval):index+timedelta(minutes=interval), 'By'])
+            combined_data.loc[index, 'Bz'] = np.mean(data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'Bz'])
 
             iteration += 1
         self.data = combined_data
