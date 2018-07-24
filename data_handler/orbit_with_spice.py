@@ -8,7 +8,6 @@ from astropy.visualization import quantity_support
 from typing import List
 
 
-# load the kernel
 def kernel_loader(spacecraft: int = 2) -> spice.Trajectory:
     """
     :param spacecraft: 1 or 2 for Helios 1  or 2
@@ -84,7 +83,8 @@ def plot_orbit(orbiter: spice.Trajectory, spacecraft: int = 2):
     ax = fig.gca()
     ax.add_artist(circle)
     # for 3d:
-    # ax = fig.add_subplot(111, projection='3d')
+    # fig3d = plt.figure()
+    # ax = fig3d.add_subplot(111, projection='3d')
     # ax.scatter(orbiter.x, orbiter.y, orbiter.z, **kwargs)
     # ax.set_xlim(-1, 1)
     # ax.set_ylim(-1, 1)
@@ -111,12 +111,14 @@ def plot_period(orbiter, spacecraft: int = 2):
 
 if __name__ == '__main__':
     probe = 1
+    # probe = 'ulysses'
     orbiter = kernel_loader(probe)
+    # times = orbit_times_generator(start_date='20/10/1990', end_date='30/06/2009')
     times = orbit_times_generator()
     orbit_generator(orbiter, times)
     radius = np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2)
     # print(orbiter.times)
-    print('the aphelion is ', np.min(radius), ' at ', orbiter.times[np.argmin(radius)])
-    print('the perihelion is ', np.max(radius), ' at ', orbiter.times[np.argmax(radius)])
-    # plot_orbit(orbiter)
-    plot_period(orbiter, spacecraft=probe)
+    print('the perihelion is ', np.min(radius), ' at ', orbiter.times[np.argmin(radius)])
+    print('the aphelion is ', np.max(radius), ' at ', orbiter.times[np.argmax(radius)])
+    plot_orbit(orbiter)
+    # plot_period(orbiter, spacecraft=probe)

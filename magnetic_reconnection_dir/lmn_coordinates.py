@@ -34,7 +34,8 @@ def get_b(imported_data: ImportedData) -> List[np.ndarray]:
     return B
 
 
-def get_side_data(imported_data: ImportedData, event_date: datetime):
+def get_side_data(imported_data: ImportedData, event_date: datetime, outside_interval: int = 10,
+                  inside_interval: int = 2):
     """
     Returns B around the reconnection event
     :param imported_data: ImportedData
@@ -45,8 +46,10 @@ def get_side_data(imported_data: ImportedData, event_date: datetime):
     # we take the average in that stability region, without the reconnection event (few minutes on each side)
     # hard to determine computationally, so use 10-2 intervals
 
-    data_1 = imported_data.data[event_date - timedelta(minutes=10):event_date - timedelta(minutes=2)]
-    data_2 = imported_data.data[event_date + timedelta(minutes=2):event_date + timedelta(minutes=10)]
+    data_1 = imported_data.data[
+             event_date - timedelta(minutes=outside_interval):event_date - timedelta(minutes=inside_interval)]
+    data_2 = imported_data.data[
+             event_date + timedelta(minutes=inside_interval):event_date + timedelta(minutes=outside_interval)]
 
     b_x_1, b_y_1, b_z_1 = np.mean(data_1['Bx'].values), np.mean(data_1['By'].values), np.mean(data_1['Bz'].values)
     b_x_2, b_y_2, b_z_2 = np.mean(data_2['Bx'].values), np.mean(data_2['By'].values), np.mean(data_2['Bz'].values)
@@ -108,7 +111,7 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray):  # hybrid mva necess
     return L, M, N
 
 
-def hybrid_mva(event_date, probe):
+def hybrid_mva(event_date, probe, outside_interval: int = 10, inside_interval: int = 2):
     duration = 4
     start_time = event_date - timedelta(hours=duration / 2)
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
@@ -117,9 +120,12 @@ def hybrid_mva(event_date, probe):
     B = get_b(imported_data)
     L, M, N = mva(B)
     B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                               event_date)
+                                                                                               event_date,
+                                                                                               outside_interval,
+                                                                                               inside_interval)
     L, M, N = hybrid(L, B1, B2)
     return L, M, N
+
 
 def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarray, L: np.ndarray, M: np.ndarray,
                    N: np.ndarray):
@@ -328,7 +334,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
         try:
             start_time = event_date - timedelta(hours=duration / 2)
             imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                         duration=duration, probe=probe)
+                                       duration=duration, probe=probe)
             imported_data.data.dropna(inplace=True)
             B = get_b(imported_data)
             L, M, N = mva(B)

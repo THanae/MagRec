@@ -211,7 +211,7 @@ def get_events_dates(file_name: str):
     return event_dates
 
 
-def get_month_dict(days_of_year: list, year: int) ->dict:
+def get_month_dict(days_of_year: list, year: int) -> dict:
     days_per_month = {'january': 0, 'february': 0, 'march': 0, 'april': 0, 'may': 0, 'june': 0, 'july': 0, 'august': 0,
                       'september': 0, 'october': 0, 'november': 0, 'december': 0}
     months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
@@ -244,7 +244,7 @@ def filecount(probe: int, year: int = 0):
     return file_number, days_of_year
 
 
-def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, probe: int = 2) ->list:
+def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, probe: int = 2) -> list:
     """
     Finds the position of events compared to the sun duing a given year (and given month)
     :param events_list: list of events to be analysed
@@ -259,11 +259,46 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
             if month == 0 or event.month == month:
                 start_time = event
                 imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                             duration=1, probe=probe)
+                                           duration=1, probe=probe)
                 radius = imported_data.data['r_sun'].loc[event]
                 time_radius.append([event, radius])
     print(time_radius)
     return time_radius
+
+
+def analyse_all_probes(mode='radius'):
+    file1 = 'helios1_magrec.csv'
+    events1 = get_events_dates(file1)
+    file2 = 'helios2_magrec.csv'
+    events2 = get_events_dates(file2)
+
+    if mode == 'radius':
+        dis1 = distances_stats(events1, probe=1)
+        dis2 = distances_stats(events2, probe=2)
+        for key in dis1.keys():
+            if key in dis2.keys():
+                dis1[key] = int(dis1[key]) + int(dis2[key])
+        print(dis1)
+        time_analysed1 = time_spent_at_distances(probe=1, start_date='15/12/1974', end_date='15/08/1984')
+        time_analysed2 = time_spent_at_distances(probe=2, start_date='17/01/1976', end_date='17/01/1979')
+        for key in time_analysed1.keys():
+            if key in time_analysed2.keys():
+                time_analysed1[key] = float(time_analysed1[key]) + float(time_analysed2[key])
+        for key in time_analysed1.keys():
+            if key != 'total time':
+                time_analysed1[key] = time_analysed1[key]*time_analysed1['total time']
+        print(time_analysed1)
+        plot_trend(dis1)
+        plot_trend(time_analysed1)
+    elif mode == 'time':
+        # not very sensible to use it as Helios 2 was functionning only part of the time when Helios 1 was functioning
+        time1 = time_stats(events1)
+        time2 = time_stats(events2)
+        for key in time1.keys():
+            if key in time2.keys():
+                time1[key] = int(time1[key]) + int(time2[key])
+        print(time1)
+        plot_trend(time1)
 
 
 def plot_trend(stat: dict, mode='yearly'):
@@ -301,19 +336,26 @@ if __name__ == '__main__':
     # '1983': 0.915068493150685, '1984': 0.8301369863013699}
     # maybe could combine data from the two probes in order to have more data...
     # but then if one is skewed the other one is skewed too
-    probe = 1
-    day_accuracy = 0.5
-    analysis_start_date = '15/12/1974'
-    # analysis_start_date = '17/01/1976'
-    analysis_end_date = '15/08/1984'
-    # analysis_end_date = '17/01/1979'
-    file = 'helios1_magrec.csv'
+
     mode = 'yearly'
-    # file = 'helios2_magrec.csv'
-    events = get_events_dates(file)
+    day_accuracy = 0.5
+    #
+    # probe = 1
+    # file = 'helios1_magrec.csv'
+    # analysis_start_date = '15/12/1974'
+    # analysis_end_date = '15/08/1984'
+    # events1 = get_events_dates(file)
+    # dis1 = distances_stats(events1, probe=probe)
+
+    probe = 2
+    file = 'helios2_magrec.csv'
+    analysis_start_date = '17/01/1976'
+    analysis_end_date = '17/01/1979'
+    events2 = get_events_dates(file)
+    # dis2 = distances_stats(events2, probe=probe)
+
+    analyse_all_probes(mode='radius')
+
     # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
     # print(st.pop('total time', None))
     # plot_trend(st, mode)
-    # time_spent_at_date(probe, start_date=analysis_start_date, end_date=analysis_end_date, mode=mode)
-    analyse_by_radii(events, probe, analysis_start_date, analysis_end_date)
-    analyse_dates(events, probe, analysis_start_date, analysis_end_date, mode='monthly')

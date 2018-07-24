@@ -229,10 +229,10 @@ if __name__ == '__main__':
     # get_possible_reconnections(probe=helios, parameters=parameters, start_time=start_date, end_time=end_date,
     #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
 
-    get_possible_reconnections(probe=helios, parameters=parameters, start_time='17/12/1974', end_time='21/01/1975',
-                               radius=1)
+    # get_possible_reconnections(probe=helios, parameters=parameters, start_time='17/12/1974', end_time='21/01/1975',
+    #                            radius=1)
 
-    # get_possible_reconnections(probe='ulysses', parameters=parameters, start_time='01/01/2001', end_time='21/01/2001', radius=10)
+    get_possible_reconnections(probe='ulysses', parameters=parameters, start_time='01/01/2001', end_time='01/01/2002', radius=10)
 
     # for no temperature and density check
     # [0.5643202107628984, [2.4641859422774792, 2.7660314936753307, 7.2469545891470277]]
