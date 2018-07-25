@@ -222,58 +222,92 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
 
     imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=1, probe=probe)
     imported_data.create_processed_column('vp_magnitude')
-    v = np.mean(imported_data.data.loc[start : start+ timedelta(seconds=t), 'vp_magnitude'])
-    d = t * v / scale
-    print('distance', d)
+    v = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_magnitude'])
+    distance = t * v / scale
+    print('distance', distance)
 
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d')
     normal_1 = first[2]
     normal_2 = end[2]
-
-    xx, yy = np.meshgrid(np.arange(0, 5 * d, np.int((5 * d) / 50)) - 4 * d / 2,
-                         np.arange(0, 5 * d, np.int((5 * d) / 50)) - 4 * d / 2)
+    d = find_d_from_distance(distance, normal_2)
+    # xx, yy = np.meshgrid(np.arange(0, 5 * distance, np.int((5 * distance) / 50)) - 4 * distance / 2,
+    #                      np.arange(0, 5 * distance, np.int((5 * distance) / 50)) - 4 * distance / 2)
+    xx, yy = np.meshgrid(np.arange(0, 3 * distance, np.int((2 * distance) / 5)) - 1.5*distance,
+                         np.arange(0, 3 * distance, np.int((2 * distance) / 5)) - 1.5*distance)
     z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
     z2 = (-normal_2[0] * xx - normal_2[1] * yy - d) * 1. / normal_2[2]
 
-    vec1, vec2 = list(zip(*(xx.flat, yy.flat, z1.flat))), list(zip(*(xx.flat, yy.flat, z2.flat)))
-    starting_position = get_starting_position(vec1, vec2, d, future)
-
-    if starting_position != [0, 0, 0]:
-        print(starting_position)
-        xx, yy = np.meshgrid(
-            np.arange(int(starting_position[0]), int(starting_position[0]) + 2 * d, np.int(d / 5)) - d / 4,
-            np.arange(int(starting_position[1]), int(starting_position[1]) + 2 * d, np.int(d / 5)) - d / 4)
-        z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
-        z2 = (-normal_2[0] * xx - normal_2[1] * yy - d) * 1. / normal_2[2]
+    # vec1, vec2 = list(zip(*(xx.flat, yy.flat, z1.flat))), list(zip(*(xx.flat, yy.flat, z2.flat)))
+    # starting_position = get_starting_position(vec1, vec2, distance, future)
+    starting_position = [0, 0, 0]
+    # if starting_position != [0, 0, 0]:
+    #     print(starting_position)
+    #     xx, yy = np.meshgrid(
+    #         np.arange(int(starting_position[0]), int(starting_position[0]) + 2 * distance, np.int(distanced / 5)) - distance / 4,
+    #         np.arange(int(starting_position[1]), int(starting_position[1]) + 2 * distance, np.int(distance / 5)) - distance / 4)
+    #     z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
+    #     z2 = (-normal_2[0] * xx - normal_2[1] * yy - distance) * 1. / normal_2[2]
 
     ax.plot_surface(xx, yy, z1, alpha=0.2, color='b')
     ax.plot_surface(xx, yy, z2, alpha=0.5, color='m')
 
     trajectory = [np.array(starting_position) * scale]
     pos_x, pos_y, pos_z = starting_position[0] * scale, starting_position[1] * scale, starting_position[2] * scale
-    v_x = np.mean(imported_data.data['vp_x'])
-    v_y = np.mean(imported_data.data['vp_y'])
-    v_z = np.mean(imported_data.data['vp_z'])
-    for loop in range(15):
+
+    for loop in range(9):
+        time_split = t / 10
+        default_vx = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_x'])
+        default_vy = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_y'])
+        default_vz = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_z'])
+        v_x = np.mean(imported_data.data.loc[start: start + timedelta(seconds=time_split), 'vp_x'])
+        v_y = np.mean(imported_data.data.loc[start: start + timedelta(seconds=time_split), 'vp_y'])
+        v_z = np.mean(imported_data.data.loc[start: start + timedelta(seconds=time_split), 'vp_z'])
+        if np.isnan(v_x):
+            v_x = default_vx
+        if np.isnan(v_y):
+            v_y = default_vy
+        if np.isnan(v_z):
+            v_z = default_vz
         if future:
-            pos_x += (t / 10) * v_x
-            pos_y += (t / 10) * v_y
-            pos_z += (t / 10) * v_z
+            pos_x += time_split * v_x
+            pos_y += time_split * v_y
+            pos_z += time_split * v_z
         else:
-            pos_x -= (t / 10) * v_x
-            pos_y -= (t / 10) * v_y
-            pos_z -= (t / 10) * v_z
+            pos_x -= time_split * v_x
+            pos_y -= time_split * v_y
+            pos_z -= time_split * v_z
         trajectory.append(np.array([pos_x, pos_y, pos_z]))
+        start = start + timedelta(seconds=time_split)
     x = [pos[0] / scale for pos in trajectory]
     y = [pos[1] / scale for pos in trajectory]
     z = [pos[2] / scale for pos in trajectory]
     ax.scatter(x, y, z)
     ax.scatter(x[0], y[0], z[0], color='k')
-
+    distance_plane_to_point = (normal_2[0] * x[-1] + normal_2[1] * y[-1] + normal_2[2] * z[-1] + d) / np.sqrt(
+        normal_2[0] ** 2 + normal_2[1] ** 2 + normal_2[2] ** 2)
+    print(distance_plane_to_point)
     b_and_v_plotting(ax, imported_data, event_date, weird_date, starting_position, scale, future)
 
     plt.show()
+
+
+def find_d_from_distance(distance, normal2):
+    """
+    Finds the d component of the ax+by+cz=d of a given plane when the first plane passes though origin
+    Spacecraft passes though origin as well and moves nearly only in x direction
+    :param distance: distance that the spacecraft travels before encountering plane 2
+    :param normal2: normal of plane 2
+    :return:
+    """
+    # point = [0,0,0]
+    # distance is mostly in x, so assume y and z will not change (not enough to be notices, basically
+    # means [distance, 0, 0] belong to plane 2, equation ax+by+cz+d==0
+    # hence can find d
+    d = - normal2[0] * distance
+
+    # d = distance * np.sqrt(normal2[0] ** 2 + normal2[1] ** 2 + normal2[2] ** 2)  # times stuff cancelled out by 0
+    return d
 
 
 def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_time: datetime,
@@ -297,7 +331,7 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
         start_time, end_time = event_time, weird_time
     t = (end_time - start_time).total_seconds()
     pos_x, pos_y, pos_z = starting_position[0] * scale, starting_position[1] * scale, starting_position[2] * scale
-    for loop in range(7):
+    for loop in range(10):
         b = np.array([np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'Bx']),
                       np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'By']),
                       np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'Bz'])])
@@ -331,11 +365,9 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
             v[n] = np.mean([v[n - 1], v[n + 1]])
         if np.isnan(w[n]) and n != 0 and n != len(u) - 1:
             w[n] = np.mean([w[n - 1], w[n + 1]])
-    print(u, v, w)
     vec_length = 4 * (x[1] - x[0])
-    print(vec_length)
-    ax.quiver(x, y, z, u, v, w, color='g', length=vec_length, normalize=True)
-    ax.quiver(x, y, z, a, b, c, color='k', length=0.5 * vec_length, normalize=True)
+    ax.quiver(x, y, z, u, v, w, color='g', length=1.5*vec_length, normalize=True)
+    ax.quiver(x, y, z, a, b, c, color='k', length=0.5*vec_length, normalize=True)
 
 
 def compare_magnitude(event_date: datetime, weird_date: datetime, probe: int):
