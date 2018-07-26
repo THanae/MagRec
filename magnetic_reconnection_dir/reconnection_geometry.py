@@ -1,4 +1,5 @@
 import csv
+import pprint
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
@@ -111,6 +112,10 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
     x, y, z = np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])
 
     ax = fig_name.add_subplot(221, projection='3d', aspect='equal')
+    ax.set_xlabel('$X$', rotation=150)
+    ax.set_ylabel('$Y$')
+    ax.set_zlabel('$Z$', rotation=60)
+
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
@@ -161,41 +166,6 @@ def plot_vectors_2d_3d(event: List[np.ndarray], weird: List[np.ndarray]):
     plt.show()
 
 
-def get_starting_position(vec1: List[Tuple], vec2: List[Tuple], d: float, future: bool = True):
-    """
-    Finds the best starting position for the spacecraft (returns the origin if none is found)
-    :param vec1: all points of plane 1
-    :param vec2: all points of plane 2
-    :param d: distance between the planes
-    :param future: true if the weird event is after the reconnection event, false otherwise
-    :return:
-    """
-    plane1_pos = []
-    for m in tqdm(range(len(vec1))):
-        x = vec1[m][0]
-        y = vec1[m][1]
-        z = vec1[m][2]
-        if future:
-            wanted_x = x - d
-        else:
-            wanted_x = x + d
-        for n in range(len(vec2)):
-            if 0.9 * np.abs(vec2[n][0]) < np.abs(wanted_x) < 1.1 * np.abs(vec2[n][0]) and np.sign(wanted_x) == np.sign(
-                    vec2[n][0]):
-                if 0.8 * np.abs(vec2[n][1]) < y < 1.2 * np.abs(vec2[n][1]) and np.sign(y) == np.sign(vec2[n][1]):
-                    # print(z, vec2[n][2])
-                    if 0.7 * np.abs(vec2[n][2]) < z < 1.3 * np.abs(vec2[n][2]) and (
-                            np.sign(z) == np.sign(vec2[n][2])):
-                        print('z found for wanted x', wanted_x)
-                        plane1_pos.append([x, y, z, vec2[n][2]])
-    if plane1_pos:
-        z_pos = [np.abs(pos[2] - pos[3]) for pos in plane1_pos]
-        arg_pos = np.argmin(z_pos)
-        return [plane1_pos[arg_pos][0], plane1_pos[arg_pos][1], plane1_pos[arg_pos][2]]
-    else:
-        return [0, 0, 0]
-
-
 def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_date: datetime, weird_date: datetime,
                        probe: int):
     """
@@ -207,8 +177,6 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
     :param probe: 1 or 2 for Helios 1 or 2
     :return:
     """
-    scale = 1  # scaling factor
-    t = np.abs((weird_date - event_date).total_seconds())
     if weird_date < event_date:
         start = weird_date
         first, end = weird, event
@@ -220,42 +188,54 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
         print('EVENT IN BLUE, WEIRD IN MAGENTA')
         future = True
 
-    imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=1, probe=probe)
+    imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour-1, duration=3, probe=probe)
     imported_data.create_processed_column('vp_magnitude')
+    t = np.abs((weird_date - event_date).total_seconds())
     v = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_magnitude'])
-    distance = t * v / scale
+    distance = t * v
     print('distance', distance)
 
     fig = plt.figure(1)
-    ax = fig.add_subplot(111, projection='3d')
-    normal_1 = first[2]
-    normal_2 = end[2]
+    ax = fig.add_subplot(111, projection='3d', aspect='equal')
+    ax.set_xlabel('$X$', rotation=150)
+    ax.set_ylabel('$Y$')
+    ax.set_zlabel('$Z$', rotation=60)
+    normal_1, normal_2 = first[2], end[2]
     d = find_d_from_distance(distance, normal_2)
-    # xx, yy = np.meshgrid(np.arange(0, 5 * distance, np.int((5 * distance) / 50)) - 4 * distance / 2,
-    #                      np.arange(0, 5 * distance, np.int((5 * distance) / 50)) - 4 * distance / 2)
-    xx, yy = np.meshgrid(np.arange(0, 3 * distance, np.int((2 * distance) / 5)) - 1.5*distance,
-                         np.arange(0, 3 * distance, np.int((2 * distance) / 5)) - 1.5*distance)
-    z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
-    z2 = (-normal_2[0] * xx - normal_2[1] * yy - d) * 1. / normal_2[2]
 
-    # vec1, vec2 = list(zip(*(xx.flat, yy.flat, z1.flat))), list(zip(*(xx.flat, yy.flat, z2.flat)))
-    # starting_position = get_starting_position(vec1, vec2, distance, future)
-    starting_position = [0, 0, 0]
-    # if starting_position != [0, 0, 0]:
-    #     print(starting_position)
-    #     xx, yy = np.meshgrid(
-    #         np.arange(int(starting_position[0]), int(starting_position[0]) + 2 * distance, np.int(distanced / 5)) - distance / 4,
-    #         np.arange(int(starting_position[1]), int(starting_position[1]) + 2 * distance, np.int(distance / 5)) - distance / 4)
-    #     z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
-    #     z2 = (-normal_2[0] * xx - normal_2[1] * yy - distance) * 1. / normal_2[2]
+    xx, yy = np.meshgrid(np.arange(0, 3 * distance, np.int(distance)) - 1.5 * distance,
+                         np.arange(0, 3 * distance, np.int(distance)) - 1.5 * distance)
+    z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
+    if future:
+        z2 = (-normal_2[0] * xx - normal_2[1] * yy - d) * 1. / normal_2[2]
+    else:
+        z2 = (-normal_2[0] * xx - normal_2[1] * yy + d) * 1. / normal_2[2]
 
     ax.plot_surface(xx, yy, z1, alpha=0.2, color='b')
     ax.plot_surface(xx, yy, z2, alpha=0.5, color='m')
 
-    trajectory = [np.array(starting_position) * scale]
-    pos_x, pos_y, pos_z = starting_position[0] * scale, starting_position[1] * scale, starting_position[2] * scale
+    starting_position = [0, 0, 0]
+    trajectory = find_spacecraft_trajectory(imported_data, t, start, starting_position, future)
+    x = [pos[0] for pos in trajectory]
+    y = [pos[1] for pos in trajectory]
+    z = [pos[2] for pos in trajectory]
+    ax.scatter(x, y, z)
+    ax.scatter(x[0], y[0], z[0], color='k')
+    ax.scatter(x[9], y[9], z[9], color='k')
+    distance_plane_to_point = (normal_2[0] * x[-1] + normal_2[1] * y[-1] + normal_2[2] * z[-1] + d) / np.sqrt(
+        normal_2[0] ** 2 + normal_2[1] ** 2 + normal_2[2] ** 2)
+    print('distance from 2: ', distance_plane_to_point)
+    b_and_v_plotting(ax, imported_data, event_date, weird_date, starting_position, future)
 
-    for loop in range(9):
+    plt.show()
+
+
+def find_spacecraft_trajectory(imported_data: HeliosData, t: float, start: datetime, starting_position: List[float],
+                               future: bool):
+    trajectory = [np.array(starting_position)]
+    pos_x, pos_y, pos_z = starting_position[0], starting_position[1], starting_position[2]
+
+    for loop in range(15):
         time_split = t / 10
         default_vx = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_x'])
         default_vy = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_y'])
@@ -279,17 +259,7 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
             pos_z -= time_split * v_z
         trajectory.append(np.array([pos_x, pos_y, pos_z]))
         start = start + timedelta(seconds=time_split)
-    x = [pos[0] / scale for pos in trajectory]
-    y = [pos[1] / scale for pos in trajectory]
-    z = [pos[2] / scale for pos in trajectory]
-    ax.scatter(x, y, z)
-    ax.scatter(x[0], y[0], z[0], color='k')
-    distance_plane_to_point = (normal_2[0] * x[-1] + normal_2[1] * y[-1] + normal_2[2] * z[-1] + d) / np.sqrt(
-        normal_2[0] ** 2 + normal_2[1] ** 2 + normal_2[2] ** 2)
-    print(distance_plane_to_point)
-    b_and_v_plotting(ax, imported_data, event_date, weird_date, starting_position, scale, future)
-
-    plt.show()
+    return trajectory
 
 
 def find_d_from_distance(distance, normal2):
@@ -300,18 +270,14 @@ def find_d_from_distance(distance, normal2):
     :param normal2: normal of plane 2
     :return:
     """
-    # point = [0,0,0]
-    # distance is mostly in x, so assume y and z will not change (not enough to be notices, basically
-    # means [distance, 0, 0] belong to plane 2, equation ax+by+cz+d==0
-    # hence can find d
+    # point = [0,0,0] belongs to plane 1, so [distance, 0, 0] belong to plane 2, equation ax+by+cz+d==0
+    # distance is mostly in x, so we assume y and z will not noticeably change
     d = - normal2[0] * distance
-
-    # d = distance * np.sqrt(normal2[0] ** 2 + normal2[1] ** 2 + normal2[2] ** 2)  # times stuff cancelled out by 0
     return d
 
 
 def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_time: datetime,
-                     starting_position: list, scale: int, future: bool):
+                     starting_position: list, future: bool):
     """
     Plots the b and v fields on the current sheet plot
     :param ax: ax of the figure on which the vectors are going to be plotted
@@ -319,8 +285,7 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     :param event_time: time of event
     :param weird_time: time of other event
     :param starting_position: position where the spacecraft starts
-    :param scale: scaling factor used
-    :param future: false if event is before weird, true otherwise
+    :param future: false if weird is before event, true otherwise
     :return:
     """
     mag_field, v_field = [], []
@@ -330,44 +295,62 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     else:
         start_time, end_time = event_time, weird_time
     t = (end_time - start_time).total_seconds()
-    pos_x, pos_y, pos_z = starting_position[0] * scale, starting_position[1] * scale, starting_position[2] * scale
-    for loop in range(10):
-        b = np.array([np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'Bx']),
-                      np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'By']),
-                      np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'Bz'])])
-        _v = np.array([-np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'vp_x']),
-                       -np.mean((imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'vp_y'])),
-                       -np.mean(imported_data.data.loc[start_time:start_time + timedelta(seconds=t / 5), 'vp_z'])])
-        if future:
-            pos_x -= (t / 5) * _v[0]
-            pos_y -= (t / 5) * _v[1]
-            pos_z -= (t / 5) * _v[2]
-        else:
-            pos_x += (t / 5) * _v[0]
-            pos_y += (t / 5) * _v[1]
-            pos_z += (t / 5) * _v[2]
+    if event_time < weird_time:
+        vel = np.array([-np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_x']),
+                       -np.mean((imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_y'])),
+                       -np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_z'])])
+    else:
+        vel = np.array([np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_x']),
+                        np.mean((imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_y'])),
+                        np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_z'])])
 
-        mag_field.append(b)
-        v_field.append(_v)
+    # pos_x, pos_y, pos_z = starting_position[0], starting_position[1], starting_position[2]
+    pos_x, pos_y, pos_z = starting_position[0]+vel[0]*t, starting_position[1]+vel[1]*t, starting_position[2]+vel[2]*t
+    time_split = t / 10
+    start = start_time - timedelta(seconds=t)
+    for loop in range(30):
+        default_vx = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_x'])
+        default_vy = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_y'])
+        default_vz = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_z'])
+
         x.append(pos_x)
         y.append(pos_y)
         z.append(pos_z)
+        b = np.array([np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Bx']),
+                      np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'By']),
+                      np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Bz'])])
+        _v = np.array([-np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_x']),
+                       -np.mean((imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_y'])),
+                       -np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_z'])])
+        if np.isnan(_v[0]) or np.isnan(_v[1]) or np.isnan(_v[2]):
+            _v = np.array([-default_vx, -default_vy, -default_vz])
+        t1 = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Tp_par'])
+        t2 = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Tp_perp'])
+        n = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'n_p'])
+        if future:
+            pos_x -= time_split * _v[0]
+            pos_y -= time_split * _v[1]
+            pos_z -= time_split * _v[2]
+        else:
+            pos_x += time_split * _v[0]
+            pos_y += time_split * _v[1]
+            pos_z += time_split * _v[2]
 
-        start_time += timedelta(seconds=t / 5)
+        mag_field.append(b)
+        v_field.append(_v)
+        start += timedelta(seconds=time_split)
+        print(start, np.sqrt(b[0]**2 + b[1]**2 + b[2]**2), np.sqrt(_v[0]**2 + _v[1]**2 + _v[2]**2), t1, t2, n)
 
     u, v, w = [b[0] for b in mag_field], [b[1] for b in mag_field], [b[2] for b in mag_field]
     a, b, c = [_v[0] for _v in v_field], [_v[1] for _v in v_field], [_v[2] for _v in v_field]
-
     for n in range(len(u)):
-        if np.isnan(u[n]) and n != 0 and n != len(u) - 1:
+        if (np.isnan(u[n]) or np.isnan(v[n]) or np.isnan(w[n]))and n != 0 and n != len(u) - 1:
             u[n] = np.mean([u[n - 1], u[n + 1]])
-        if np.isnan(v[n]) and n != 0 and n != len(u) - 1:
             v[n] = np.mean([v[n - 1], v[n + 1]])
-        if np.isnan(w[n]) and n != 0 and n != len(u) - 1:
             w[n] = np.mean([w[n - 1], w[n + 1]])
     vec_length = 4 * (x[1] - x[0])
-    ax.quiver(x, y, z, u, v, w, color='g', length=1.5*vec_length, normalize=True)
-    ax.quiver(x, y, z, a, b, c, color='k', length=0.5*vec_length, normalize=True)
+    ax.quiver(x, y, z, u, v, w, color='g', length=1.5 * vec_length, normalize=True)
+    ax.quiver(x, y, z, a, b, c, color='k', length=0.5 * vec_length, normalize=True)
 
 
 def compare_magnitude(event_date: datetime, weird_date: datetime, probe: int):
@@ -413,58 +396,41 @@ def compare_magnitude(event_date: datetime, weird_date: datetime, probe: int):
     plt.show()
 
 
-def find_shared_points(vec1, vec2, minimum_fraction=0.86, maximum_fraction=1.14):
-    """
-    Finds the intersection between two planes
-    :param vec1: points on plane 1
-    :param vec2: points on plane 2
-    :param minimum_fraction: minimum fraction of ideal which will be considered as okay
-    :param maximum_fraction: maximum fraction of ideal which will be considered as okay
-    :return:
-    """
-    line = []
-    for x, y, z in vec1:
-        for n in tqdm(range(len(vec2))):
-            if minimum_fraction * np.abs(vec2[n][0]) < np.abs(x) < maximum_fraction * np.abs(vec2[n][0]) and np.sign(
-                    x) == np.sign(vec2[n][0]):
-                if minimum_fraction * np.abs(vec2[n][1]) < np.abs(y) < maximum_fraction * np.abs(
-                        vec2[n][1]) and np.sign(y) == np.sign(vec2[n][0]):
-                    if minimum_fraction * np.abs(vec2[n][2]) < np.abs(z) < maximum_fraction * np.abs(
-                            vec2[n][2]) and np.sign(z) == np.sign(vec2[n][2]):
-                        print(x, y, z)
-                        print(vec2[n][0], vec2[n][1], vec2[n][2])
-                        line.append([np.mean([x, vec2[n][0]]), np.mean([y, vec2[n][1]]), np.mean([z, vec2[n][2]])])
-                        print('finding points')
-    _line = []
-    for loop in range(2):
-        for n in range(len(line)):
-            _line.append(line[n])
-            if n != 0:
-                line.append([np.mean([line[n - 1][0], line[n][0]]), np.mean([line[n - 1][1], line[n][1]]),
-                             np.mean([line[n - 1][2], line[n][2]])])
-        line = _line
-    return [l[0] for l in line], [l[1] for l in line], [l[2] for l in line]
-
-
 if __name__ == '__main__':
     # ev_date = datetime(1978, 4, 22, 10, 31)
     # w_date = datetime(1978, 4, 22, 10, 10)
     # probe = 2
 
+    # analyse later
     # ev_date = datetime(1976, 1, 30, 6, 26)
     # w_date = datetime(1976, 1, 30, 6, 40)
     # probe = 2
 
+    # analyse later
     # ev_date = datetime(1974, 12, 15, 8, 32)
     # w_date = datetime(1974, 12, 15, 8, 37)
     # probe = 1
 
+    # maybe not enough dta for this one
     # ev_date = datetime(1975, 10, 31, 14, 42)
     # w_date = datetime(1975, 10, 31, 14, 44)
     # probe = 1
 
-    ev_date = datetime(1977, 12, 4, 7, 13)
-    w_date = datetime(1977, 12, 4, 7, 20)
+    # something weird happening
+    # ev_date = datetime(1977, 12, 4, 7, 13)
+    # w_date = datetime(1977, 12, 4, 7, 20)
+    # probe = 2
+
+    # maybe three times crossing the same sheet?
+    # ev_date = datetime(1976, 12, 1, 6, 12)
+    # w_date = datetime(1976, 12, 1, 5, 48)
+    # probe = 1
+    # ev_date = datetime(1976, 12, 1, 6, 12)
+    # w_date = datetime(1976, 12, 1, 6, 23)
+    # probe = 1
+
+    ev_date = datetime(1976, 12, 6, 6, 3)
+    w_date = datetime(1976, 12, 6, 6, 37)
     probe = 2
 
     a, b = compare_lmn(ev_date, w_date, probe, 5, 1)
@@ -473,7 +439,7 @@ if __name__ == '__main__':
     # rotation = get_rotation_matrix(a, b)
     # print(rotation)
     # rotation_matrix_to_euler(rotation)
-    # plot_vectors_2d_3d(a, b)
+    plot_vectors_2d_3d(a, b)
 
     plot_current_sheet(a, b, ev_date, w_date, probe)
     # compare_magnitude(ev_date, w_date, probe)
