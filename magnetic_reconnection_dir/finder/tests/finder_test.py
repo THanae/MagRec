@@ -74,30 +74,30 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
     probe = imported_data.probe
     reconnections = []
     for n in range(np.int(duration / interval)):
-        # try:
-        # data: ImportedData
-        if probe == 1 or probe == 2:
-            data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
-                              probe=probe)
-        elif probe == 'ulysses':
-            data = UlyssesData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval)
-        else:
-            raise NotImplementedError('The import of data has not been implemented for this probe')
-        # print(parameters)
-        reconnection = finder.find_magnetic_reconnections(data, *parameters)
-        if reconnection:
-            for event in reconnection:
-                radius = data.data['r_sun'].loc[event]
-                reconnections.append([event, radius])
+        try:
+            # data: ImportedData
+            if probe == 1 or probe == 2:
+                data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
+                                  probe=probe)
+            elif probe == 'ulysses':
+                data = UlyssesData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval)
+            else:
+                raise NotImplementedError('The import of data has not been implemented for this probe')
+            # print(parameters)
+            reconnection = finder.find_magnetic_reconnections(data, *parameters)
+            if reconnection:
+                for event in reconnection:
+                    radius = data.data['r_sun'].loc[event]
+                    reconnections.append([event, radius])
 
-        if reconnection and plot_reconnections:
-            plot_imported_data(data,
-                               DEFAULT_PLOTTED_COLUMNS + [
-                                   ('correlation_sum', 'correlation_sum_outliers'),
-                                   ('correlation_diff', 'correlation_diff_outliers')]
-                               )
-        # except Exception:
-        #     print('Exception in test_finder_with_unknown_events')
+            if reconnection and plot_reconnections:
+                plot_imported_data(data,
+                                   DEFAULT_PLOTTED_COLUMNS + [
+                                       ('correlation_sum', 'correlation_sum_outliers'),
+                                       ('correlation_diff', 'correlation_diff_outliers')]
+                                   )
+        except Exception:
+            print('Exception in test_finder_with_unknown_events')
         start = start + timedelta(hours=interval)
 
     return reconnections
@@ -208,7 +208,9 @@ def get_possible_reconnections(probe: int, parameters: dict, start_time: str = '
     print(start_time, end_time, 'reconnection number: ', str(len(all_reconnections)))
     print(all_reconnections)
     if to_csv:
-        send_reconnections_to_csv(all_reconnections, 'reconnections_helios_' + str(probe) + '_no_nt_29_25_7.csv')
+        send_reconnections_to_csv(all_reconnections, 'reconnections_helios_' + str(probe) + '_no_nt_27_19_5.csv')
+
+    return all_reconnections
 
 
 if __name__ == '__main__':
@@ -217,7 +219,9 @@ if __name__ == '__main__':
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
 
     helios = 1
-    parameters = {'sigma_sum': 2.9, 'sigma_diff': 2.5, 'minutes_b': 7}
+    # helios = 2
+    parameters = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
+    parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 35}
     # start_date = '17/12/1974'
     # end_date = '21/12/1975'
     # start_date = '17/01/1976'
@@ -229,10 +233,11 @@ if __name__ == '__main__':
     # get_possible_reconnections(probe=helios, parameters=parameters, start_time=start_date, end_time=end_date,
     #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
 
-    # get_possible_reconnections(probe=helios, parameters=parameters, start_time='17/12/1974', end_time='21/01/1975',
-    #                            radius=1)
+    # get_possible_reconnections(probe=helios, parameters=parameters, start_time=start_date, end_time=end_date,
+    #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
 
-    get_possible_reconnections(probe='ulysses', parameters=parameters, start_time='01/01/2001', end_time='01/01/2002', radius=10)
+    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='20/10/1990', end_time='01/06/2009',
+                               radius=10, to_csv=True, data_split='yearly')
 
     # for no temperature and density check
     # [0.5643202107628984, [2.4641859422774792, 2.7660314936753307, 7.2469545891470277]]

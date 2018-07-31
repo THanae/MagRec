@@ -21,14 +21,15 @@ from data_handler.utils.column_processing import get_derivative
 #          np.array([29.2, 47.1, -10.6])]
 
 
-def get_b(imported_data: ImportedData) -> List[np.ndarray]:
+def get_b(imported_data: ImportedData, event_date, interval: int = 30) -> List[np.ndarray]:
     """
     Returns the imported data in a suitable vector form to be analysed
     :param imported_data: ImportedData
     :return: array [bx, by, bz]
     """
     B = []
-    b_x, b_y, b_z = imported_data.data['Bx'].values, imported_data.data['By'].values, imported_data.data['Bz'].values
+    data = imported_data.data[event_date - timedelta(minutes=interval):event_date + timedelta(minutes=interval)]
+    b_x, b_y, b_z = data['Bx'].values, data['By'].values, data['Bz'].values
     for n in range(len(b_x)):
         B.append(np.array([b_x[n], b_y[n], b_z[n]]))
     return B
@@ -92,6 +93,8 @@ def mva(B: List[np.ndarray]):
         N[coordinate] = v[:, w_min][coordinate]
         M[coordinate] = v[:, w_intermediate][coordinate]
 
+    # print(L, M, N)
+
     return L, M, N
 
 
@@ -108,6 +111,9 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray):  # hybrid mva necess
     cross_n_l = np.cross(N, _L)
     M = cross_n_l / np.sqrt(cross_n_l[0] ** 2 + cross_n_l[1] ** 2 + cross_n_l[2] ** 2)
     L = np.cross(M, N)
+
+    # print(L, M, N)
+
     return L, M, N
 
 
@@ -117,7 +123,7 @@ def hybrid_mva(event_date, probe, outside_interval: int = 10, inside_interval: i
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                duration=duration, probe=probe)
     imported_data.data.dropna(inplace=True)
-    B = get_b(imported_data)
+    B = get_b(imported_data, event_date)
     L, M, N = mva(B)
     B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
                                                                                                event_date,
@@ -278,7 +284,7 @@ def send_reconnections_to_csv(event_list: List[datetime], possible_reconnections
             minutes = reconnection_date.minute
             seconds = reconnection_date.second
             start = reconnection_date - timedelta(hours=1)
-            imported_data = ImportedData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2,
+            imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2,
                                          probe=probe)
             radius = imported_data.data['r_sun'].loc[
                      reconnection_date - timedelta(minutes=1): reconnection_date + timedelta(minutes=1)][0]
@@ -295,18 +301,15 @@ def plot_all(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
     bl, bm, bn = [], [], []
     vl, vm, vn = [], [], []
     for n in range(len(imported_data.data)):
-        bl.append(np.dot(
-            np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]), L))
-        bm.append(np.dot(
-            np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]), M))
-        bn.append(np.dot(
-            np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]]), N))
-        vl.append(np.dot(
-            np.array([imported_data.data['vp_x'][n], imported_data.data['vp_y'][n], imported_data.data['vp_z'][n]]), L))
-        vm.append(np.dot(
-            np.array([imported_data.data['vp_x'][n], imported_data.data['vp_y'][n], imported_data.data['vp_z'][n]]), M))
-        vn.append(np.dot(
-            np.array([imported_data.data['vp_x'][n], imported_data.data['vp_y'][n], imported_data.data['vp_z'][n]]), N))
+        b = np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]])
+        # print(imported_data.data.index[n], b)
+        v = np.array([imported_data.data['vp_x'][n], imported_data.data['vp_y'][n], imported_data.data['vp_z'][n]])
+        bl.append(np.dot(b, L))
+        bm.append(np.dot(b, M))
+        bn.append(np.dot(b, N))
+        vl.append(np.dot(v, L))
+        vm.append(np.dot(v, M))
+        vn.append(np.dot(v, N))
 
     bl = pd.Series(np.array(bl), index=imported_data.data.index)
     bm = pd.Series(np.array(bm), index=imported_data.data.index)
@@ -328,7 +331,7 @@ def plot_all(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fraction: float, maximum_fraction: float,
                           plot: bool = False):
-    duration = 3
+    duration = 4
     events_that_passed_test = []
     for event_date in event_dates:
         try:
@@ -336,11 +339,14 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
             imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                        duration=duration, probe=probe)
             imported_data.data.dropna(inplace=True)
-            B = get_b(imported_data)
+            B = get_b(imported_data, event_date, 30)
             L, M, N = mva(B)
             B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                       event_date)
+                                                                                                       event_date, 5, 1)
             L, M, N = hybrid(L, B1, B2)
+
+            print('LMN:', L, M, N)
+
             B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
             B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
             v1_L, v2_L = v1_changed[0], v2_changed[0]
@@ -357,7 +363,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
 
             else:
                 print('NO RECONNECTION AT ', str(event_date))
-            # plot_all(imported_data, L, M, N, event_date)
+                plot_all(imported_data, L, M, N, event_date)
         except Exception:
             print('could not recover the data')
 
@@ -368,7 +374,7 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
                                 plot: bool = True):
     event_dates = get_event_dates(file)
     probe = probe
-    min_walen, max_walen = 0.9, 1.1
+    min_walen, max_walen = 0.9, 1.2000000000000002
     events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot)
     print('number of reconections: ', len(events_that_passed_test))
     if to_csv:
@@ -376,4 +382,6 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnections_helios_1_no_nt_29_25_7.csv', 1, plot=True)
+    # test_reconnections_from_csv('reconnections_helios_1_no_nt_27_19_5.csv', 1, plot=True)
+    # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
+    test_reconnection_lmn([datetime(1976, 12, 1, 7, 16)], 1, 0.9, 1.1, plot=True)
