@@ -83,7 +83,6 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
                 data = UlyssesData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval)
             else:
                 raise NotImplementedError('The import of data has not been implemented for this probe')
-            # print(parameters)
             reconnection = finder.find_magnetic_reconnections(data, *parameters)
             if reconnection:
                 for event in reconnection:
@@ -221,7 +220,7 @@ if __name__ == '__main__':
     helios = 1
     # helios = 2
     parameters = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
-    parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 35}
+    parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 35, 'minutes': 35}
     # start_date = '17/12/1974'
     # end_date = '21/12/1975'
     # start_date = '17/01/1976'
@@ -236,8 +235,9 @@ if __name__ == '__main__':
     # get_possible_reconnections(probe=helios, parameters=parameters, start_time=start_date, end_time=end_date,
     #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
 
-    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='20/10/1990', end_time='01/06/2009',
-                               radius=10, to_csv=True, data_split='yearly')
+    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='01/01/1991',
+                               end_time='01/06/2009', radius=10, to_csv=True, data_split='yearly')
+
 
     # for no temperature and density check
     # [0.5643202107628984, [2.4641859422774792, 2.7660314936753307, 7.2469545891470277]]

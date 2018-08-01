@@ -1,15 +1,10 @@
-import csv
-import pprint
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import inv
 from mpl_toolkits.mplot3d import Axes3D
-import astropy.units as u
-from tqdm import tqdm
 
 from data_handler.data_importer.helios_data import HeliosData
 from magnetic_reconnection_dir.lmn_coordinates import hybrid_mva
@@ -39,8 +34,7 @@ def get_rotation_matrix(event: List[np.ndarray], weird: List[np.ndarray]) -> np.
     :param weird: LMN coordinates of the other thing
     :return:
     """
-    # rotation * event = weird
-    rotation = np.matmul(np.matrix(weird), inv(np.matrix(event)))
+    rotation = np.matmul(np.matrix(weird), inv(np.matrix(event)))  # rotation * event = weird
     print('det', np.linalg.det(rotation))
     return rotation
 
@@ -190,10 +184,10 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
     try:
         start_date = start - timedelta(hours=1)
         imported_data = HeliosData(start_date=start_date.strftime('%d/%m/%Y'), start_hour=start_date.hour, duration=3,
-                               probe=probe)
+                                   probe=probe)
     except ValueError:
         imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=3,
-                               probe=probe)
+                                   probe=probe)
 
     imported_data.create_processed_column('vp_magnitude')
     t = np.abs((weird_date - event_date).total_seconds())
@@ -322,8 +316,8 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     t = (end_time - start_time).total_seconds()
     if event_time < weird_time:
         vel = np.array([-np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_x']),
-                        np.mean((imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_y'])),
-                        np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_z'])])
+                        -np.mean((imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_y'])),
+                        -np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_z'])])
     else:
         vel = np.array([np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_x']),
                         np.mean((imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_y'])),
@@ -345,8 +339,6 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
         b = np.array([np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Bx']),
                       np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'By']),
                       np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Bz'])])
-        # print(-np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_x']))
-        # print(imported_data.data['vp_x'])
         _v = np.array([-np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_x']),
                        -np.mean((imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_y'])),
                        -np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_z'])])
@@ -354,7 +346,7 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
                        np.mean((imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_y'])),
                        np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_z'])])
         if np.isnan(_v[0]) or np.isnan(_v[1]) or np.isnan(_v[2]):
-            _v = np.array([-default_vx, default_vy, default_vz])
+            _v = np.array([-default_vx, -default_vy, -default_vz])
         t1 = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Tp_par'])
         t2 = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Tp_perp'])
         n = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'n_p'])
@@ -370,32 +362,14 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
         mag_field.append(b)
         v_field.append(_v)
         start += timedelta(seconds=time_split)
-        # if start <= start_time + timedelta(seconds=(end_time - start_time).total_seconds()/2):
-        #     if future:
-        #         b_lmn = np.array([np.dot(b, event[0]), np.dot(b, event[1]), np.dot(b, event[2])])
-        #     else:
-        #         b_lmn = np.array([np.dot(b, weird[0]), np.dot(b, weird[1]), np.dot(b, weird[2])])
-        # else:
-        #     if not future:
-        #         b_lmn = np.array([np.dot(b, event[0]), np.dot(b, event[1]), np.dot(b, event[2])])
-        #     else:
-        #         b_lmn = np.array([np.dot(b, weird[0]), np.dot(b, weird[1]), np.dot(b, weird[2])])
         b_lmn = np.array([np.dot(b, event[0]), np.dot(b, event[1]), np.dot(b, event[2])])
         v_lmn = np.array([np.dot(vs, event[0]), np.dot(vs, event[1]), np.dot(vs, event[2])])
         if not np.isnan(b[0]):
             print(start, b_lmn, v_lmn, np.sqrt(b[0] ** 2 + b[1] ** 2 + b[2] ** 2),
-              np.sqrt(_v[0] ** 2 + _v[1] ** 2 + _v[2] ** 2), t1, t2, n)
+                  np.sqrt(_v[0] ** 2 + _v[1] ** 2 + _v[2] ** 2), t1, t2, n)
 
     u, v, w = [b[0] for b in mag_field], [b[1] for b in mag_field], [b[2] for b in mag_field]
     a, b, c = [_v[0] for _v in v_field], [_v[1] for _v in v_field], [_v[2] for _v in v_field]
-    # fig2 = plt.figure(2)
-    # v_l = [np.dot(v, event[0]) for v in v_field]
-    # # b_l = [np.dot(b, event[0]) for b in mag_field]
-    # v_m = [np.dot(v, event[1]) for v in v_field]
-    # # b_m = [np.dot(b, event[1]) for b in mag_field]
-    # plt.plot(v_l)
-    # fig3 = plt.figure(3)
-    # plt.plot(v_m)
 
     for n in range(len(u)):
         if (np.isnan(u[n]) or np.isnan(v[n]) or np.isnan(w[n])) and n != 0 and n != len(u) - 1:
@@ -407,31 +381,25 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     ax.quiver(x, y, z, a, b, c, color='k', length=0.5 * vec_length, normalize=True)
 
 
-def plot_possible_3_folded_sheet(normal_1: np.ndarray = np.array([0.82988484, -0.36531417, 0.42170691]),
-                                 normal_2: np.ndarray = np.array([0.53842085, 0.83226682, 0.13204142]),
-                                 normal_3: np.ndarray = np.array([-0.93136905, -0.02975537, -0.36285852]),
-                                 distance_1: float = 452062.781834, distance_2: float = 207985.190599):
+def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float]):
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('$X$', rotation=150)
     ax.set_ylabel('$Y$')
     ax.set_zlabel('$Z$', rotation=60)
-    xx, yy = np.meshgrid(np.arange(0, 7 * (distance_2 + distance_1), 3 * np.int((distance_2 + distance_1))) - 3.5 * (
-            distance_2 + distance_1),
-                         np.arange(0, 3 * (distance_2 + distance_1), 1 * np.int((distance_2 + distance_1))) - 1.5 * (
-                                 distance_2 + distance_1))
-    z1 = (-normal_1[0] * xx - normal_1[1] * yy) * 1. / normal_1[2]
-    d1 = - normal_2[0] * distance_1
-    z2 = (-normal_2[0] * xx - normal_2[1] * yy - d1) * 1. / normal_2[2]
-    d2 = - normal_3[0] * (distance_2 + distance_1)
-    z3 = (-normal_3[0] * xx - normal_3[1] * yy - d2) * 1. / normal_3[2]
+    xx, yy = np.meshgrid(np.arange(0, 7 * sum(distances), 7 * np.int(sum(distances)) - 1) - 3.5 * sum(distances),
+                         np.arange(0, 3 * sum(distances), 3 * np.int(sum(distances)) - 1) - 1.5 * sum(distances))
+    z = (-normal[0][0] * xx - normal[0][1] * yy) * 1. / normal[0][2]
+    ax.plot_surface(xx, yy, z, alpha=0.4, color='b')
+    ax.scatter(0, 0, 0, color='k')
+    colors = ['m', 'g', 'r', 'y', 'c', 'k']
+    for n in range(len(distances)):
+        d = - normal[n + 1][0] * sum(distances[:n + 1])
+        z = (-normal[n + 1][0] * xx - normal[n + 1][1] * yy - d) * 1. / normal[n + 1][2]
+        ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
+        ax.scatter(sum(distances[:n + 1]), 0, 0, color='k')
 
-    ax.plot_surface(xx, yy, z1, alpha=0.5, color='b')
-    ax.plot_surface(xx, yy, z2, alpha=0.5, color='m')
-    ax.plot_surface(xx, yy, z3, alpha=0.5, color='g')
-    ax.plot([-4 * (distance_2 + distance_1), 4 * (distance_2 + distance_1)], [0, 0], [0, 0])
-    ax.scatter([0, distance_1, (distance_2 + distance_1)], [0, 0, 0], [0, 0, 0], color='k')
-
+    ax.plot([-4 * sum(distances), 4 * sum(distances)], [0, 0], [0, 0])
     plt.show()
 
 
@@ -479,18 +447,20 @@ def compare_magnitude(event_date: datetime, weird_date: datetime, probe: int):
 
 
 if __name__ == '__main__':
-    crossing = {'ev_date': datetime(1974, 12, 15, 8, 32), 'w_date': datetime(1974, 12, 15, 8, 37), 'probe': 1}
-    crossing = {'ev_date': datetime(1978, 4, 22, 10, 31), 'w_date': datetime(1978, 4, 22, 10, 10), 'probe': 2,
-                'comment': 'nearly parallel lines'}
+    # crossing = {'ev_date': datetime(1974, 12, 15, 8, 32), 'w_date': datetime(1974, 12, 15, 8, 37), 'probe': 1}
+    # crossing = {'ev_date': datetime(1978, 4, 22, 10, 31), 'w_date': datetime(1978, 4, 22, 10, 10), 'probe': 2,
+    #             'comment': 'nearly parallel lines'}
     # crossing = {'ev_date': datetime(1977, 12, 4, 7, 13), 'w_date': datetime(1977, 12, 4, 7, 20), 'probe': 2,
     #             'comment': 'normal reconnection, with turbulent bm'}
-
-    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 5, 48), 'probe': 1,
-    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
-    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
-    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
-    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
-    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    #
+    crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 5, 48), 'probe': 1,
+                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
+                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
+                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    crossing = {'ev_date': datetime(1976, 12, 1, 7, 16), 'w_date': datetime(1976, 12, 1, 7, 31), 'probe': 1,
+                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
 
     # crossing = {'ev_date': datetime(1976, 12, 6, 6, 3), 'w_date': datetime(1976, 12, 6, 6, 37), 'probe': 2,
     #             'comment': 'normal reconnection with turbulent field? maybe 3 crossings?'}
@@ -506,6 +476,11 @@ if __name__ == '__main__':
     # crossing = {'ev_date': datetime(1975, 3, 19, 0, 44), 'w_date': datetime(1975, 3, 19, 0, 14), 'probe': 1,
     #             'comment': 'close to sun'}
 
+    # crossing = {'ev_date': datetime(1977, 10, 30, 21, 4), 'w_date': datetime(1977, 10, 30, 20, 27), 'probe': 1,
+    #             'comment': 'stable reconnection'}
+    #
+    # crossing = {'ev_date': datetime(1976, 1, 29, 0, 4), 'w_date': datetime(1976, 1, 28, 23, 48), 'probe': 2}
+
     ev_date, w_date, probe = crossing['ev_date'], crossing['w_date'], crossing['probe']
     a, b = compare_lmn(ev_date, w_date, probe, 5, 1)
     print(a)
@@ -515,10 +490,19 @@ if __name__ == '__main__':
     # plot_vectors_2d_3d(a, b)
 
     plot_current_sheet(a, b, ev_date, w_date, probe)
-    # plot_possible_3_folded_sheet(np.array([0.39828885, 0.26623724, -0.87777202]),
-    #                              np.array([-0.47328068, -0.27463772, 0.83700629]),
-    #                              np.array([0.46363021, 0.36476725, -0.80746014]), 814118.333738, 481761.213457)
 
-    # plot_possible_3_folded_sheet(np.array([ 0.53842085,  0.83226682,  0.13204142]),
+    # 06/12/1976
+    # plot_possible_folded_sheet([np.array([0.39828885, 0.26623724, -0.87777202]),
+    #                              np.array([-0.47328068, -0.27463772, 0.83700629]),
+    #                              np.array([0.46363021, 0.36476725, -0.80746014])], [814118.333738, 481761.213457])
+
+    # 01/12/1976
+    # plot_possible_folded_sheet([np.array([ 0.53842085,  0.83226682,  0.13204142]),
     #                              np.array([ 0.82988484, -0.36531417,  0.42170691]),
-    #                              np.array([-0.93136905, -0.02975537, -0.36285852]), 452062.781834, 207985.190599)
+    #                              np.array([-0.93136905, -0.02975537, -0.36285852])], [452062.781834, 207985.190599])
+    # plot_possible_folded_sheet([np.array([0.53842085, 0.83226682, 0.13204142]),
+    #                             np.array([0.82988484, -0.36531417, 0.42170691]),
+    #                             np.array([-0.93136905, -0.02975537, -0.36285852]),
+    #                             np.array([-0.06672256, 0.7672766, -0.63783596]),
+    #                             np.array([0.55796194, -0.59920598, 0.57413472])],
+    #                            [452062.781834, 207985.190599, 1005439.93777, 287286.345991])

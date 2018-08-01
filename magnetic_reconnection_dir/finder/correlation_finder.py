@@ -19,7 +19,7 @@ class CorrelationFinder(BaseFinder):
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
     def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum: float = 3, sigma_diff: float = 2.5,
-                                    minutes_b: float = 3, nt_test: bool = False) -> List[datetime]:
+                                    minutes_b: float = 3, minutes: float = 10, nt_test: bool = False) -> List[datetime]:
         """
         Finds possible events by running a series of tests on the data
         :param imported_data: ImportedData
@@ -29,7 +29,8 @@ class CorrelationFinder(BaseFinder):
         :return:
         """
         self.find_correlations(imported_data.data)
-        datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff)
+        datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff,
+                                            minutes=minutes)
         datetimes_list = self.b_changes(datetimes_list, imported_data.data, minutes_b=minutes_b)
         if nt_test:
             datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
@@ -118,7 +119,8 @@ class CorrelationFinder(BaseFinder):
 
         return data
 
-    def find_outliers(self, data: pd.DataFrame, sigma_sum: float, sigma_diff: float) -> List[datetime]:
+    def find_outliers(self, data: pd.DataFrame, sigma_sum: float, sigma_diff: float, minutes: float = 10) -> List[
+        datetime]:
         """
         Finds all events which have high changes in correlation
         :param data: ImportedData
@@ -127,8 +129,9 @@ class CorrelationFinder(BaseFinder):
         :return: list of possible events
         """
         data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=sigma_sum,
-                                                        ignore_minutes_around=3, reference=0)
-        data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=sigma_diff)
+                                                        ignore_minutes_around=3, reference=0, minutes=minutes)
+        data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=sigma_diff,
+                                                         minutes=minutes)
 
         outlier_datetimes = []
         # find intersection

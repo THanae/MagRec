@@ -18,6 +18,8 @@ possible_reconnections = get_possible_reconnections(probe=probe, parameters=para
 lmn_events = test_reconnection_lmn(event_dates=possible_reconnections, probe=probe, minimum_fraction=min_walen,
                                    maximum_fraction=max_walen)
 
+print(lmn_events)
+
 with open('probe'+str(probe) +'reconnections' + '.csv', 'w', newline='') as csv_file:
     fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius']
     writer = csv.DictWriter(csv_file, fieldnames=fieldnames)

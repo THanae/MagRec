@@ -298,6 +298,7 @@ def send_reconnections_to_csv(event_list: List[datetime], possible_reconnections
 
 
 def plot_all(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.ndarray, event_date: datetime):
+
     bl, bm, bn = [], [], []
     vl, vm, vn = [], [], []
     for n in range(len(imported_data.data)):
@@ -330,9 +331,24 @@ def plot_all(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
 
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fraction: float, maximum_fraction: float,
-                          plot: bool = False):
+                          plot: bool = False, mode: str = 'static'):
+    """
+    Checks a list of datetimes to determine whether they are reconnections
+    :param event_dates: list of possible reconnections dates
+    :param probe: probe to be analysed
+    :param minimum_fraction: minimum walen fraction
+    :param maximum_fraction: maximum walen fraction
+    :param plot: bool, true of we want to plot reconnections that passed the test
+    :param mode: intercative (human input to the code, more precise but time consuming) or static (purely computational)
+    :return:
+    """
+    implemented_modes = ['static', 'interactive']
+    if mode not in implemented_modes:
+        raise NotImplementedError('This mode is not implemented.')
     duration = 4
     events_that_passed_test = []
+    if mode == 'interactive':
+        rogue_events = []
     for event_date in event_dates:
         try:
             start_time = event_date - timedelta(hours=duration / 2)
@@ -357,31 +373,49 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
                                                 event_date, L)
             if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
                 print('RECONNECTION AT ', str(event_date))
-                events_that_passed_test.append(event_date)
-                if plot:
+                if mode == 'static':
+                    events_that_passed_test.append(event_date)
+                elif mode == 'interactive':
+                    answered = False
+                    # plot_all(imported_data, L, M, N, event_date)
+                    while not answered:
+                        is_event = str(input('Do you think this is an event?'))
+                        is_event.lower()
+                        if is_event[0] == 'y':
+                            answered = True
+                            events_that_passed_test.append(event_date)
+                        elif is_event[0] == 'n':
+                            answered = True
+                            rogue_events.append(event_date)
+                        else:
+                            print('Please reply by yes or no')
+
+                if plot and mode == 'static':
                     plot_all(imported_data, L, M, N, event_date)
 
             else:
                 print('NO RECONNECTION AT ', str(event_date))
-                plot_all(imported_data, L, M, N, event_date)
         except Exception:
             print('could not recover the data')
+
+    if mode == 'interactive':
+        print('rogue events: ', rogue_events)
 
     return events_that_passed_test
 
 
 def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv', probe: int = 2, to_csv: bool = False,
-                                plot: bool = True):
+                                plot: bool = True, mode='static'):
     event_dates = get_event_dates(file)
     probe = probe
-    min_walen, max_walen = 0.9, 1.2000000000000002
-    events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot)
-    print('number of reconections: ', len(events_that_passed_test))
+    min_walen, max_walen = 0.9, 1.2
+    events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot, mode=mode)
+    print('number of reconnections: ', len(events_that_passed_test))
     if to_csv:
         send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests')
 
 
 if __name__ == '__main__':
-    # test_reconnections_from_csv('reconnections_helios_1_no_nt_27_19_5.csv', 1, plot=True)
+    # test_reconnections_from_csv('reconnections_helios_2_no_nt_27_19_5.csv', 2, plot=True, mode='interactive')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
-    test_reconnection_lmn([datetime(1976, 12, 1, 7, 16)], 1, 0.9, 1.1, plot=True)
+    test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)

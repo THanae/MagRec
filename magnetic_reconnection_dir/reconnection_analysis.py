@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 from data_handler.data_importer.helios_data import HeliosData
-# from magnetic_reconnection_dir.lmn_coordinates import hybrid
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
 
 
@@ -21,7 +20,6 @@ def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = 
                        '0.6 to 0.7 au': [], '0.7 to 0.8 au': [], '0.8 to 0.9 au': [], 'above 0.9 au': []}
     for event in events_list:
         start_time = event
-
         imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                    duration=1, probe=probe)
         try:
@@ -94,23 +92,56 @@ def time_stats(events_list: List[datetime], stats_mode: bool = True, mode: str =
     return times
 
 
-def time_spent_at_distances(probe: int, start_date: str, end_date: str, accuracy: float = 0.5) -> dict:
+def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
     orbiter = kernel_loader(probe)
-    times = orbit_times_generator(start_date, end_date, interval=accuracy)
+    times = orbit_times_generator(start_date, end_date, interval=1)
     orbit_generator(orbiter, times)
     radii = np.array(np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2))
     time_spent = {}
-    time_analysed = datetime.strptime(end_date, '%d/%m/%Y') - datetime.strptime(start_date, '%d/%m/%Y')
-    time_analysed = int(time_analysed.total_seconds() / (3600 * 24))
-    time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])  # * filecount(probe)/time_analysed
-    time_spent['less than 0.3 au'] = len(radii[np.all([radii < 0.3], axis=0)]) / time_spent['total time']
-    time_spent['0.3 to 0.4 au'] = len(radii[np.all([radii >= 0.3, radii < 0.4], axis=0)]) / time_spent['total time']
-    time_spent['0.4 to 0.5 au'] = len(radii[np.all([radii >= 0.4, radii < 0.5], axis=0)]) / time_spent['total time']
-    time_spent['0.5 to 0.6 au'] = len(radii[np.all([radii >= 0.5, radii < 0.6], axis=0)]) / time_spent['total time']
-    time_spent['0.6 to 0.7 au'] = len(radii[np.all([radii >= 0.6, radii < 0.7], axis=0)]) / time_spent['total time']
-    time_spent['0.7 to 0.8 au'] = len(radii[np.all([radii >= 0.7, radii < 0.8], axis=0)]) / time_spent['total time']
-    time_spent['0.8 to 0.9 au'] = len(radii[np.all([radii >= 0.8, radii < 0.9], axis=0)]) / time_spent['total time']
-    time_spent['above 0.9 au'] = len(radii[np.all([radii >= 0.9], axis=0)]) / time_spent['total time']
+    time_spent['less than 0.3 au'] = len(radii[np.all([radii < 0.3], axis=0)])
+    time_spent['0.3 to 0.4 au'] = len(radii[np.all([radii >= 0.3, radii < 0.4], axis=0)])
+    time_spent['0.4 to 0.5 au'] = len(radii[np.all([radii >= 0.4, radii < 0.5], axis=0)])
+    time_spent['0.5 to 0.6 au'] = len(radii[np.all([radii >= 0.5, radii < 0.6], axis=0)])
+    time_spent['0.6 to 0.7 au'] = len(radii[np.all([radii >= 0.6, radii < 0.7], axis=0)])
+    time_spent['0.7 to 0.8 au'] = len(radii[np.all([radii >= 0.7, radii < 0.8], axis=0)])
+    time_spent['0.8 to 0.9 au'] = len(radii[np.all([radii >= 0.8, radii < 0.9], axis=0)])
+    time_spent['above 0.9 au'] = len(radii[np.all([radii >= 0.9], axis=0)])
+    for n in range(len(orbiter.times)):
+        date = orbiter.times[n]
+        directory = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(
+            probe) + '\\' + str(date.year)
+        fls = [files for r, d, files in os.walk(directory) if files]
+        day_of_year = date.strftime('%j')
+        # print(fls)
+        if 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv' not in fls[0]:
+            radius = radii[n]
+            if radius < 0.3:
+                time_spent['less than 0.3 au'] -= 1
+            elif radius < 0.4:
+                time_spent['0.3 to 0.4 au'] -= 1
+            elif radius < 0.5:
+                time_spent['0.4 to 0.5 au'] -= 1
+            elif radius < 0.6:
+                time_spent['0.5 to 0.6 au'] -= 1
+            elif radius < 0.7:
+                time_spent['0.6 to 0.7 au'] -= 1
+            elif radius < 0.8:
+                time_spent['0.7 to 0.8 au'] -= 1
+            elif radius < 0.9:
+                time_spent['0.8 to 0.9 au'] -= 1
+            else:
+                time_spent['above 0.9 au'] -= 1
+            print('no such file: ', 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv')
+
+    time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
+    time_spent['less than 0.3 au'] = time_spent['less than 0.3 au'] / time_spent['total time']
+    time_spent['0.3 to 0.4 au'] = time_spent['0.3 to 0.4 au'] / time_spent['total time']
+    time_spent['0.4 to 0.5 au'] = time_spent['0.4 to 0.5 au'] / time_spent['total time']
+    time_spent['0.5 to 0.6 au'] = time_spent['0.5 to 0.6 au'] / time_spent['total time']
+    time_spent['0.6 to 0.7 au'] = time_spent['0.6 to 0.7 au'] / time_spent['total time']
+    time_spent['0.7 to 0.8 au'] = time_spent['0.7 to 0.8 au'] / time_spent['total time']
+    time_spent['0.8 to 0.9 au'] = time_spent['0.8 to 0.9 au'] / time_spent['total time']
+    time_spent['above 0.9 au'] = time_spent['above 0.9 au'] / time_spent['total time']
 
     pprint.pprint(time_spent)
     return time_spent
@@ -227,20 +258,21 @@ def get_month_dict(days_of_year: list, year: int) -> dict:
 
 
 def filecount(probe: int, year: int = 0):
-    dir = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(probe)
+    directory = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(
+        probe)
     if probe == 1:
         if 1974 <= year <= 1984:
-            dir = dir + '\\' + str(year)
+            directory = directory + '\\' + str(year)
     if probe == 2:
         if 1976 <= year <= 1979:
-            dir = dir + '\\' + str(year)
+            directory = directory + '\\' + str(year)
 
-    fls = [files for r, d, files in os.walk(dir) if files]
+    fls = [files for r, d, files in os.walk(directory) if files]
     days_of_year = []
     for file in fls[0]:
         doy = int(file[8] + file[9] + file[10])
         days_of_year.append(doy)
-    file_number = sum([len(files) for r, d, files in os.walk(dir) if files])
+    file_number = sum([len(files) for r, d, files in os.walk(directory) if files])
     return file_number, days_of_year
 
 
@@ -286,12 +318,12 @@ def analyse_all_probes(mode='radius'):
                 time_analysed1[key] = float(time_analysed1[key]) + float(time_analysed2[key])
         for key in time_analysed1.keys():
             if key != 'total time':
-                time_analysed1[key] = time_analysed1[key]*time_analysed1['total time']
+                time_analysed1[key] = time_analysed1[key] * time_analysed1['total time']
         print(time_analysed1)
         plot_trend(dis1)
         plot_trend(time_analysed1)
     elif mode == 'time':
-        # not very sensible to use it as Helios 2 was functionning only part of the time when Helios 1 was functioning
+        # not very sensible to use it as Helios 2 was working only part of the time when Helios 1 was working
         time1 = time_stats(events1)
         time2 = time_stats(events2)
         for key in time1.keys():
@@ -323,7 +355,7 @@ def plot_trend(stat: dict, mode='yearly'):
         plt.bar(range(len(new_stat)), new_stat.values(), align='center')
         plt.xticks(range(len(new_stat)), list(new_stat.keys()))
     else:
-        print('THIS MODE IS NOT IMPLEMNETED, CHOOSE FROM ', implemented_modes)
+        print('THIS MODE IS NOT IMPLEMENTED, CHOOSE FROM ', implemented_modes)
     plt.show()
 
 
@@ -337,24 +369,30 @@ if __name__ == '__main__':
     # maybe could combine data from the two probes in order to have more data...
     # but then if one is skewed the other one is skewed too
 
-    mode = 'yearly'
-    day_accuracy = 0.5
+    mode = 'monthly'
+    day_accuracy = 1
     #
-    # probe = 1
-    # file = 'helios1_magrec.csv'
-    # analysis_start_date = '15/12/1974'
-    # analysis_end_date = '15/08/1984'
-    # events1 = get_events_dates(file)
+    probe = 1
+    file_name = 'helios1_magrec.csv'
+    analysis_start_date = '15/12/1974'
+    analysis_end_date = '15/08/1984'
+    events1 = get_events_dates(file_name)
+    # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
+    stats = time_stats(events1, mode=mode)
+    plot_trend(stats, mode=mode)
     # dis1 = distances_stats(events1, probe=probe)
 
     probe = 2
-    file = 'helios2_magrec.csv'
+    file_name = 'helios2_magrec.csv'
     analysis_start_date = '17/01/1976'
     analysis_end_date = '17/01/1979'
-    events2 = get_events_dates(file)
+    events2 = get_events_dates(file_name)
+    # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
+    stats = time_stats(events2, mode=mode)
+    plot_trend(stats, mode=mode)
     # dis2 = distances_stats(events2, probe=probe)
 
-    analyse_all_probes(mode='radius')
+    # analyse_all_probes(mode='radius')
 
     # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
     # print(st.pop('total time', None))
