@@ -1,399 +1,167 @@
 import csv
-import os
-import pprint
+from datetime import timedelta, datetime
+from typing import List, Union
+
 import numpy as np
-from typing import List
-from datetime import datetime, timedelta
+import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import linregress
 
 from data_handler.data_importer.helios_data import HeliosData
-from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
+from data_handler.imported_data_plotter import plot_imported_data
+from magnetic_reconnection_dir.lmn_coordinates import hybrid_mva
+
+proton_mass = 1.67 * 10e-27
+mu_0 = np.pi * 4e-7
+electron_charge = 1.6e-19
+k_b = 1.38e-23
 
 
-def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = True) -> dict:
-    """
-    :param events_list:
-    :param probe: 1 or 2 for Helios 1 or 2
-    :return: number of reconnections at given distances from the sun
-    """
-    times_and_radii = {'less than 0.3 au': [], '0.3 to 0.4 au': [], '0.4 to 0.5 au': [], '0.5 to 0.6 au': [],
-                       '0.6 to 0.7 au': [], '0.7 to 0.8 au': [], '0.8 to 0.9 au': [], 'above 0.9 au': []}
-    for event in events_list:
-        start_time = event
-        imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                   duration=1, probe=probe)
+def temperature_analysis(events: List[List[Union[datetime, int]]]):
+    time_around = 1
+    time_outside = 3
+    satisfied_test = 0
+    too_big = 0
+    print(len(events))
+    total_t, par_t, perp_t = [], [], []
+    for event, probe in events:
+        print(event, probe)
         try:
-            radius = imported_data.data['r_sun'].loc[event]
-        except Exception:
-            radius = np.mean(imported_data.data['r_sun'].values)
-        if radius < 0.3:
-            times_and_radii['less than 0.3 au'].append([event, radius])
-        elif radius < 0.4:
-            times_and_radii['0.3 to 0.4 au'].append([event, radius])
-        elif radius < 0.5:
-            times_and_radii['0.4 to 0.5 au'].append([event, radius])
-        elif radius < 0.6:
-            times_and_radii['0.5 to 0.6 au'].append([event, radius])
-        elif radius < 0.7:
-            times_and_radii['0.6 to 0.7 au'].append([event, radius])
-        elif radius < 0.8:
-            times_and_radii['0.7 to 0.8 au'].append([event, radius])
-        elif radius < 0.9:
-            times_and_radii['0.8 to 0.9 au'].append([event, radius])
-        else:
-            times_and_radii['above 0.9 au'].append([event, radius])
+            left_interval_start = event - timedelta(minutes=time_outside)
+            left_interval_end = event - timedelta(minutes=time_around)
+            right_interval_start = event + timedelta(minutes=time_around)
+            right_interval_end = event + timedelta(minutes=time_outside)
 
-    for key in times_and_radii.keys():
-        if only_stats:
-            times_and_radii[key] = (str(len(times_and_radii[key])))
-        else:
-            times_and_radii[key].append(str(len(times_and_radii[key])))
-    times_and_radii['total number of reconnections'] = len(events_list)
-    pprint.pprint(times_and_radii)
-    return times_and_radii
+            start = event - timedelta(hours=1)
+            imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=3,
+                                       probe=probe)
+            imported_data.create_processed_column('vp_magnitude')
+            imported_data.create_processed_column('b_magnitude')
+            b_l, n = get_n_b(event, probe, imported_data, left_interval_start, left_interval_end, right_interval_start,
+                             right_interval_end)
 
+            delta_t, dt_perp, dt_par = find_temperature(imported_data, left_interval_start, left_interval_end,
+                                                        right_interval_start, right_interval_end)
 
-def time_stats(events_list: List[datetime], stats_mode: bool = True, mode: str = 'yearly') -> dict:
-    implemented_modes = ['yearly', 'monthly']
-    times = {}
-    if mode == 'yearly':
-        for event in events_list:
-            if str(event.year) not in times.keys():
-                times[str(event.year)] = []
-                times[str(event.year)].append(event)
+            b = (np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'b_magnitude']) +
+                 np.mean(imported_data.data.loc[right_interval_start:right_interval_end, 'b_magnitude'])) / 2
+            predicted_increase, pred, speed, alvfen_speed = find_predicted_temperature(imported_data, b, n,
+                                                                                       left_interval_end,
+                                                                                       right_interval_start)
+            if 0.8 * delta_t <= pred * 0.02 <= 1.2 * delta_t:
+                print(event)
+                print(speed, alvfen_speed)
+                print(predicted_increase, pred)
+                satisfied_test += 1
+            if delta_t > 60:
+                print('> 60: ', event, imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
+                too_big += 1
+            elif dt_perp > 40 or dt_par > 40:
+                print('perp or par > 40: ', event,
+                      imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
+                too_big += 1
             else:
-                times[str(event.year)].append(event)
-        for key in times.keys():
-            if stats_mode:
-                times[key] = str(len(times[key]))
-            else:
-                times[key].append(str(len(times[key])))
+                total_t.append([pred, delta_t])
+                par_t.append([pred, dt_par])
+                perp_t.append(([pred, dt_perp]))
+        except ValueError:
+            print('value error')
+    print('satisfied test: ', satisfied_test)
+    print('too big values: ', too_big)
 
-        times['total number of reconnections'] = len(events_list)
-    elif mode == 'monthly':
-        months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
-                  'november', 'december']
-        for event in events_list:
-            if str(event.year) not in times.keys():
-                times[str(event.year)] = {}
-                times[str(event.year)][months[event.month - 1]] = 0
-                times[str(event.year)][months[event.month - 1]] += 1
-            else:
-                if months[event.month - 1] not in times[str(event.year)].keys():
-                    times[str(event.year)][months[event.month - 1]] = 0
-                    times[str(event.year)][months[event.month - 1]] += 1
-                else:
-                    times[str(event.year)][months[event.month - 1]] += 1
-        times['total number of reconnections'] = len(events_list)
-    else:
-        print('NO OTHER MODES IMPLEMENTED, CHOOSE FROM LIST', implemented_modes)
-
-    pprint.pprint(times)
-    return times
+    slopes = plot_relations([total_t, par_t, perp_t], 0.02)
+    return slopes
 
 
-def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
-    orbiter = kernel_loader(probe)
-    times = orbit_times_generator(start_date, end_date, interval=1)
-    orbit_generator(orbiter, times)
-    radii = np.array(np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2))
-    time_spent = {}
-    time_spent['less than 0.3 au'] = len(radii[np.all([radii < 0.3], axis=0)])
-    time_spent['0.3 to 0.4 au'] = len(radii[np.all([radii >= 0.3, radii < 0.4], axis=0)])
-    time_spent['0.4 to 0.5 au'] = len(radii[np.all([radii >= 0.4, radii < 0.5], axis=0)])
-    time_spent['0.5 to 0.6 au'] = len(radii[np.all([radii >= 0.5, radii < 0.6], axis=0)])
-    time_spent['0.6 to 0.7 au'] = len(radii[np.all([radii >= 0.6, radii < 0.7], axis=0)])
-    time_spent['0.7 to 0.8 au'] = len(radii[np.all([radii >= 0.7, radii < 0.8], axis=0)])
-    time_spent['0.8 to 0.9 au'] = len(radii[np.all([radii >= 0.8, radii < 0.9], axis=0)])
-    time_spent['above 0.9 au'] = len(radii[np.all([radii >= 0.9], axis=0)])
-    for n in range(len(orbiter.times)):
-        date = orbiter.times[n]
-        directory = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(
-            probe) + '\\' + str(date.year)
-        fls = [files for r, d, files in os.walk(directory) if files]
-        day_of_year = date.strftime('%j')
-        # print(fls)
-        if 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv' not in fls[0]:
-            radius = radii[n]
-            if radius < 0.3:
-                time_spent['less than 0.3 au'] -= 1
-            elif radius < 0.4:
-                time_spent['0.3 to 0.4 au'] -= 1
-            elif radius < 0.5:
-                time_spent['0.4 to 0.5 au'] -= 1
-            elif radius < 0.6:
-                time_spent['0.5 to 0.6 au'] -= 1
-            elif radius < 0.7:
-                time_spent['0.6 to 0.7 au'] -= 1
-            elif radius < 0.8:
-                time_spent['0.7 to 0.8 au'] -= 1
-            elif radius < 0.9:
-                time_spent['0.8 to 0.9 au'] -= 1
-            else:
-                time_spent['above 0.9 au'] -= 1
-            print('no such file: ', 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv')
-
-    time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
-    time_spent['less than 0.3 au'] = time_spent['less than 0.3 au'] / time_spent['total time']
-    time_spent['0.3 to 0.4 au'] = time_spent['0.3 to 0.4 au'] / time_spent['total time']
-    time_spent['0.4 to 0.5 au'] = time_spent['0.4 to 0.5 au'] / time_spent['total time']
-    time_spent['0.5 to 0.6 au'] = time_spent['0.5 to 0.6 au'] / time_spent['total time']
-    time_spent['0.6 to 0.7 au'] = time_spent['0.6 to 0.7 au'] / time_spent['total time']
-    time_spent['0.7 to 0.8 au'] = time_spent['0.7 to 0.8 au'] / time_spent['total time']
-    time_spent['0.8 to 0.9 au'] = time_spent['0.8 to 0.9 au'] / time_spent['total time']
-    time_spent['above 0.9 au'] = time_spent['above 0.9 au'] / time_spent['total time']
-
-    pprint.pprint(time_spent)
-    return time_spent
+def plot_relations(related_lists: List[list], slope=None):
+    slopes = []
+    for n in range(len(related_lists)):
+        fig = plt.figure(n + 1)
+        a = [x[0] for x in related_lists[n] if not np.isnan(x[0]) and not np.isnan(x[1])]
+        b = [y[1] for y in related_lists[n] if not np.isnan(y[0]) and not np.isnan(y[1])]
+        # print(a, b)
+        print(linregress(a, b))
+        print(np.median(np.array(b) / np.array(a)))
+        slope_linreg, intercept, rvalue, pvalue, stderr = linregress(a, b)
+        slopes.append(slope_linreg)
+        # print(np.polyfit(a, b, 1))
+        plt.scatter(a, b)
+        if slope is not None:
+            plt.plot([0, np.max(a)], [0, slope * np.max(a)])
+        plt.plot([0, np.max(a)], [0, slope_linreg * np.max(a)])
+        plt.xlabel('mv**2')
+        plt.ylabel('delta_t')
+    plt.show()
+    return slopes
 
 
-def time_spent_at_date(probe: int, start_date: str, end_date: str, accuracy: float = 0.5, mode: str = 'yearly') -> dict:
-    implemented_modes = ['yearly', 'monthly']
-    orbiter = kernel_loader(probe)
-    times = orbit_times_generator(start_date, end_date, interval=accuracy)
-    orbit_generator(orbiter, times)
-    time_spent = {}
-    for time in times:
-        if str(time.year) not in time_spent.keys():
-            time_spent[str(time.year)] = 1
-        else:
-            time_spent[str(time.year)] += 1
-
-    if mode == 'yearly':
-        for key in time_spent.keys():
-            # time_spent[key] = (time_spent[key] / len(times)) * filecount(probe, int(key))/365
-            time_spent[key] = filecount(probe, int(key))[0] / filecount(probe)[0]
-    elif mode == 'monthly':  # not very useful when there are so few reconnections to start with,
-        #  but might be more useful with other spacecrafts
-        for key in time_spent.keys():
-            length, doy = filecount(probe, int(key))
-            month_dict = get_month_dict(doy, int(key))
-            time_spent[key] = month_dict
-            print(month_dict)
-            print('count', filecount(probe)[0])
-            for keys in month_dict.keys():
-                month_dict[keys] = month_dict[keys] / filecount(probe)[0]
-
-    else:
-        print('THIS MODE HAS NOT BEEN IMPLEMENTED, CHOOSE FROM ', implemented_modes)
-    time_spent['total time'] = len(times) * accuracy  # in days
-
-    pprint.pprint(time_spent)
-    return time_spent
+def find_predicted_temperature(imported_data, b_l, n, left_interval_end, right_interval_start):
+    speed = np.mean(imported_data.data.loc[left_interval_end:right_interval_start, 'vp_magnitude']) * 10 ** 3
+    alvfen_speed = b_l * 10 ** (-9) / np.sqrt(n * 10 ** 6 * proton_mass * mu_0)  # b in nT, n in cm^-3
+    predicted_increase = (proton_mass * speed ** 2) / electron_charge
+    pred = (proton_mass * alvfen_speed ** 2) / electron_charge
+    return predicted_increase, pred, speed, alvfen_speed
 
 
-def analyse_dates(events_list: List[datetime], probe: int, start_date: str, end_date: str, mode: str = 'yearly'):
-    reconnections_at_dates = time_stats(events_list, mode=mode)
-    time_spent = time_spent_at_date(probe=probe, start_date=start_date, end_date=end_date, mode=mode)
-    keys_reconnections = reconnections_at_dates.keys()
-    keys_dates = time_spent.keys()
-    if mode == 'yearly':
-        for key in keys_reconnections:
-            if key in keys_dates:
-                predicted = reconnections_at_dates['total number of reconnections'] * time_spent[key]
-                if predicted * 0.7 < float(reconnections_at_dates[key]) < 1.3 * predicted:
-                    print('as predicted for ', key, 'with', reconnections_at_dates[key], 'instead of', predicted)
-                else:
-                    print('not as predicted for ', key, 'with', reconnections_at_dates[key], 'instead of',
-                          predicted)
-    elif mode == 'monthly':
-        for key in keys_reconnections:
+def find_temperature(imported_data: HeliosData, left_interval_start, left_interval_end, right_interval_start,
+                     right_interval_end):
+    n = 1  # np.mean(imported_data.data.loc[left_interval_start: right_interval_end, 'n_p'])
+    to_ev = k_b / electron_charge
+    perpendicular_temperature = imported_data.data['Tp_perp'] * to_ev * n
+    parallel_temperature = imported_data.data['Tp_par'] * to_ev * n
+    t_perp = (np.mean(perpendicular_temperature.loc[left_interval_start:left_interval_end]) + np.mean(
+        perpendicular_temperature.loc[right_interval_start:right_interval_end])) / 2
+    dt_perp = np.abs(t_perp - np.mean(perpendicular_temperature.loc[left_interval_end:right_interval_start]))
+    t_par = (np.mean(parallel_temperature.loc[left_interval_start:left_interval_end]) + np.mean(
+        parallel_temperature.loc[right_interval_start:right_interval_end])) / 2
+    dt_par = np.abs(t_par - np.mean(parallel_temperature.loc[left_interval_end:right_interval_start]))
 
-            if key in keys_dates:
-                for key_m in reconnections_at_dates[key].keys():
-                    if key_m in time_spent[key].keys():
-                        predicted = reconnections_at_dates['total number of reconnections'] * time_spent[key][key_m]
-                        if predicted * 0.7 < float(reconnections_at_dates[key][key_m]) < 1.3 * predicted:
-                            print('as predicted for ', key, key_m, 'with', reconnections_at_dates[key][key_m],
-                                  'instead of', predicted)
-                        else:
-                            print('not as predicted for ', key, key_m, 'with', reconnections_at_dates[key][key_m],
-                                  'instead of',
-                                  predicted)
+    temp = (2 * perpendicular_temperature + parallel_temperature) / 3
+    temperature = np.mean(temp.loc[left_interval_end:right_interval_start])
+    t_inflow = (np.mean(temp.loc[left_interval_start:left_interval_end]) + np.mean(
+        temp.loc[right_interval_start:right_interval_end])) / 2
+    delta_t = np.abs(t_inflow - temperature)
+    print('TEMPERATURE: ', delta_t, dt_perp, dt_par)
+    return delta_t, dt_perp, dt_par
 
 
-def analyse_by_radii(events_list: List[datetime], probe: int, start_date: str, end_date: str):
-    reconnections_at_radii = distances_stats(events_list, probe)
-    time_spent = time_spent_at_distances(probe, start_date, end_date)
-    keys_reconnections = reconnections_at_radii.keys()
-    keys_dists = time_spent.keys()
-    for key in keys_reconnections:
-        if key in keys_dists:
-            predicted = reconnections_at_radii['total number of reconnections'] * time_spent[key]
-            if predicted * 0.7 < float(reconnections_at_radii[key]) < 1.3 * predicted:
-                print('as predicted for ', key, ' with', reconnections_at_radii[key], 'instead of ', predicted)
-            else:
-                print('not as predicted for ', key, 'with', reconnections_at_radii[key], 'instead of ', predicted)
+def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start, left_interval_end,
+            right_interval_start, right_interval_end):
+    L, M, N = hybrid_mva(event, probe)
+    # print(np.dot((np.array([np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']),
+    #                       np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'By']),
+    #                       np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'Bz'])])), L))
+    # print(np.dot((np.array([np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'Bx']),
+    #                       np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'By']),
+    #                       np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'Bz'])])), L))
+    b = (np.abs(np.array([np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']),
+                          np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'By']),
+                          np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'Bz'])])) +
+         np.abs(np.array([np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'Bx']),
+                          np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'By']),
+                          np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'Bz'])]))) / 2
+    b_l = np.dot(b, L)
+    n = (np.mean(imported_data.data.loc[left_interval_start:left_interval_end, 'n_p']) +
+         np.mean(imported_data.data.loc[right_interval_start: right_interval_end, 'n_p'])) / 2
+
+    return b_l, n
 
 
-def get_events_dates(file_name: str):
-    event_dates = []
+def get_data(file_name: str, probe: int = 1):
+    events_list = []
     with open(file_name) as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
             year, month, day = np.int(row['year']), np.int(row['month']), np.int(row['day'])
             hours, minutes, seconds = np.int(row['hours']), np.int(row['minutes']), np.int(row['seconds'])
-            # if row['satisfied tests']:
-            #     if row['satisfied tests'] == 'True':
-            #         event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-            # else:
-            #     event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-            event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-    return event_dates
-
-
-def get_month_dict(days_of_year: list, year: int) -> dict:
-    days_per_month = {'january': 0, 'february': 0, 'march': 0, 'april': 0, 'may': 0, 'june': 0, 'july': 0, 'august': 0,
-                      'september': 0, 'october': 0, 'november': 0, 'december': 0}
-    months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
-              'november', 'december']
-    dates = []
-    for doy in days_of_year:
-        date = datetime(year, 1, 1) + timedelta(doy - 1)
-        dates.append(date)
-    for date in dates:
-        month = months[date.month - 1]
-        days_per_month[month] += 1
-    return days_per_month
-
-
-def filecount(probe: int, year: int = 0):
-    directory = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(
-        probe)
-    if probe == 1:
-        if 1974 <= year <= 1984:
-            directory = directory + '\\' + str(year)
-    if probe == 2:
-        if 1976 <= year <= 1979:
-            directory = directory + '\\' + str(year)
-
-    fls = [files for r, d, files in os.walk(directory) if files]
-    days_of_year = []
-    for file in fls[0]:
-        doy = int(file[8] + file[9] + file[10])
-        days_of_year.append(doy)
-    file_number = sum([len(files) for r, d, files in os.walk(directory) if files])
-    return file_number, days_of_year
-
-
-def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, probe: int = 2) -> list:
-    """
-    Finds the position of events compared to the sun duing a given year (and given month)
-    :param events_list: list of events to be analysed
-    :param year: year to be analysed
-    :param month: month to be considered (all year if month = 0)
-    :param probe: 1 or 2 for Helios 1 or 2
-    :return:
-    """
-    time_radius = []
-    for event in events_list:
-        if event.year == year:
-            if month == 0 or event.month == month:
-                start_time = event
-                imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                           duration=1, probe=probe)
-                radius = imported_data.data['r_sun'].loc[event]
-                time_radius.append([event, radius])
-    print(time_radius)
-    return time_radius
-
-
-def analyse_all_probes(mode='radius'):
-    file1 = 'helios1_magrec.csv'
-    events1 = get_events_dates(file1)
-    file2 = 'helios2_magrec.csv'
-    events2 = get_events_dates(file2)
-
-    if mode == 'radius':
-        dis1 = distances_stats(events1, probe=1)
-        dis2 = distances_stats(events2, probe=2)
-        for key in dis1.keys():
-            if key in dis2.keys():
-                dis1[key] = int(dis1[key]) + int(dis2[key])
-        print(dis1)
-        time_analysed1 = time_spent_at_distances(probe=1, start_date='15/12/1974', end_date='15/08/1984')
-        time_analysed2 = time_spent_at_distances(probe=2, start_date='17/01/1976', end_date='17/01/1979')
-        for key in time_analysed1.keys():
-            if key in time_analysed2.keys():
-                time_analysed1[key] = float(time_analysed1[key]) + float(time_analysed2[key])
-        for key in time_analysed1.keys():
-            if key != 'total time':
-                time_analysed1[key] = time_analysed1[key] * time_analysed1['total time']
-        print(time_analysed1)
-        plot_trend(dis1)
-        plot_trend(time_analysed1)
-    elif mode == 'time':
-        # not very sensible to use it as Helios 2 was working only part of the time when Helios 1 was working
-        time1 = time_stats(events1)
-        time2 = time_stats(events2)
-        for key in time1.keys():
-            if key in time2.keys():
-                time1[key] = int(time1[key]) + int(time2[key])
-        print(time1)
-        plot_trend(time1)
-
-
-def plot_trend(stat: dict, mode='yearly'):
-    """
-    Plots histograms of the obtained data sets
-    :param stat: dictionary of stats that will be plotted
-    :param mode: 'yearly' for a yearly analysis dict, 'monthly' for a monthly analysis dict, and 'radius' for a distance
-                analysis dict
-    :return:
-    """
-    implemented_modes = ['yearly', 'monthly', 'radius']
-    if mode == 'yearly' or mode == 'radius':
-        plt.bar(range(len(stat)), stat.values(), align='center')
-        plt.xticks(range(len(stat)), list(stat.keys()))
-    elif mode == 'monthly':
-        new_stat = {}
-        stat.pop('total number of reconnections', None)
-        for key in stat.keys():
-            for key_m in stat[key].keys():
-                new_stat[key_m[0] + key_m[1] + key_m[2] + '_' + key[2] + key[3]] = stat[key][key_m]
-
-        plt.bar(range(len(new_stat)), new_stat.values(), align='center')
-        plt.xticks(range(len(new_stat)), list(new_stat.keys()))
-    else:
-        print('THIS MODE IS NOT IMPLEMENTED, CHOOSE FROM ', implemented_modes)
-    plt.show()
+            events_list.append([datetime(year, month, day, hours, minutes, seconds), probe])
+    return events_list
 
 
 if __name__ == '__main__':
-    # need missing data list in order to determine exactly if events follow theory
-    # HELIOS 1
-    # {'1974': 0.9534246575342465, '1975': 0.1643835616438356, '1976': 0.2958904109589041,
-    # '1977': 0.13424657534246576, '1978': 0.3561643835616438, '1979': 0.3835616438356164,
-    # '1980': 0.14246575342465753, '1981': 0.5342465753424658, '1982': 0.8246575342465754,
-    # '1983': 0.915068493150685, '1984': 0.8301369863013699}
-    # maybe could combine data from the two probes in order to have more data...
-    # but then if one is skewed the other one is skewed too
-
-    mode = 'monthly'
-    day_accuracy = 1
-    #
-    probe = 1
-    file_name = 'helios1_magrec.csv'
-    analysis_start_date = '15/12/1974'
-    analysis_end_date = '15/08/1984'
-    events1 = get_events_dates(file_name)
-    # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events1, mode=mode)
-    plot_trend(stats, mode=mode)
-    # dis1 = distances_stats(events1, probe=probe)
-
-    probe = 2
-    file_name = 'helios2_magrec.csv'
-    analysis_start_date = '17/01/1976'
-    analysis_end_date = '17/01/1979'
-    events2 = get_events_dates(file_name)
-    # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events2, mode=mode)
-    plot_trend(stats, mode=mode)
-    # dis2 = distances_stats(events2, probe=probe)
-
-    # analyse_all_probes(mode='radius')
-
-    # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
-    # print(st.pop('total time', None))
-    # plot_trend(st, mode)
+    events1 = get_data('helios1_magrec2.csv', probe=1)
+    events2 = get_data('helios2_magrec2.csv', probe=2)
+    # temperature_analysis([[datetime(1978, 4, 22, 10, 31), 2]])  ## weird event, clearly not fitting!!! close to sun
+    # temperature_analysis([[datetime(1980, 5, 29, 15, 39), 1]])  ## weird event, clearly not fitting!!! close to sun
+    # temperature_analysis([[datetime(1976, 5, 4, 1, 58), 1]])  ## weird event, clearly not fitting!!! close to sun
+    temperature_analysis(events=events1 + events2)

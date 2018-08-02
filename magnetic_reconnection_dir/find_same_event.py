@@ -58,12 +58,12 @@ def find_two_same_events(events_list_1: List[datetime], events_list_2: List[date
                                          events_list_other=events_list_2,
                                          distance_between_spacecrafts=distance_between_spacecrafts, probe=1,
                                          orbiter=orbiter1, duration=duration, allowed_error=allowed_error)
-    check_xyz_correlations(same_events_1, 1, orbiter1, orbiter2)
+    check_speed_correlations(same_events_1, 1, orbiter1, orbiter2)
     same_events_2 = get_events_relations(_events_list=_events_list_2, events_list_probe=events_list_2,
                                          events_list_other=events_list_1,
                                          distance_between_spacecrafts=distance_between_spacecrafts, probe=2,
                                          orbiter=orbiter2, duration=duration, allowed_error=allowed_error)
-    check_xyz_correlations(same_events_2, 2, orbiter2, orbiter1)
+    check_speed_correlations(same_events_2, 2, orbiter2, orbiter1)
     same_events = same_events_1 + same_events_2
     return same_events
 
@@ -124,7 +124,7 @@ def get_events_relations(_events_list: List[datetime], events_list_probe: List[d
     return same_event
 
 
-def check_xyz_correlations(correlated_events: List[List[datetime]], probe, orbiter1, orbiter2):
+def check_speed_correlations(correlated_events: List[List[datetime]], probe, orbiter1, orbiter2):
     min_error = 0.4
     max_error = 1.6
     for correlated_event in correlated_events:
@@ -136,24 +136,35 @@ def check_xyz_correlations(correlated_events: List[List[datetime]], probe, orbit
         orbiter1_x, orbiter1_y, orbiter1_z = orbiter1.x * 1.496e+8 / u.au, orbiter1.y * 1.496e+8 / u.au, orbiter1.z * 1.496e+8 / u.au
         orbiter2_x, orbiter2_y, orbiter2_z = orbiter2.x * 1.496e+8 / u.au, orbiter2.y * 1.496e+8 / u.au, orbiter2.z * 1.496e+8 / u.au
 
-        vx = np.mean(
-            [np.abs(orbiter1_x[c1] - orbiter1_x[c2]) / duration, np.abs(orbiter1_x[c1] - orbiter2_x[c2]) / duration])
-        vy = np.mean(
-            [np.abs(orbiter1_y[c1] - orbiter1_y[c2]) / duration, np.abs(orbiter2_y[c1] - orbiter2_y[c2]) / duration])
-        vz = np.mean(
-            [np.abs(orbiter1_z[c1] - orbiter1_z[c2]) / duration, np.abs(orbiter2_z[c1] - orbiter2_z[c2]) / duration])
+        data = HeliosData(start_date=correlated_event[0].strftime('%d/%m/%Y'), duration=int(duration/3600), probe=probe)
+        v_x = np.mean(data.data['vp_x'])
+        v_y = np.mean(data.data['vp_y'])
+        v_z = np.mean(data.data['vp_z'])
+        v = np.sqrt(v_x**2 + v_y**2 + v_z**2)
+
+        # vx = np.mean(
+        #     [np.abs(orbiter1_x[c1] - orbiter1_x[c2]) / duration, np.abs(orbiter2_x[c1] - orbiter2_x[c2]) / duration])
+        # vy = np.mean(
+        #     [np.abs(orbiter1_y[c1] - orbiter1_y[c2]) / duration, np.abs(orbiter2_y[c1] - orbiter2_y[c2]) / duration])
+        # vz = np.mean(
+        #     [np.abs(orbiter1_z[c1] - orbiter1_z[c2]) / duration, np.abs(orbiter2_z[c1] - orbiter2_z[c2]) / duration])
+
+        print(v_x, v_y, v_z, v)
 
         x_dist = np.abs(orbiter1_x[c1] - orbiter2_x[c2])
         y_dist = np.abs(orbiter1_y[c1] - orbiter2_y[c2])
         z_dist = np.abs(orbiter1_z[c1] - orbiter2_z[c2])
 
-        if min_error * (x_dist / vx) <= duration <= max_error * (x_dist / vx) and min_error * (
-                y_dist / vy) <= duration <= max_error * (y_dist / vy) and min_error * (
-                z_dist / vz) <= duration <= max_error * (z_dist / vz):
-            # print(orbiter1.y[c1] / u.au, orbiter2.y[c2], vy)
-            # print((x_dist / vx), (y_dist / vy), (z_dist / vz), duration)
-            # print(vx, vy, vz)
-            # print(orbiter1.x[c1], orbiter1.y[c1], orbiter1.z[c1], orbiter2.x[c2], orbiter2.y[c2], orbiter2.z[c2])
+        _v = np.sqrt((x_dist / duration) ** 2 + (y_dist / duration) ** 2 + (z_dist / duration) ** 2)
+        print(_v)
+
+        print(x_dist / v_x, y_dist / v_y, z_dist / v_z, duration)
+
+
+
+        if min_error * (x_dist / v_x) <= duration <= max_error * (x_dist / v_x) and min_error * (
+                y_dist / v_y) <= duration <= max_error * (y_dist / v_y) and min_error * (
+                z_dist / v_z) <= duration <= max_error * (z_dist / v_z):
             print(correlated_event)
 
 
