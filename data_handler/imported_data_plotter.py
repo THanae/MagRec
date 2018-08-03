@@ -12,7 +12,7 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('b_magnitude', 'vp_magnitude')]
 
 
-def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None):
+def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None, boundaries=None):
     """
     Plots given set of columns for a given ImportedData
     :param imported_data: ImportedData
@@ -39,13 +39,22 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
             for column_to_plot in columns_to_plot[ax_index]:
                 plot_to_ax(imported_data, ax=ax, column_name=column_to_plot, colour=colours[subplot_plot_count])
                 if subplot_plot_count == 0:
-                    ax = ax.twinx()  # creates new ax which shares x
+                    if column_to_plot != 'Tp_perp' and column_to_plot != 'Tp_par':
+                        ax = ax.twinx()  # creates new ax which shares x
+                    else:
+                        ax = fig.add_subplot(int(str(len(columns_to_plot)) +str(1) + str(ax_index+1)), sharex=ax, sharey=ax, frameon=False)
+                        ax.xaxis.set_ticklabels([])
                     subplot_plot_count += 1
+
+
         # ax.legend(loc=1)
         if event_date is not None:
             # ax.axvline(x=event_date-timedelta(minutes=3), linewidth=2)
             # ax.axvline(x=event_date + timedelta(minutes=3), linewidth=2)
             ax.axvline(x=event_date, linewidth=1.5, color='k')
+        if boundaries is not None:
+            for n in range(len(boundaries)):
+                ax.axvline(x=boundaries[n], linewidth=1.2, color='k')
 
     if not save:
         plt.show()
@@ -60,7 +69,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
             plt.savefig('h{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
 
 
-def plot_to_ax(imported_data: HeliosData, ax, column_name: str, colour='b'):
+def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     """
     Plots given column of given ImportedData to a given ax.
     :param imported_data: ImportedData
@@ -72,7 +81,10 @@ def plot_to_ax(imported_data: HeliosData, ax, column_name: str, colour='b'):
     if column_name not in imported_data.data.columns.values:
         imported_data.create_processed_column(column_name)
     ax.plot(imported_data.data[column_name], '-', markersize=2, label=column_name, color=colour)
+    if column_name == 'Tp_par':
+        ax.yaxis.set_label_position("right")
     ax.set_ylabel(column_name, color=colour)
+
     ax.grid()
 
 

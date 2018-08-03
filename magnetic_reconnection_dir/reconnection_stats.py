@@ -373,7 +373,7 @@ if __name__ == '__main__':
     day_accuracy = 1
     #
     probe = 1
-    file_name = 'helios1_magrec.csv'
+    file_name = 'helios1_magrec2.csv'
     analysis_start_date = '15/12/1974'
     analysis_end_date = '15/08/1984'
     events1 = get_events_dates(file_name)
@@ -383,7 +383,7 @@ if __name__ == '__main__':
     # dis1 = distances_stats(events1, probe=probe)
 
     probe = 2
-    file_name = 'helios2_magrec.csv'
+    file_name = 'helios2_magrec2.csv'
     analysis_start_date = '17/01/1976'
     analysis_end_date = '17/01/1979'
     events2 = get_events_dates(file_name)
@@ -392,7 +392,7 @@ if __name__ == '__main__':
     plot_trend(stats, mode=mode)
     # dis2 = distances_stats(events2, probe=probe)
 
-    # analyse_all_probes(mode='radius')
+    analyse_all_probes(mode='radius')
 
     # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
     # print(st.pop('total time', None))
