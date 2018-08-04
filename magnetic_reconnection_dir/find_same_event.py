@@ -9,31 +9,7 @@ from heliopy import spice
 
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
-
-
-def get_data_from_csv(events_list_1: str, events_list_2: str):
-    """
-    :param events_list_1: list of events for Helios 1
-    :param events_list_2: list of events for Helios 2
-    :return:
-    """
-    event_dates_1 = []
-    event_dates_2 = []
-    with open(events_list_1) as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            year, month, day = np.int(row['year']), np.int(row['month']), np.int(row['day'])
-            hours, minutes, seconds = np.int(row['hours']), np.int(row['minutes']), np.int(row['seconds'])
-            event_dates_1.append(datetime(year, month, day, hours, minutes, seconds))
-
-    with open(events_list_2) as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            year, month, day = np.int(row['year']), np.int(row['month']), np.int(row['day'])
-            hours, minutes, seconds = np.int(row['hours']), np.int(row['minutes']), np.int(row['seconds'])
-            event_dates_2.append(datetime(year, month, day, hours, minutes, seconds))
-
-    return event_dates_1, event_dates_2
+from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
 
 
 def find_two_same_events(events_list_1: List[datetime], events_list_2: List[datetime]):
@@ -142,13 +118,6 @@ def check_speed_correlations(correlated_events: List[List[datetime]], probe, orb
         v_z = np.mean(data.data['vp_z'])
         v = np.sqrt(v_x**2 + v_y**2 + v_z**2)
 
-        # vx = np.mean(
-        #     [np.abs(orbiter1_x[c1] - orbiter1_x[c2]) / duration, np.abs(orbiter2_x[c1] - orbiter2_x[c2]) / duration])
-        # vy = np.mean(
-        #     [np.abs(orbiter1_y[c1] - orbiter1_y[c2]) / duration, np.abs(orbiter2_y[c1] - orbiter2_y[c2]) / duration])
-        # vz = np.mean(
-        #     [np.abs(orbiter1_z[c1] - orbiter1_z[c2]) / duration, np.abs(orbiter2_z[c1] - orbiter2_z[c2]) / duration])
-
         print(v_x, v_y, v_z, v)
 
         x_dist = np.abs(orbiter1_x[c1] - orbiter2_x[c2])
@@ -160,8 +129,6 @@ def check_speed_correlations(correlated_events: List[List[datetime]], probe, orb
 
         print(x_dist / v_x, y_dist / v_y, z_dist / v_z, duration)
 
-
-
         if min_error * (x_dist / v_x) <= duration <= max_error * (x_dist / v_x) and min_error * (
                 y_dist / v_y) <= duration <= max_error * (y_dist / v_y) and min_error * (
                 z_dist / v_z) <= duration <= max_error * (z_dist / v_z):
@@ -169,6 +136,7 @@ def check_speed_correlations(correlated_events: List[List[datetime]], probe, orb
 
 
 if __name__ == '__main__':
-    helios_1, helios_2 = get_data_from_csv('helios1_magrec.csv', 'helios2_magrec.csv')
+    helios_1 = get_dates_from_csv('helios1_magrec.csv')
+    helios_2 = get_dates_from_csv('helios2_magrec.csv')
     a = find_two_same_events(helios_1, helios_2)
     pprint.pprint(a)

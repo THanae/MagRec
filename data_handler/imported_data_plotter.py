@@ -42,7 +42,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
                     if column_to_plot != 'Tp_perp' and column_to_plot != 'Tp_par':
                         ax = ax.twinx()  # creates new ax which shares x
                     else:
-                        ax = fig.add_subplot(int(str(len(columns_to_plot)) +str(1) + str(ax_index+1)), sharex=ax, sharey=ax, frameon=False)
+                        ax = fig.add_subplot(int(str(len(columns_to_plot)) +str(1) + str(ax_index+1)), sharey=ax, frameon=False)
                         ax.xaxis.set_ticklabels([])
                     subplot_plot_count += 1
 

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
+from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
 
 
 def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = True) -> dict:
@@ -226,22 +227,6 @@ def analyse_by_radii(events_list: List[datetime], probe: int, start_date: str, e
                 print('not as predicted for ', key, 'with', reconnections_at_radii[key], 'instead of ', predicted)
 
 
-def get_events_dates(file_name: str):
-    event_dates = []
-    with open(file_name) as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            year, month, day = np.int(row['year']), np.int(row['month']), np.int(row['day'])
-            hours, minutes, seconds = np.int(row['hours']), np.int(row['minutes']), np.int(row['seconds'])
-            # if row['satisfied tests']:
-            #     if row['satisfied tests'] == 'True':
-            #         event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-            # else:
-            #     event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-            event_dates.append(datetime(year, month, day, hours, minutes, seconds))
-    return event_dates
-
-
 def get_month_dict(days_of_year: list, year: int) -> dict:
     days_per_month = {'january': 0, 'february': 0, 'march': 0, 'april': 0, 'may': 0, 'june': 0, 'july': 0, 'august': 0,
                       'september': 0, 'october': 0, 'november': 0, 'december': 0}
@@ -300,9 +285,9 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
 
 def analyse_all_probes(mode='radius'):
     file1 = 'helios1_magrec.csv'
-    events1 = get_events_dates(file1)
+    events1 = get_dates_from_csv(file1)
     file2 = 'helios2_magrec.csv'
-    events2 = get_events_dates(file2)
+    events2 = get_dates_from_csv(file2)
 
     if mode == 'radius':
         dis1 = distances_stats(events1, probe=1)
@@ -376,7 +361,7 @@ if __name__ == '__main__':
     file_name = 'helios1_magrec2.csv'
     analysis_start_date = '15/12/1974'
     analysis_end_date = '15/08/1984'
-    events1 = get_events_dates(file_name)
+    events1 = get_dates_from_csv(file_name)
     # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
     stats = time_stats(events1, mode=mode)
     plot_trend(stats, mode=mode)
@@ -386,7 +371,7 @@ if __name__ == '__main__':
     file_name = 'helios2_magrec2.csv'
     analysis_start_date = '17/01/1976'
     analysis_end_date = '17/01/1979'
-    events2 = get_events_dates(file_name)
+    events2 = get_dates_from_csv(file_name)
     # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
     stats = time_stats(events2, mode=mode)
     plot_trend(stats, mode=mode)

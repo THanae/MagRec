@@ -7,7 +7,7 @@ from numpy.linalg import inv
 from mpl_toolkits.mplot3d import Axes3D
 
 from data_handler.data_importer.helios_data import HeliosData
-from magnetic_reconnection_dir.lmn_coordinates import hybrid_mva
+from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 
 def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, outside_interval: int = 10,
