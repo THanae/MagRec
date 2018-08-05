@@ -286,8 +286,14 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
 def analyse_all_probes(mode='radius'):
     file1 = 'helios1_magrec.csv'
     events1 = get_dates_from_csv(file1)
+    for events in get_dates_from_csv('helios1mag_rec3.csv'):
+        if events not in events1:
+            events1.append(events)
     file2 = 'helios2_magrec.csv'
     events2 = get_dates_from_csv(file2)
+    for events in get_dates_from_csv('helios2mag_rec3.csv'):
+        if events not in events2:
+            events2.append(events)
 
     if mode == 'radius':
         dis1 = distances_stats(events1, probe=1)
@@ -362,6 +368,9 @@ if __name__ == '__main__':
     analysis_start_date = '15/12/1974'
     analysis_end_date = '15/08/1984'
     events1 = get_dates_from_csv(file_name)
+    for events in get_dates_from_csv('helios1mag_rec3.csv'):
+        if events not in events1:
+            events1.append(events)
     # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
     stats = time_stats(events1, mode=mode)
     plot_trend(stats, mode=mode)
@@ -372,6 +381,9 @@ if __name__ == '__main__':
     analysis_start_date = '17/01/1976'
     analysis_end_date = '17/01/1979'
     events2 = get_dates_from_csv(file_name)
+    for events in get_dates_from_csv('helios2mag_rec3.csv'):
+        if events not in events2:
+            events2.append(events)
     # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
     stats = time_stats(events2, mode=mode)
     plot_trend(stats, mode=mode)

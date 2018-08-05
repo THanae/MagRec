@@ -9,7 +9,7 @@ from data_handler.data_importer.helios_data import HeliosData
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
-from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
+from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, send_dates_to_csv
 from magnetic_reconnection_dir.mva_analysis import get_b, mva, hybrid, get_side_data
 
 # test data
@@ -25,6 +25,7 @@ mu_0 = 4e-7 * np.pi
 k = 1.38e-23
 proton_mass = 1.67e-27
 
+
 def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarray, L: np.ndarray, M: np.ndarray,
                    N: np.ndarray):
     B1_L, B1_M, B1_N = np.dot(L, B1), np.dot(M, B1), np.dot(N, B1)
@@ -37,21 +38,6 @@ def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarra
 
 
 def get_walen_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64):
-    mu_0 = 4e-7 * np.pi
-    k = 1.38e-23
-    proton_mass = 1.67e-27
-
-    rho_1 = rho_1 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
-    rho_2 = rho_2 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
-    B1_part = B1_L * np.sqrt(1 / (mu_0 * rho_1)) * 10e-10  # b is in nanoteslas
-    B2_part = B2_L * np.sqrt(1 / (mu_0 * rho_2)) * 10e-10  # b is in nanoteslas
-
-    theoretical_v2_plus = v1_L + (B2_part - B1_part)
-    theoretical_v2_minus = v1_L - (B2_part - B1_part)
-
-
-def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64,
-               minimum_fraction: float = 0.9, maximum_fraction: float = 1.1) -> bool:
     rho_1 = rho_1 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     rho_2 = rho_2 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     alpha_1 = 0  # rho_1 * k * (T_par_1 - T_perp_1) / 2
@@ -61,6 +47,13 @@ def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.flo
 
     theoretical_v2_plus = v1_L + (B2_part - B1_part)
     theoretical_v2_minus = v1_L - (B2_part - B1_part)
+
+    return theoretical_v2_plus, theoretical_v2_minus
+
+
+def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64,
+               minimum_fraction: float = 0.9, maximum_fraction: float = 1.1) -> bool:
+    theoretical_v2_plus, theoretical_v2_minus = get_walen_speed(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2)
 
     # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
     # if they all have the same sign, we compare to both v_plus and v_minus
@@ -82,6 +75,30 @@ def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.flo
     # print('theory', theoretical_v2_plus)
     # print('theory', theoretical_v2_minus)
     return False
+
+
+def plot_walen_speed(event_date: datetime, probe: int, duration: int = 4, outside_interval: int = 10,
+                     inside_interval: int = 2):
+    start_time = event_date - timedelta(hours=duration / 2)
+    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                               duration=duration, probe=probe)
+    imported_data.data.dropna(inplace=True)
+    B = get_b(imported_data, event_date, 30)
+    L, M, N = mva(B)
+    B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
+                                                                                               event_date,
+                                                                                               outside_interval,
+                                                                                               inside_interval)
+    L, M, N = hybrid(L, B1, B2)
+    print('LMN:', L, M, N)
+
+    B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
+    B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
+    v1_L, v2_L = v1_changed[0], v2_changed[0]
+    theoretical_v2_plus, theoretical_v2_minus = get_walen_speed(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
+    theorical_time = event_date + timedelta(minutes=inside_interval/2)
+
+    return [['v_l', theorical_time, theoretical_v2_plus], ['v_l', theorical_time, theoretical_v2_minus]]
 
 
 def b_l_biggest(B1_L: float, B2_L: float, B1_M: float, B2_M: float) -> bool:
@@ -155,35 +172,8 @@ def changes_in_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.nd
         return False
 
 
-def send_reconnections_to_csv(event_list: List[datetime], possible_reconnections_list: List[datetime], probe: int,
-                              name: str = 'reconnections_tests'):
-    with open(name + '.csv', 'w', newline='') as csv_file:
-        fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds', 'radius', 'satisfied tests']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-        writer.writeheader()
-        for reconnection_date in event_list:
-            year = reconnection_date.year
-            month = reconnection_date.month
-            day = reconnection_date.day
-            hour = reconnection_date.hour
-            minutes = reconnection_date.minute
-            seconds = reconnection_date.second
-            start = reconnection_date - timedelta(hours=1)
-            imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2,
-                                         probe=probe)
-            radius = imported_data.data['r_sun'].loc[
-                     reconnection_date - timedelta(minutes=1): reconnection_date + timedelta(minutes=1)][0]
-            if reconnection_date in possible_reconnections_list:
-                satisfied = True
-            else:
-                satisfied = False
-            writer.writerow(
-                {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds,
-                 'radius': radius, 'satisfied tests': satisfied})
-
-
-def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.ndarray, event_date: datetime, boundaries=None):
-
+def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.ndarray, event_date: datetime, probe: int,
+             boundaries=None):
     bl, bm, bn = [], [], []
     vl, vm, vn = [], [], []
     for n in range(len(imported_data.data)):
@@ -204,15 +194,12 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
     vm = pd.Series(np.array(vm), index=imported_data.data.index)
     vn = pd.Series(np.array(vn), index=imported_data.data.index)
 
-    imported_data.data['Bl'] = bl
-    imported_data.data['Bm'] = bm
-    imported_data.data['Bn'] = bn
-    imported_data.data['v_l'] = vl
-    imported_data.data['v_m'] = vm
-    imported_data.data['v_n'] = vn
+    imported_data.data['Bl'], imported_data.data['Bm'], imported_data.data['Bn'] = bl, bm, bn
+    imported_data.data['v_l'], imported_data.data['v_m'], imported_data.data['v_n'] = vl, vm, vn
 
+    scatter_points = plot_walen_speed(event_date=event_date, probe=probe)
     plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
-                       save=False, event_date=event_date, boundaries=boundaries)
+                       save=False, event_date=event_date, boundaries=boundaries, scatter_points=scatter_points)
 
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fraction: float, maximum_fraction: float,
@@ -244,7 +231,8 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
             B = get_b(imported_data, event_date, 30)
             L, M, N = mva(B)
             B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                       event_date, 10, 2)
+                                                                                                       event_date, 10,
+                                                                                                       2)
             L, M, N = hybrid(L, B1, B2)
             print('LMN:', L, M, N)
 
@@ -276,7 +264,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
                             print('Please reply by yes or no')
 
                 if plot and mode == 'static' and event_date not in known_events:
-                    plot_lmn(imported_data, L, M, N, event_date)
+                    plot_lmn(imported_data, L, M, N, event_date, probe=probe)
 
             else:
                 print('NO RECONNECTION AT ', str(event_date))
@@ -290,18 +278,18 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
 
 
 def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv', probe: int = 2, to_csv: bool = False,
-                                plot: bool = True, mode='static'):
+                                plot: bool = False, mode='static'):
     event_dates = get_dates_from_csv(file)
     probe = probe
     min_walen, max_walen = 0.9, 1.2
     events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot, mode=mode)
     print('number of reconnections: ', len(events_that_passed_test))
     if to_csv:
-        send_reconnections_to_csv(event_dates, events_that_passed_test, probe=probe, name='reconnections_tests')
+        filename = 'helios' + str(probe) + 'reconnections'
+        send_dates_to_csv(filename=filename, events_list=events_that_passed_test, probe=probe)
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('reconnections_helios_2_no_nt_27_19_5.csv', 2, plot=True, mode='static')
-
+    test_reconnections_from_csv('helios2mag_rec3.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)

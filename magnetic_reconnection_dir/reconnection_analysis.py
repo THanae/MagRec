@@ -53,7 +53,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
             predicted_increase, alfven_speed = find_predicted_temperature(b_l, n)
             # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event, boundaries=[left_interval_end, right_interval_start])
             n_inside = np.mean((imported_data.data.loc[left_interval_end:right_interval_start, 'n_p']).values)
-            if 0.9 * delta_t <= predicted_increase * 0.13 <= 1.1 * delta_t:
+            if 0.8 * delta_t <= predicted_increase * 0.13 <= 1.2 * delta_t:
                 # print(event, alfven_speed, predicted_increase)
                 satisfied_test += 1
             if dt_perp > 100000 * dt_par:
@@ -61,16 +61,16 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
                       imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0])
                 # plot_imported_data(imported_data, event_date=event,
                 #                    boundaries=[left_interval_end, right_interval_start])
-            elif delta_t > 50:
-                print('> 600: ', event, imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
+            elif delta_t > 150:
+                print('> 150: ', event, imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
                 too_big += 1
             # elif delta_t < 0.1:
             #     print('this event might have too small an increase in temperature')
-            #     # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event,
-            #     #          boundaries=[left_interval_end, right_interval_start])
+                # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event,
+                #          boundaries=[left_interval_end, right_interval_start])
 
-            elif dt_perp > 100 or dt_par > 100:
-                print('perp or par > 40: ', event,
+            elif dt_perp > 60 or dt_par > 60:
+                print('perp or par > 60: ', event,
                       imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0])
                 too_big += 1
 
@@ -86,7 +86,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
     print('satisfied test: ', satisfied_test)
     print('too big values: ', too_big)
 
-    slopes = plot_relations([total_t, par_t, perp_t])
+    slopes = plot_relations([total_t, par_t, perp_t], 0.13)
     return slopes
 
 
@@ -206,7 +206,7 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
 
 def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
             left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
-    L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=2, mva_interval=10)
+    L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
     b_left = (np.array([np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']).values),
                         np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'By']).values),
                         np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bz']).values)]))
@@ -225,7 +225,18 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
 if __name__ == '__main__':
     events1 = get_dates_from_csv(filename='helios1_magrec2.csv', probe=1)
     events2 = get_dates_from_csv(filename='helios2_magrec2.csv', probe=2)
+    events22 = get_dates_from_csv(filename='helios2mag_rec3.csv', probe=2)
+    events12 = get_dates_from_csv(filename='helios1mag_rec3.csv', probe=1)
     # temperature_analysis([[datetime(1978, 4, 22, 10, 31), 2]])  ## weird event, clearly not fitting!!! close to sun
     # temperature_analysis([[datetime(1980, 5, 29, 15, 39), 1]])  ## weird event, clearly not fitting!!! close to sun
     # temperature_analysis([[datetime(1976, 5, 4, 1, 58), 1]])  ## weird event, clearly not fitting!!! close to sun
-    temperature_analysis(events=events1 + events2)
+    events_to_analyse = events1 + events2
+    for event in events22:
+        if event not in events2:
+            print(event)
+            events_to_analyse.append(event)
+    for event in events12:
+        if event not in events1:
+            print(event)
+            events_to_analyse.append(event)
+    temperature_analysis(events=events_to_analyse)

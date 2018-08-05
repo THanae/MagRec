@@ -12,7 +12,7 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('b_magnitude', 'vp_magnitude')]
 
 
-def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None, boundaries=None):
+def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None, boundaries=None, scatter_points=None):
     """
     Plots given set of columns for a given ImportedData
     :param imported_data: ImportedData
@@ -46,6 +46,10 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
                         ax.xaxis.set_ticklabels([])
                     subplot_plot_count += 1
 
+                if scatter_points is not None:
+                    for scatter_point in scatter_points:
+                        if scatter_point[0] == column_to_plot:
+                            ax.scatter(scatter_point[1], scatter_point[2])
 
         # ax.legend(loc=1)
         if event_date is not None:
@@ -55,6 +59,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
         if boundaries is not None:
             for n in range(len(boundaries)):
                 ax.axvline(x=boundaries[n], linewidth=1.2, color='k')
+
 
     if not save:
         plt.show()
