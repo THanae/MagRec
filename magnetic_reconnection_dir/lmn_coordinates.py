@@ -1,6 +1,5 @@
 import numpy as np
 from datetime import datetime
-import csv
 from datetime import timedelta
 import pandas as pd
 from typing import List
@@ -37,7 +36,7 @@ def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarra
     return B1_changed, B2_changed, v1_changed, v2_changed
 
 
-def get_walen_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64):
+def get_alfven_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64):
     rho_1 = rho_1 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     rho_2 = rho_2 * proton_mass / 1e-15  # density is in cm-3, we want in km-3
     alpha_1 = 0  # rho_1 * k * (T_par_1 - T_perp_1) / 2
@@ -53,7 +52,7 @@ def get_walen_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: n
 
 def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64,
                minimum_fraction: float = 0.9, maximum_fraction: float = 1.1) -> bool:
-    theoretical_v2_plus, theoretical_v2_minus = get_walen_speed(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2)
+    theoretical_v2_plus, theoretical_v2_minus = get_alfven_speed(B1_L, B2_L, v1_L, v2_L, rho_1, rho_2)
 
     # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
     # if they all have the same sign, we compare to both v_plus and v_minus
@@ -71,14 +70,11 @@ def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.flo
             return True
     else:
         print('wrong result')
-    # print('real', v2_L)
-    # print('theory', theoretical_v2_plus)
-    # print('theory', theoretical_v2_minus)
     return False
 
 
-def plot_walen_speed(event_date: datetime, probe: int, duration: int = 4, outside_interval: int = 10,
-                     inside_interval: int = 2):
+def plot_walen_test(event_date: datetime, probe: int, duration: int = 4, outside_interval: int = 10,
+                    inside_interval: int = 2):
     start_time = event_date - timedelta(hours=duration / 2)
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                duration=duration, probe=probe)
@@ -95,17 +91,55 @@ def plot_walen_speed(event_date: datetime, probe: int, duration: int = 4, outsid
     B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
     B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
     v1_L, v2_L = v1_changed[0], v2_changed[0]
-    theoretical_v2_plus, theoretical_v2_minus = get_walen_speed(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
-    theorical_time = event_date + timedelta(minutes=inside_interval/2)
+    theoretical_v2_plus, theoretical_v2_minus = get_alfven_speed(B1_L, B2_L, v1_L, v2_L, density_1, density_2)
+    theorical_time = event_date + timedelta(minutes=inside_interval / 2)
 
     return [['v_l', theorical_time, theoretical_v2_plus], ['v_l', theorical_time, theoretical_v2_minus]]
 
 
+def plot_theoretical_speed(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2):
+    start_time = event_date - timedelta(hours=duration / 2)
+    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                               duration=duration, probe=probe)
+    imported_data.data.dropna(inplace=True)
+    B = get_b(imported_data, event_date, 30)
+    L, M, N = mva(B)
+    B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
+                                                                                               event_date,
+                                                                                               outside_interval,
+                                                                                               inside_interval)
+    L, M, N = hybrid(L, B1, B2)
+    event_start = event_date - timedelta(minutes=inside_interval/2)
+    event_end = event_date + timedelta(minutes=inside_interval/2)
+    _event_data = imported_data.data.loc[event_start:event_end]
+    event_data = _event_data.copy()
+    for n in range(len(event_data)):
+        v = np.array([event_data['vp_x'][n], event_data['vp_y'][n], event_data['vp_z'][n]])
+        b = np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]])
+        vl = np.dot(v, L)
+        bl = np.dot(b, L)
+        event_data.loc[event_data.index[n], 'v_l'] = vl
+        event_data.loc[event_data.index[n], 'b_l'] = bl
+    alfven_speeds = []
+    for n in range(len(event_data)-1):
+        v1 = event_data['v_l'][n]
+
+        B1_part = event_data['b_l'][n] * np.sqrt(1 / (mu_0 * event_data['n_p'][n] * proton_mass / 1e-15)) * 1e-9
+        B2_part = event_data['b_l'][n+1] * np.sqrt(1 / (mu_0 * event_data['n_p'][n+1] * proton_mass / 1e-15)) * 1e-9
+        print(B1_part, B2_part)
+        v2_plus = v1 + (B2_part - B1_part)
+        v2_minus = v1 - (B2_part - B1_part)
+        print(v2_plus, v2_minus)
+
+        alfven_speeds.append(['v_l', event_data.index[n+1], v2_plus])
+        alfven_speeds.append(['v_l', event_data.index[n+1], v2_minus])
+    return alfven_speeds
+
+
+
 def b_l_biggest(B1_L: float, B2_L: float, B1_M: float, B2_M: float) -> bool:
-    amplitude_change_L = np.abs(B1_L - B2_L)
-    amplitude_change_M = np.abs(B1_M - B2_M)
-    magnitude_change_L = B1_L ** 2 + B2_L ** 2
-    magnitude_change_M = B1_M ** 2 + B2_M ** 2
+    amplitude_change_L, amplitude_change_M = np.abs(B1_L - B2_L), np.abs(B1_M - B2_M)
+    magnitude_change_L, magnitude_change_M = B1_L ** 2 + B2_L ** 2, B1_M ** 2 + B2_M ** 2
     if amplitude_change_L > 1 + amplitude_change_M or magnitude_change_L > 1 + magnitude_change_M:
         return True  # we do not want too close results, in which case it is not a reconnection
     else:
@@ -197,9 +231,10 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
     imported_data.data['Bl'], imported_data.data['Bm'], imported_data.data['Bn'] = bl, bm, bn
     imported_data.data['v_l'], imported_data.data['v_m'], imported_data.data['v_n'] = vl, vm, vn
 
-    scatter_points = plot_walen_speed(event_date=event_date, probe=probe)
+    # scatter_points = plot_walen_test(event_date=event_date, probe=probe)
+    # scatter_points = scatter_points + plot_theoretical_speed(event_date, probe)
     plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
-                       save=False, event_date=event_date, boundaries=boundaries, scatter_points=scatter_points)
+                       save=False, event_date=event_date, boundaries=boundaries)
 
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fraction: float, maximum_fraction: float,
@@ -290,6 +325,8 @@ def test_reconnections_from_csv(file: str = 'reconnectionshelios2testdata1.csv',
 
 
 if __name__ == '__main__':
-    test_reconnections_from_csv('helios2mag_rec3.csv', 2, plot=True, mode='static')
+    # test_reconnections_from_csv('helios2mag_rec3.csv', 2, plot=True, mode='static')
+    # test_reconnections_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
+    test_reconnection_lmn([datetime(1975, 11, 9, 21, 17)], 1, 0.9, 1.1, plot=True)

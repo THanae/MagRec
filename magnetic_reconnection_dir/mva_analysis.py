@@ -80,8 +80,6 @@ def mva(B: List[np.ndarray]):
         N[coordinate] = v[:, w_min][coordinate]
         M[coordinate] = v[:, w_intermediate][coordinate]
 
-    # print(L, M, N)
-
     return L, M, N
 
 
@@ -99,12 +97,11 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray):  # hybrid mva necess
     M = cross_n_l / np.sqrt(cross_n_l[0] ** 2 + cross_n_l[1] ** 2 + cross_n_l[2] ** 2)
     L = np.cross(M, N)
 
-    # print(L, M, N)
-
     return L, M, N
 
 
-def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2, mva_interval: int = 30):
+def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2,
+               mva_interval: int = 30):
     start_time = event_date - timedelta(hours=duration / 2)
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                duration=duration, probe=probe)
@@ -117,4 +114,3 @@ def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10,
                                                                                                inside_interval)
     L, M, N = hybrid(L, B1, B2)
     return L, M, N
-

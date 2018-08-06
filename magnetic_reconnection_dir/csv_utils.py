@@ -1,6 +1,6 @@
 import csv
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Union
 
 import numpy as np
 
@@ -43,3 +43,13 @@ def send_dates_to_csv(filename: str, events_list: List[datetime], probe: int, ad
             if not add_radius:
                 writer.writerow(
                     {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds})
+
+
+def create_events_list_from_csv_files(files:List[List[Union[str, int]]]):
+    events = []
+    for file, probe in files:
+        _events = get_dates_from_csv(file, probe)
+        for event in _events:
+            if event not in events:
+                events.append(event)
+    return events
