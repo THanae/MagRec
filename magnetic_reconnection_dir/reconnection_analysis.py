@@ -9,7 +9,7 @@ from scipy.stats import linregress
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.imported_data_plotter import plot_imported_data
 from data_handler.utils.column_processing import get_outliers, get_derivative
-from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
+from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, create_events_list_from_csv_files
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 proton_mass = 1.67 * 10e-27
@@ -23,7 +23,8 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
     too_big = 0
     use_2_b = True
     print(len(events))
-    total_t, par_t, perp_t, other_total_t = [], [], [], []
+    total_t, par_t, perp_t, t_diff = [], [], [], []
+    shear, small_shear, big_shear, medium_shear = get_shear_angle(events)
     for event, probe in events:
         print(event, probe)
         try:
@@ -52,41 +53,29 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
                                                                         right_interval_start, right_interval_end)
             predicted_increase, alfven_speed = find_predicted_temperature(b_l, n)
             # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event, boundaries=[left_interval_end, right_interval_start])
-            n_inside = np.mean((imported_data.data.loc[left_interval_end:right_interval_start, 'n_p']).values)
-            if 0.8 * delta_t <= predicted_increase * 0.13 <= 1.2 * delta_t:
-                # print(event, alfven_speed, predicted_increase)
+            if 0.8 * delta_t <= predicted_increase * 0.114 <= 1.2 * delta_t:
                 satisfied_test += 1
-            if dt_perp > 100000 * dt_par:
-                print('PERPENDICULAR  BIGGER: ', dt_perp, dt_par, event,
-                      imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0])
-                # plot_imported_data(imported_data, event_date=event,
-                #                    boundaries=[left_interval_end, right_interval_start])
-            elif delta_t > 150:
-                print('> 150: ', event, imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
-                too_big += 1
-            # elif delta_t < 0.1:
-            #     print('this event might have too small an increase in temperature')
-                # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event,
-                #          boundaries=[left_interval_end, right_interval_start])
-
-            elif dt_perp > 60 or dt_par > 60:
-                print('perp or par > 60: ', event,
-                      imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0])
-                too_big += 1
-
-            # elif n_inside > 1.1*n_right and n_inside > 1.1*n_left:
-            #     print('N TOO BIG: ', event, n_inside, n_right, imported_data.data.loc[event - timedelta(minutes=1):event, 'r_sun'][0])
+            if [event, probe] in small_shear:
+                total_t.append([predicted_increase, delta_t, 'r'])
+                par_t.append([predicted_increase, dt_par, 'r'])
+                perp_t.append([predicted_increase, dt_perp, 'r'])
+                t_diff.append([dt_par, dt_perp, 'r'])
+            elif [event, probe] in big_shear:
+                total_t.append([predicted_increase, delta_t, 'b'])
+                par_t.append([predicted_increase, dt_par, 'b'])
+                perp_t.append([predicted_increase, dt_perp, 'b'])
+                t_diff.append([dt_par, dt_perp, 'b'])
             else:
-                total_t.append([predicted_increase, delta_t])
-                par_t.append([predicted_increase, dt_par])
-                perp_t.append([predicted_increase, dt_perp])
-                other_total_t.append([predicted_increase, other_dt_total])
+                total_t.append([predicted_increase, delta_t, 'g'])
+                par_t.append([predicted_increase, dt_par, 'g'])
+                perp_t.append([predicted_increase, dt_perp, 'g'])
+                t_diff.append([dt_par, dt_perp, 'g'])
         except ValueError:
             print('value error')
     print('satisfied test: ', satisfied_test)
     print('too big values: ', too_big)
 
-    slopes = plot_relations([total_t, par_t, perp_t], 0.13)
+    slopes = plot_relations([total_t, par_t, perp_t, t_diff], 0.13)
     return slopes
 
 
@@ -96,18 +85,19 @@ def plot_relations(related_lists: List[list], slope=None):
         fig = plt.figure(n + 1)
         a = [x[0] for x in related_lists[n] if not np.isnan(x[0]) and not np.isnan(x[1])]
         b = [y[1] for y in related_lists[n] if not np.isnan(y[0]) and not np.isnan(y[1])]
+        color =[c[2] for c in related_lists[n] if not np.isnan(c[0]) and not np.isnan(c[1])]
         # print(a, b)
         print(linregress(a, b))
         print(np.median(np.array(b) / np.array(a)))
         slope_linreg, intercept, rvalue, pvalue, stderr = linregress(a, b)
         slopes.append(slope_linreg)
         # print(np.polyfit(a, b, 1))
-        plt.scatter(a, b)
+        plt.scatter(a, b, c=color)
         if slope is not None:
             plt.plot([np.min(a), np.max(a)], [slope * np.min(a), slope * np.max(a)])
         plt.plot([np.min(a), np.max(a)], [slope_linreg * np.min(a), slope_linreg * np.max(a)])
-        plt.xlabel('mv**2')
-        plt.ylabel('delta_t')
+        plt.xlabel('mv**2 (eV)')
+        plt.ylabel('delta_t (eV)')
         plt.xscale('log')
         plt.yscale('log')
     plt.show()
@@ -143,7 +133,6 @@ def find_intervals(imported_data: HeliosData, event: datetime):
         if not np.isnan(perp_outliers[n]) and not np.isnan(par_outliers[n]):
             if event - timedelta(minutes=2) < perp_outliers.index[n] < event + timedelta(minutes=2):
                 duration.append(perp_outliers.index[n])
-    print(len(duration))
     if len(duration) <= 1:
         event_duration = 2
         if len(duration) == 0:
@@ -157,7 +146,6 @@ def find_intervals(imported_data: HeliosData, event: datetime):
 
         event_start = duration[0]
         event_end = duration[-1]
-        print('DURATION', event_duration, event_start, event_end)
     return event_duration, event_start, event_end
 
 
@@ -222,21 +210,61 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
     return b_l_left, b_l_right, n_left, n_right, L, M, N
 
 
+def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
+    shear = []
+    small_shear, big_shear, medium_shear = [], [], []
+    for event, probe in events_list:
+        print(event)
+        start = event - timedelta(hours=1)
+        imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2, probe=probe)
+        imported_data.data.dropna(inplace=True)
+        duration, event_start, event_end = find_intervals(imported_data, event)
+        left_interval_end, right_interval_start = event_start, event_end
+        left_interval_start = event_start - timedelta(minutes=5)
+        right_interval_end = event_end + timedelta(minutes=5)
+
+        b_left = (np.array([np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']).values),
+                            np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'By']).values),
+                            np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bz']).values)]))
+        b_right = (np.array([np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'Bx']).values),
+                             np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'By']).values),
+                             np.mean(
+                                 (imported_data.data.loc[right_interval_start: right_interval_end, 'Bz']).values)]))
+        br_mag = np.sqrt(b_left[0]**2 + b_left[1]**2 + b_left[2]**2)
+        bl_mag = np.sqrt(b_right[0]**2 + b_right[1]**2 + b_right[2]**2)
+        theta = np.arccos((np.dot(b_right, b_left)/(bl_mag*br_mag)))
+        theta = np.degrees(theta)
+        if not np.isnan(theta):
+            shear.append(theta)
+        if theta <= 90:
+            small_shear.append([event, probe])
+        elif theta > 135:
+            big_shear.append([event, probe])
+        else:
+            medium_shear.append([event, probe])
+    print('shear', shear)
+    # plt.hist(shear, bins=15)
+    # plt.show()
+    return shear, small_shear, big_shear, medium_shear
+
+
 if __name__ == '__main__':
-    events1 = get_dates_from_csv(filename='helios1_magrec2.csv', probe=1)
-    events2 = get_dates_from_csv(filename='helios2_magrec2.csv', probe=2)
-    events22 = get_dates_from_csv(filename='helios2mag_rec3.csv', probe=2)
-    events12 = get_dates_from_csv(filename='helios1mag_rec3.csv', probe=1)
+    # events1 = get_dates_from_csv(filename='helios1_magrec2.csv', probe=1)
+    # events2 = get_dates_from_csv(filename='helios2_magrec2.csv', probe=2)
+    # events22 = get_dates_from_csv(filename='helios2mag_rec3.csv', probe=2)
+    # events12 = get_dates_from_csv(filename='helios1mag_rec3.csv', probe=1)
+    # events_to_analyse = events1 + events2
     # temperature_analysis([[datetime(1978, 4, 22, 10, 31), 2]])  ## weird event, clearly not fitting!!! close to sun
     # temperature_analysis([[datetime(1980, 5, 29, 15, 39), 1]])  ## weird event, clearly not fitting!!! close to sun
     # temperature_analysis([[datetime(1976, 5, 4, 1, 58), 1]])  ## weird event, clearly not fitting!!! close to sun
-    events_to_analyse = events1 + events2
-    for event in events22:
-        if event not in events2:
-            print(event)
-            events_to_analyse.append(event)
-    for event in events12:
-        if event not in events1:
-            print(event)
-            events_to_analyse.append(event)
+
+    events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
+    events_to_analyse = events_to_analyse + create_events_list_from_csv_files([['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
     temperature_analysis(events=events_to_analyse)
+    # shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
+    # print('small shear angle', small_shear_angle)
+    # temperature_analysis(small_shear_angle)
+    # print('big shear angle', big_shear_angle)
+    # temperature_analysis(big_shear_angle)
+    # print('medium shear angle', medium_shear_angle)
+    # temperature_analysis(medium_shear_angle)
