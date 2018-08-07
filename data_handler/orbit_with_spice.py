@@ -73,8 +73,18 @@ def plot_orbit(orbiter: spice.Trajectory, spacecraft: int = 2):
     ax = fig.add_subplot(111)
     # could add option to have uniform c
     ax.scatter(orbiter.x, orbiter.y, s=3, c=times_float)
+    radius = np.sqrt(orbiter.x**2 + orbiter.y**2 + orbiter.z**2)
+    for n in range(len(radius)):
+        if 0.8*u.au<radius[n] < 0.9* u.au:
+            ax.scatter(orbiter.x[n], orbiter.y[n], s=3, c='k')
     ax.scatter(orbiter.x[0], orbiter.y[0], s=5, c='b')
     ax.scatter(orbiter.x[10], orbiter.y[10], s=5, c='r')
+    orbiter_venus = get_planet_orbit('Venus')
+    orbiter_mercury = get_planet_orbit('Mercury')
+    orbiter_earth = get_planet_orbit('Earth')
+    ax.scatter(orbiter_venus.x, orbiter_venus.y, s=3, c='k')
+    ax.scatter(orbiter_mercury.x, orbiter_mercury.y, s=3, c='k')
+    ax.scatter(orbiter_earth.x, orbiter_earth.y, s=3, c='k')
     ax.set_xlim(-1, 1)
     ax.set_ylim(-1, 1)
     ax.set_title(
@@ -109,16 +119,50 @@ def plot_period(orbiter, spacecraft: int = 2):
     plt.show()
 
 
+def get_planet_orbit(planet: str, start_date: str = '20/01/1976', end_date: str = '01/10/1979'):
+    orbiter_kernel = spice_data.get_kernel('planet_trajectories')
+    spice.furnish(orbiter_kernel)
+    orbiter = spice.Trajectory(planet)
+    start_time = datetime.strptime(start_date, '%d/%m/%Y')
+    end_time = datetime.strptime(end_date, '%d/%m/%Y')
+    times = []
+    while start_time < end_time:
+        times.append(start_time)
+        start_time = start_time + timedelta(days=1)
+    orbiter.generate_positions(times, 'Sun', 'ECLIPJ2000')
+    orbiter.change_units(u.au)
+    return orbiter
+
+
+def find_similar_dates(orbiter_spacecraft, orbiter_planet):
+    position_spacecraft = np.sqrt(orbiter_spacecraft.x**2 + orbiter_spacecraft.y**2 + orbiter_spacecraft.z**2)
+    position_planet = np.sqrt(orbiter_planet.x**2 + orbiter_planet.y**2 + orbiter_planet.z**2)
+    similar_positions_dates = []
+    for n in range(len(position_spacecraft)):
+        for m in range(len(position_planet)):
+            if np.abs(position_planet[m]-position_spacecraft[n]) < 0.001 * u.au:
+                print(orbiter_planet.times[n], np.abs(position_planet[m]-position_spacecraft[n]))
+                if orbiter_planet.times[n] not in similar_positions_dates:
+                    similar_positions_dates.append(orbiter_planet.times[n])
+    print(similar_positions_dates)
+
+
 if __name__ == '__main__':
     probe = 1
+    start_time = '15/12/1974'
+    end_time = '08/08/1984'
+    # probe = 2
     # probe = 'ulysses'
     orbiter = kernel_loader(probe)
     # times = orbit_times_generator(start_date='20/10/1990', end_date='30/06/2009')
-    times = orbit_times_generator()
+    times = orbit_times_generator(start_date=start_time, end_date=end_time)
+    # times = orbit_times_generator()
     orbit_generator(orbiter, times)
     radius = np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2)
     # print(orbiter.times)
     print('the perihelion is ', np.min(radius), ' at ', orbiter.times[np.argmin(radius)])
     print('the aphelion is ', np.max(radius), ' at ', orbiter.times[np.argmax(radius)])
-    plot_orbit(orbiter)
+    plot_orbit(orbiter, spacecraft=probe)
     # plot_period(orbiter, spacecraft=probe)
+    # find_similar_dates(orbiter, get_planet_orbit('Venus))
+    find_similar_dates(orbiter, get_planet_orbit('Mercury', start_time, end_time))
