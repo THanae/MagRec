@@ -28,20 +28,25 @@ def find_two_same_events(events_list_1: List[datetime], events_list_2: List[date
         (orbiter1.x - orbiter2.x) ** 2 + (orbiter1.y - orbiter2.y) ** 2 + (orbiter1.z - orbiter2.z) ** 2)
     _events_list_1 = [datetime(event.year, event.month, event.day) for event in events_list_1]
     _events_list_2 = [datetime(event.year, event.month, event.day) for event in events_list_2]
-    allowed_error = 0.3  # percent
+    allowed_error = 0.02  # percent
     duration = 10  # over which speed is averaged
     same_events_1 = get_events_relations(_events_list=_events_list_1, events_list_probe=events_list_1,
                                          events_list_other=events_list_2,
                                          distance_between_spacecrafts=distance_between_spacecrafts, probe=1,
                                          orbiter=orbiter1, duration=duration, allowed_error=allowed_error)
-    check_speed_correlations(same_events_1, 1, orbiter1, orbiter2)
+    # check_speed_correlations(same_events_1, 1, orbiter1, orbiter2)
     same_events_2 = get_events_relations(_events_list=_events_list_2, events_list_probe=events_list_2,
                                          events_list_other=events_list_1,
                                          distance_between_spacecrafts=distance_between_spacecrafts, probe=2,
                                          orbiter=orbiter2, duration=duration, allowed_error=allowed_error)
-    check_speed_correlations(same_events_2, 2, orbiter2, orbiter1)
+    # check_speed_correlations(same_events_2, 2, orbiter2, orbiter1)
     same_events = same_events_1 + same_events_2
-    return same_events
+    potential_same_events = []
+    for events in same_events:
+        if events not in potential_same_events:
+            potential_same_events.append(events)
+
+    return potential_same_events
 
 
 def get_events_relations(_events_list: List[datetime], events_list_probe: List[datetime],
@@ -136,7 +141,7 @@ def check_speed_correlations(correlated_events: List[List[datetime]], probe, orb
 
 
 if __name__ == '__main__':
-    helios_1 = get_dates_from_csv('helios1_magrec.csv')
-    helios_2 = get_dates_from_csv('helios2_magrec.csv')
+    helios_1 = get_dates_from_csv('helios1_magrec2.csv') + get_dates_from_csv('helios1mag_rec3.csv')
+    helios_2 = get_dates_from_csv('helios2_magrec2.csv') + get_dates_from_csv('helios2mag_rec3.csv')
     a = find_two_same_events(helios_1, helios_2)
     pprint.pprint(a)

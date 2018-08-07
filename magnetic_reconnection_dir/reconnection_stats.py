@@ -162,7 +162,6 @@ def time_spent_at_date(probe: int, start_date: str, end_date: str, accuracy: flo
 
     if mode == 'yearly':
         for key in time_spent.keys():
-            # time_spent[key] = (time_spent[key] / len(times)) * filecount(probe, int(key))/365
             time_spent[key] = filecount(probe, int(key))[0] / filecount(probe)[0]
     elif mode == 'monthly':  # not very useful when there are so few reconnections to start with,
         #  but might be more useful with other spacecrafts
@@ -284,12 +283,12 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
 
 
 def analyse_all_probes(mode='radius'):
-    file1 = 'helios1_magrec.csv'
+    file1 = 'helios1_magrec2.csv'
     events1 = get_dates_from_csv(file1)
     for events in get_dates_from_csv('helios1mag_rec3.csv'):
         if events not in events1:
             events1.append(events)
-    file2 = 'helios2_magrec.csv'
+    file2 = 'helios2_magrec2.csv'
     events2 = get_dates_from_csv(file2)
     for events in get_dates_from_csv('helios2mag_rec3.csv'):
         if events not in events2:
@@ -351,18 +350,8 @@ def plot_trend(stat: dict, mode='yearly'):
 
 
 if __name__ == '__main__':
-    # need missing data list in order to determine exactly if events follow theory
-    # HELIOS 1
-    # {'1974': 0.9534246575342465, '1975': 0.1643835616438356, '1976': 0.2958904109589041,
-    # '1977': 0.13424657534246576, '1978': 0.3561643835616438, '1979': 0.3835616438356164,
-    # '1980': 0.14246575342465753, '1981': 0.5342465753424658, '1982': 0.8246575342465754,
-    # '1983': 0.915068493150685, '1984': 0.8301369863013699}
-    # maybe could combine data from the two probes in order to have more data...
-    # but then if one is skewed the other one is skewed too
-
     mode = 'monthly'
-    day_accuracy = 1
-    #
+
     probe = 1
     file_name = 'helios1_magrec2.csv'
     analysis_start_date = '15/12/1974'
@@ -372,8 +361,8 @@ if __name__ == '__main__':
         if events not in events1:
             events1.append(events)
     # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events1, mode=mode)
-    plot_trend(stats, mode=mode)
+    stats = distances_stats(events1, probe=1)
+    plot_trend(stats, mode='radius')
     # dis1 = distances_stats(events1, probe=probe)
 
     probe = 2
@@ -385,8 +374,8 @@ if __name__ == '__main__':
         if events not in events2:
             events2.append(events)
     # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events2, mode=mode)
-    plot_trend(stats, mode=mode)
+    stats = distances_stats(events2, probe=2)
+    plot_trend(stats, mode='radius')
     # dis2 = distances_stats(events2, probe=probe)
 
     analyse_all_probes(mode='radius')

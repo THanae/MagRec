@@ -16,6 +16,6 @@ lmn_events = test_reconnection_lmn(event_dates=possible_reconnections, probe=pro
                                    maximum_fraction=max_walen)
 
 print(lmn_events)
-file_name = 'probe'+str(probe) +'reconnections' + '.csv'
+file_name = 'probe'+str(probe) + '_reconnection_events' + '.csv'
 send_dates_to_csv(filename=file_name, events_list=lmn_events, probe=probe, add_radius=True)
 

@@ -8,6 +8,11 @@ from data_handler.data_importer.helios_data import HeliosData
 
 
 def get_dates_from_csv(filename: str, probe=None):
+    """
+    :param filename: name of the file to get the dates from
+    :param probe: probe associated with the events, if None the probe is not included in the returned list
+    :return:
+    """
     events_list = []
     with open(filename) as csv_file:
         reader = csv.DictReader(csv_file)
@@ -22,6 +27,13 @@ def get_dates_from_csv(filename: str, probe=None):
 
 
 def send_dates_to_csv(filename: str, events_list: List[datetime], probe: int, add_radius: bool = True):
+    """
+    :param filename: name of the output file
+    :param events_list: list of events to send to csv
+    :param probe: probe corresponding to the events
+    :param add_radius: if True, adds the position of the probe at each event
+    :return:
+    """
     with open(filename + '.csv', 'w', newline='') as csv_file:
         fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds']
         if add_radius:
@@ -46,6 +58,11 @@ def send_dates_to_csv(filename: str, events_list: List[datetime], probe: int, ad
 
 
 def create_events_list_from_csv_files(files:List[List[Union[str, int]]]):
+    """
+    Creates list from different events and probes
+    :param files: list of lists of files and associated probe
+    :return:
+    """
     events = []
     for file, probe in files:
         _events = get_dates_from_csv(file, probe)
