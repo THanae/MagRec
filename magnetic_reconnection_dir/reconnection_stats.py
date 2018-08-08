@@ -27,6 +27,7 @@ def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = 
             radius = imported_data.data['r_sun'].loc[event]
         except Exception:
             radius = np.mean(imported_data.data['r_sun'].values)
+            print('exception in finding the radius')
         if radius < 0.3:
             times_and_radii['less than 0.3 au'].append([event, radius])
         elif radius < 0.4:
@@ -361,8 +362,8 @@ if __name__ == '__main__':
         if events not in events1:
             events1.append(events)
     # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
-    stats = distances_stats(events1, probe=1)
-    plot_trend(stats, mode='radius')
+    stats = time_stats(events1, mode='monthly')
+    plot_trend(stats, mode='monthly')
     # dis1 = distances_stats(events1, probe=probe)
 
     probe = 2
@@ -374,8 +375,8 @@ if __name__ == '__main__':
         if events not in events2:
             events2.append(events)
     # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
-    stats = distances_stats(events2, probe=2)
-    plot_trend(stats, mode='radius')
+    stats = time_stats(events2, mode='monthly')
+    plot_trend(stats, mode='monthly')
     # dis2 = distances_stats(events2, probe=probe)
 
     analyse_all_probes(mode='radius')
@@ -383,3 +384,4 @@ if __name__ == '__main__':
     # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
     # print(st.pop('total time', None))
     # plot_trend(st, mode)
+

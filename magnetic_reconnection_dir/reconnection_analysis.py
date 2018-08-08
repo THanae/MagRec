@@ -44,17 +44,14 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
                                                                     right_interval_end)
 
             if use_2_b:
-                b_l = [b_l_left, b_l_right]
-                n = [n_left, n_right]
+                b_l, n = [b_l_left, b_l_right], [n_left, n_right]
             else:
-                b_l = [(b_l_left + b_l_right) / 2]
-                n = [(n_left + n_right) / 2]
+                b_l, n = [(b_l_left + b_l_right) / 2], [(n_left + n_right) / 2]
 
             delta_t, dt_perp, dt_par, other_dt_total = find_temperature(imported_data, b_l, n, left_interval_start,
                                                                         left_interval_end,
                                                                         right_interval_start, right_interval_end)
             predicted_increase, alfven_speed = find_predicted_temperature(b_l, n)
-            # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event, boundaries=[left_interval_end, right_interval_start])
             if 0.8 * delta_t <= predicted_increase * 0.13 <= 1.2 * delta_t:
                 satisfied_test += 1
             if radius < 0.5:
@@ -68,8 +65,6 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
 
             if delta_t > 15:
                 print('DELTA T > 15', delta_t, event, radius)
-                # plot_lmn(imported_data=imported_data, L=L, M=M, N=N, event_date=event, probe=probe,
-                #          boundaries=[left_interval_end, right_interval_start])
             if delta_t < 0:
                 print('delta t smaller than 0 ', delta_t, event, radius)
 
@@ -106,7 +101,6 @@ def plot_relations(related_lists: List[list], slope=None):
         a = [x[0] for x in related_lists[n][0] if not np.isnan(x[0]) and not np.isnan(x[1])]
         b = [y[1] for y in related_lists[n][0] if not np.isnan(y[0]) and not np.isnan(y[1])]
         color = [c[2] for c in related_lists[n][0] if not np.isnan(c[0]) and not np.isnan(c[1])]
-        label = [l[3] for l in related_lists[n][0] if not np.isnan(l[0]) and not np.isnan(l[1])]
         # print(a, b)
         print(linregress(a, b))
         print(np.median(np.array(b) / np.array(a)))
@@ -144,6 +138,12 @@ def plot_relations(related_lists: List[list], slope=None):
 
 
 def find_predicted_temperature(b_l: List, n: List):
+    """
+    Finds the predicted change from the alfven speep
+    :param b_l: B in the L direction
+    :param n: number density of the protons
+    :return:
+    """
     if len(b_l) == 1 and len(n) == 1:
         alfven_speed = b_l[0] * 10 ** (-9) / np.sqrt(n[0] * 10 ** 6 * proton_mass * mu_0)  # b in nT, n in cm^-3
         predicted_increase = (proton_mass * alfven_speed ** 2) / electron_charge
@@ -191,19 +191,30 @@ def find_intervals(imported_data: HeliosData, event: datetime):
 
 def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interval_start: datetime,
                      left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
+    """
+    Finds the inflow and exaust temperatures in order to find delta t
+    :param imported_data: ImportedData
+    :param b_l: B in the L direction
+    :param n: number density of protons
+    :param left_interval_start: start of the left interval
+    :param left_interval_end: end of the left interval
+    :param right_interval_start: start of the right interval
+    :param right_interval_end: end of the right interval
+    :return:
+    """
     perpendicular_temperature, parallel_temperature = imported_data.data['Tp_perp'], imported_data.data['Tp_par']
     total_temperature = (2 * perpendicular_temperature + parallel_temperature) / 3
 
     def kelvin_to_ev(temperature: float):
         return temperature * k_b / electron_charge
 
-    def get_inflow_temp_2b(temperature: pd.DataFrame, n: List, b_l: List):
+    def get_inflow_temp_2b(temperature: pd.DataFrame, n: List, b_l: List):  # when we have b left and b right
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (n[0] * t_left / b_l[0] + n[1] * t_right / b_l[1]) / (n[0] / b_l[0] + n[1] / b_l[1])
         return inflow
 
-    def get_inflow_temp_1b(temperature: pd.DataFrame, n: List, b_l: List):
+    def get_inflow_temp_1b(temperature: pd.DataFrame, n: List, b_l: List):  # when we use only one b
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (t_left + t_right) / 2
@@ -235,6 +246,16 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
 
 def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
             left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
+    """
+    :param event: event date
+    :param probe: 1 or 2 for Helios 1 or 2
+    :param imported_data: ImportedData
+    :param left_interval_start: start of left interval
+    :param left_interval_end: end of left interval
+    :param right_interval_start: start of right interval
+    :param right_interval_end: end of right interval
+    :return:
+    """
     L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
     b_left = (np.array([np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']).values),
                         np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'By']).values),
@@ -252,6 +273,11 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
 
 
 def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
+    """
+    Finds the shear angle of events
+    :param events_list: list of events to be analysed
+    :return: shear angles, and lists of events with low, medium and high shear angles
+    """
     shear = []
     small_shear, big_shear, medium_shear = [], [], []
     for event, probe in events_list:
@@ -270,8 +296,7 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
                             np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bz']).values)]))
         b_right = (np.array([np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'Bx']).values),
                              np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'By']).values),
-                             np.mean(
-                                 (imported_data.data.loc[right_interval_start: right_interval_end, 'Bz']).values)]))
+                             np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'Bz']).values)]))
         br_mag = np.sqrt(b_left[0] ** 2 + b_left[1] ** 2 + b_left[2] ** 2)
         bl_mag = np.sqrt(b_right[0] ** 2 + b_right[1] ** 2 + b_right[2] ** 2)
         theta = np.arccos((np.dot(b_right, b_left) / (bl_mag * br_mag)))
@@ -293,12 +318,7 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
 if __name__ == '__main__':
     # events1 = get_dates_from_csv(filename='helios1_magrec2.csv', probe=1)
     # events2 = get_dates_from_csv(filename='helios2_magrec2.csv', probe=2)
-    # events22 = get_dates_from_csv(filename='helios2mag_rec3.csv', probe=2)
-    # events12 = get_dates_from_csv(filename='helios1mag_rec3.csv', probe=1)
     # events_to_analyse = events1 + events2
-    # temperature_analysis([[datetime(1978, 4, 22, 10, 31), 2]])  ## weird event, clearly not fitting!!! close to sun
-    # temperature_analysis([[datetime(1980, 5, 29, 15, 39), 1]])  ## weird event, clearly not fitting!!! close to sun
-    # temperature_analysis([[datetime(1976, 5, 4, 1, 58), 1]])  ## weird event, clearly not fitting!!! close to sun
 
     events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     events_to_analyse = events_to_analyse + create_events_list_from_csv_files(

@@ -97,4 +97,4 @@ if __name__ == '__main__':
     # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
     # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24))
     # plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6))
-    plot_imported_data(HeliosData(start_date='06/12/1976', start_hour=6, duration=2))
+    plot_imported_data(HeliosData(start_date='12/04/1978', start_hour=18, duration=6))

@@ -97,46 +97,6 @@ def plot_walen_test(event_date: datetime, probe: int, duration: int = 4, outside
     return [['v_l', theorical_time, theoretical_v2_plus], ['v_l', theorical_time, theoretical_v2_minus]]
 
 
-def plot_theoretical_speed(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2):
-    start_time = event_date - timedelta(hours=duration / 2)
-    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                               duration=duration, probe=probe)
-    imported_data.data.dropna(inplace=True)
-    B = get_b(imported_data, event_date, 30)
-    L, M, N = mva(B)
-    B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                               event_date,
-                                                                                               outside_interval,
-                                                                                               inside_interval)
-    L, M, N = hybrid(L, B1, B2)
-    event_start = event_date - timedelta(minutes=inside_interval/2)
-    event_end = event_date + timedelta(minutes=inside_interval/2)
-    _event_data = imported_data.data.loc[event_start:event_end]
-    event_data = _event_data.copy()
-    for n in range(len(event_data)):
-        v = np.array([event_data['vp_x'][n], event_data['vp_y'][n], event_data['vp_z'][n]])
-        b = np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]])
-        vl = np.dot(v, L)
-        bl = np.dot(b, L)
-        event_data.loc[event_data.index[n], 'v_l'] = vl
-        event_data.loc[event_data.index[n], 'b_l'] = bl
-    alfven_speeds = []
-    for n in range(len(event_data)-1):
-        v1 = event_data['v_l'][n]
-
-        B1_part = event_data['b_l'][n] * np.sqrt(1 / (mu_0 * event_data['n_p'][n] * proton_mass / 1e-15)) * 1e-9
-        B2_part = event_data['b_l'][n+1] * np.sqrt(1 / (mu_0 * event_data['n_p'][n+1] * proton_mass / 1e-15)) * 1e-9
-        print(B1_part, B2_part)
-        v2_plus = v1 + (B2_part - B1_part)
-        v2_minus = v1 - (B2_part - B1_part)
-        print(v2_plus, v2_minus)
-
-        alfven_speeds.append(['v_l', event_data.index[n+1], v2_plus])
-        alfven_speeds.append(['v_l', event_data.index[n+1], v2_minus])
-    return alfven_speeds
-
-
-
 def b_l_biggest(B1_L: float, B2_L: float, B1_M: float, B2_M: float) -> bool:
     amplitude_change_L, amplitude_change_M = np.abs(B1_L - B2_L), np.abs(B1_M - B2_M)
     magnitude_change_L, magnitude_change_M = B1_L ** 2 + B2_L ** 2, B1_M ** 2 + B2_M ** 2
@@ -232,7 +192,6 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
     imported_data.data['v_l'], imported_data.data['v_m'], imported_data.data['v_n'] = vl, vm, vn
 
     # scatter_points = plot_walen_test(event_date=event_date, probe=probe)
-    # scatter_points = scatter_points + plot_theoretical_speed(event_date, probe)
     plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
                        save=False, event_date=event_date, boundaries=boundaries)
 
