@@ -33,7 +33,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_
                                           datetime.strftime(orbiter.times[-1] + timedelta(days=1), '%d/%m/%Y'))
         spacecraft_planet = np.sqrt(
             (orbiter.x - orbiter_planet.x) ** 2 + (orbiter.y - orbiter_planet.y) ** 2 + (
-                        orbiter.z - orbiter_planet.z) ** 2)
+                    orbiter.z - orbiter_planet.z) ** 2)
         print(len(orbiter.x), len(orbiter_planet.x))
         ax.set_ylabel('Distance between spacecraft and ' + planet)
         ax.plot(orbiter_planet.times, spacecraft_planet, label=planet + '-Spacecraft distance')
@@ -45,7 +45,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_
     if missing_data is not None:
         for year, month in missing_data:
             _missing = datetime(year, month, 15)
-            ax.axvline(x=_missing, linewidth=10, color='m', alpha=0.4)
+            ax.axvline(x=_missing, linewidth=10, color='blue', alpha=0.2)
 
     black_cross = mlines.Line2D([], [], color='k', marker='+', linestyle='None', label='Reconnection event density')
     black_dot = mlines.Line2D([], [], color='k', marker='o', linestyle='None', label='Reconnection event speed')
@@ -66,51 +66,54 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_
             if stat[key][key_m] > maximum_reconnection:
                 maximum_reconnection = stat[key][key_m]
     print('Maximum number of reconnection events during a month', maximum_reconnection)
-    ax.set_ylabel('Number of reconnections /' +str(maximum_reconnection))
+    ax.set_ylabel('Number of reconnections /' + str(maximum_reconnection))
     datetime_keys = []
     for key in new_stat.keys():
         k = str_to_datetime(key)
         datetime_keys.append(k)
-        ax.axvline(x=k, linewidth=10, color='k', ymax=new_stat[key]/maximum_reconnection, alpha=0.4)
+        ax.axvline(x=k, linewidth=10, color='k', ymax=new_stat[key] / maximum_reconnection, alpha=0.4)
 
     plt.show()
 
 
-def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft):
+def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft, plot_each_point: bool = False):
     args = {}
-    normal_size = 8
+    normal_size = 10
     for event in events:
-        try:
-            density, speed = find_density_and_speed(event, spacecraft)
-            classification = classify_wind(density, speed)
-            if not np.isnan(density):
-                dens_color = find_color_from_type(classification[0])
-                speed_color = find_color_from_type(classification[1])
-            else:
-                dens_color = 'k'
-                speed_color = 'k'
-        except RuntimeWarning:
+
+        density, speed = find_density_and_speed(event, spacecraft)
+        classification = classify_wind(density, speed)
+        if not np.isnan(density):
+            dens_color = find_color_from_type(classification[0])
+            speed_color = find_color_from_type(classification[1])
+        else:
             dens_color = 'k'
             speed_color = 'k'
-        arg = orbiter.times.index(datetime(event.year, event.month, event.day))
-        ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='o', color=speed_color, markersize=normal_size,
-                alpha=0.7)
-        ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='+', color=dens_color, markersize=normal_size, mew=5)
 
-        if str(arg) in list(args.keys()):
-            args[str(arg)] += 1
-            ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='o', color=speed_color,
-                    markersize=normal_size * args[str(arg)], alpha=0.7)
-            ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='+', color=dens_color,
-                    markersize=normal_size * args[str(arg)], mew=5)
+        arg = orbiter.times.index(datetime(event.year, event.month, event.day))
+        if plot_each_point:
+            ax.plot(event, spacecraft_planet[arg], marker='o', color=speed_color, markersize=normal_size, alpha=0.8)
+            ax.plot(event, spacecraft_planet[arg], marker='+', color=dens_color, markersize=normal_size, mew=3)
+
         else:
-            args[str(arg)] = 1
+            ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='o', color=speed_color, markersize=normal_size,
+                    alpha=0.8)
+            ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='+', color=dens_color, markersize=normal_size,
+                    mew=3)
+            if str(arg) in list(args.keys()):
+                args[str(arg)] += 1
+                ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='o', color=speed_color,
+                        markersize=normal_size * args[str(arg)], alpha=0.8)
+                ax.plot(orbiter.times[arg], spacecraft_planet[arg], marker='+', color=dens_color,
+                        markersize=normal_size * args[str(arg)], mew=4)
+            else:
+                args[str(arg)] = 1
 
 
 def str_to_datetime(date: str):
     months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10,
-             'nov': 11, 'dec': 12}
-    month = months[date[0]+date[1]+date[2]]
+              'nov': 11, 'dec': 12}
+    month = months[date[0] + date[1] + date[2]]
     year = str(19) + date[4] + date[5]
     _date = datetime(int(year), int(month), 15)
     return _date
@@ -133,9 +136,9 @@ def get_events_dates(probe: int):
 
 
 def classify_wind(density, speed):
-    if speed < 200:
+    if speed < 300:
         speed_type = 'very low'
-    elif speed < 300:
+    elif speed < 350:
         speed_type = 'low'
     elif speed < 400:
         speed_type = 'medium'
@@ -143,22 +146,23 @@ def classify_wind(density, speed):
         speed_type = 'high'
     else:
         speed_type = 'very high'
-    if density < 2:
-        density_type = 'vey low'
-    elif density < 10:
+        print('speed', speed)
+
+    if density < 6:
+        density_type = 'very low'
+    elif density < 30:
         density_type = 'low'
-    elif density < 100:
+    elif density < 60:
         density_type = 'medium'
-    elif density < 200:
+    elif density < 150:
         density_type = 'high'
     else:
         density_type = 'very high'
-    return density_type, speed_type
+    return [density_type, speed_type]
 
 
 def find_color_from_type(solar_wind_characteristic: str):
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-    # colors = plt.cm.Set3(np.linspace(0, 1, 12))
     if solar_wind_characteristic == 'very low':
         color = colors[0]
     elif solar_wind_characteristic == 'low':
@@ -172,21 +176,52 @@ def find_color_from_type(solar_wind_characteristic: str):
     return color
 
 
-def find_density_and_speed(event, probe):
-    start_analysis = event - timedelta(minutes=60)
-    imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), duration=2, probe=probe)
+def find_density_and_speed(event: datetime, probe: int, distance: bool = False):
+    start_analysis = event - timedelta(hours=1)
+    imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), start_hour=start_analysis.hour,
+                               duration=2, probe=probe)
     imported_data.data.dropna(inplace=True)
-    density = np.mean(imported_data.data['n_p'].values)
     imported_data.create_processed_column('vp_magnitude')
-    speed = np.mean(imported_data.data['vp_magnitude'].values)
-    print(speed, density)
-    if np.isnan(speed) or np.isnan(density):
-        print(event)
-        print(imported_data.data['n_p'])
-    return density, speed
+    imported_data.create_processed_column('b_magnitude')
+    _data = imported_data.data.loc[event - timedelta(minutes=5):event + timedelta(minutes=5)]
+    data = _data.copy()
+    density = np.mean(data['n_p'].values)
+    speed = np.mean(data['vp_magnitude'].values)
+    print(event, speed, density, np.mean(data['r_sun'].values))
+    if distance:
+        return density, speed, np.mean(data['r_sun'].values), np.mean(data['Tp_perp'].values), np.mean(
+            data['Tp_par'].values), (np.mean(2 * data['Tp_perp'].values) + np.mean(data['Tp_par'].values)) / 3, np.mean(
+            data['b_magnitude'])
+    else:
+        return density, speed
 
 
-def find_data_gaps(probe, start_time:str, end_time:str):
+def plot_speed_relations():
+    vel = []
+    dist = []
+    np = []
+    perp_t = []
+    par_t = []
+    total_t = []
+    b_mag = []
+    for _p in range(2):
+        _probe = _p + 1
+        _dates = get_events_dates(_probe)
+        for date in _dates:
+            dens, sp, dis, perp, par, all_t, b = find_density_and_speed(date, _probe, True)
+            print(date, all_t)
+            vel.append(sp)
+            dist.append(dis)
+            np.append(dens)
+            perp_t.append(perp)
+            par_t.append(par)
+            total_t.append(all_t)
+            b_mag.append(b)
+    plt.scatter(dist, b_mag)
+    plt.show()
+
+
+def find_data_gaps(probe, start_time: str, end_time: str):
     start = datetime.strptime(start_time, '%d/%m/%Y')
     start = datetime(start.year, start.month, 1)
     end = datetime.strptime(end_time, '%d/%m/%Y')
@@ -203,12 +238,13 @@ def find_data_gaps(probe, start_time:str, end_time:str):
         date1 = date
         date2 = date + interval - timedelta(days=1)
         doy = []
-        for days in range(int((date2 - date1).total_seconds()/(3600 * 24))):
+        for days in range(int((date2 - date1).total_seconds() / (3600 * 24))):
             doy.append(datetime.strftime(date1, '%j'))
             date1 = date1 + timedelta(days=1)
         missing = 0
         for day_of_year in doy:
-            if 'h' + str(probe) + '_' + str(year) + '_' + str(day_of_year) + '_corefit.csv' in (np.array(fls).flatten()):
+            if 'h' + str(probe) + '_' + str(year) + '_' + str(day_of_year) + '_corefit.csv' in (
+                    np.array(fls).flatten()):
                 missing = missing
             else:
                 missing += 1
@@ -226,9 +262,12 @@ if __name__ == '__main__':
     probe = 2
     start_time = '20/01/1976'
     end_time = '01/10/1979'
-    planet = 'Earth'
+    planet = 'Mercury'
     dates = get_events_dates(probe)
     orbiter = get_orbiter(probe, start_time, end_time)
     missing = find_data_gaps(probe, start_time, end_time)
     stats = time_stats(dates, mode='monthly')
-    plot_hist_dist(orbiter, probe, stats, planet, dates, missing)
+    # plot_hist_dist(orbiter, probe, stats, planet, dates, missing)
+    plot_hist_dist(orbiter, probe, stats, None, dates, missing, plot_sun=True)
+
+    # plot_speed_relations()
