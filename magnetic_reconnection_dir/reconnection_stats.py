@@ -136,14 +136,14 @@ def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
             print('no such file: ', 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv')
 
     time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
-    time_spent['less than 0.3 au'] = time_spent['less than 0.3 au'] / time_spent['total time']
-    time_spent['0.3 to 0.4 au'] = time_spent['0.3 to 0.4 au'] / time_spent['total time']
-    time_spent['0.4 to 0.5 au'] = time_spent['0.4 to 0.5 au'] / time_spent['total time']
-    time_spent['0.5 to 0.6 au'] = time_spent['0.5 to 0.6 au'] / time_spent['total time']
-    time_spent['0.6 to 0.7 au'] = time_spent['0.6 to 0.7 au'] / time_spent['total time']
-    time_spent['0.7 to 0.8 au'] = time_spent['0.7 to 0.8 au'] / time_spent['total time']
-    time_spent['0.8 to 0.9 au'] = time_spent['0.8 to 0.9 au'] / time_spent['total time']
-    time_spent['above 0.9 au'] = time_spent['above 0.9 au'] / time_spent['total time']
+    time_spent['less than 0.3 au'] = time_spent['less than 0.3 au']
+    time_spent['0.3 to 0.4 au'] = time_spent['0.3 to 0.4 au']
+    time_spent['0.4 to 0.5 au'] = time_spent['0.4 to 0.5 au']
+    time_spent['0.5 to 0.6 au'] = time_spent['0.5 to 0.6 au']
+    time_spent['0.6 to 0.7 au'] = time_spent['0.6 to 0.7 au']
+    time_spent['0.7 to 0.8 au'] = time_spent['0.7 to 0.8 au']
+    time_spent['0.8 to 0.9 au'] = time_spent['0.8 to 0.9 au']
+    time_spent['above 0.9 au'] = time_spent['above 0.9 au']
 
     pprint.pprint(time_spent)
     return time_spent
@@ -307,10 +307,13 @@ def analyse_all_probes(mode='radius'):
         for key in time_analysed1.keys():
             if key in time_analysed2.keys():
                 time_analysed1[key] = float(time_analysed1[key]) + float(time_analysed2[key])
-        for key in time_analysed1.keys():
-            if key != 'total time':
-                time_analysed1[key] = time_analysed1[key] * time_analysed1['total time']
         print(time_analysed1)
+
+        reconnection_per_radius = {}
+        for key in time_analysed1.keys():
+            if key in dis1.keys():
+                reconnection_per_radius[key] = float(dis1[key]) / float(time_analysed1[key])
+        pprint.pprint(reconnection_per_radius)
         plot_trend(dis1)
         plot_trend(time_analysed1)
     elif mode == 'time':
@@ -353,31 +356,31 @@ def plot_trend(stat: dict, mode='yearly'):
 if __name__ == '__main__':
     mode = 'monthly'
 
-    probe = 1
-    file_name = 'helios1_magrec2.csv'
-    analysis_start_date = '15/12/1974'
-    analysis_end_date = '15/08/1984'
-    events1 = get_dates_from_csv(file_name)
-    for events in get_dates_from_csv('helios1mag_rec3.csv'):
-        if events not in events1:
-            events1.append(events)
-    # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events1, mode='monthly')
-    plot_trend(stats, mode='monthly')
-    # dis1 = distances_stats(events1, probe=probe)
-
-    probe = 2
-    file_name = 'helios2_magrec2.csv'
-    analysis_start_date = '17/01/1976'
-    analysis_end_date = '17/01/1979'
-    events2 = get_dates_from_csv(file_name)
-    for events in get_dates_from_csv('helios2mag_rec3.csv'):
-        if events not in events2:
-            events2.append(events)
-    # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
-    stats = time_stats(events2, mode='monthly')
-    plot_trend(stats, mode='monthly')
-    # dis2 = distances_stats(events2, probe=probe)
+    # probe = 1
+    # file_name = 'helios1_magrec2.csv'
+    # analysis_start_date = '15/12/1974'
+    # analysis_end_date = '15/08/1984'
+    # events1 = get_dates_from_csv(file_name)
+    # for events in get_dates_from_csv('helios1mag_rec3.csv'):
+    #     if events not in events1:
+    #         events1.append(events)
+    # # analyse_by_radii(events1, probe, analysis_start_date, analysis_end_date)
+    # stats = time_stats(events1, mode='monthly')
+    # plot_trend(stats, mode='monthly')
+    # # dis1 = distances_stats(events1, probe=probe)
+    #
+    # probe = 2
+    # file_name = 'helios2_magrec2.csv'
+    # analysis_start_date = '17/01/1976'
+    # analysis_end_date = '17/01/1979'
+    # events2 = get_dates_from_csv(file_name)
+    # for events in get_dates_from_csv('helios2mag_rec3.csv'):
+    #     if events not in events2:
+    #         events2.append(events)
+    # # analyse_by_radii(events2, probe, analysis_start_date, analysis_end_date)
+    # stats = time_stats(events2, mode='monthly')
+    # plot_trend(stats, mode='monthly')
+    # # dis2 = distances_stats(events2, probe=probe)
 
     analyse_all_probes(mode='radius')
 

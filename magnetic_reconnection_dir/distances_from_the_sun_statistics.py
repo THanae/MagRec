@@ -11,8 +11,13 @@ from dateutil.relativedelta import relativedelta
 
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import get_planet_orbit, get_orbiter
+from data_handler.utils.column_processing import get_outliers, get_derivative
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
+from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 from magnetic_reconnection_dir.reconnection_stats import time_stats
+
+proton_mass = 1.6e-27
+mu_0 = np.pi * 4e-7
 
 
 def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_data=None, plot_sun: bool = False):
@@ -80,7 +85,6 @@ def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft, p
     args = {}
     normal_size = 10
     for event in events:
-
         density, speed = find_density_and_speed(event, spacecraft)
         classification = classify_wind(density, speed)
         if not np.isnan(density):
@@ -111,6 +115,11 @@ def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft, p
 
 
 def str_to_datetime(date: str):
+    """
+    Transforms a date string to a datetime object
+    :param date: date string
+    :return:
+    """
     months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10,
               'nov': 11, 'dec': 12}
     month = months[date[0] + date[1] + date[2]]
@@ -120,6 +129,11 @@ def str_to_datetime(date: str):
 
 
 def get_events_dates(probe: int):
+    """
+    Gets all events dates for a given probe
+    :param probe: 1 or 2 for Helios 1 or 2
+    :return:
+    """
     if probe == 1:
         events = get_dates_from_csv('helios1_magrec2.csv')
         for event in get_dates_from_csv('helios1mag_rec3.csv'):
@@ -136,6 +150,12 @@ def get_events_dates(probe: int):
 
 
 def classify_wind(density, speed):
+    """
+    Classifies characteristics of the solar wind
+    :param density: proton density
+    :param speed: speed of the solar wind
+    :return:
+    """
     if speed < 300:
         speed_type = 'very low'
     elif speed < 350:
@@ -162,6 +182,11 @@ def classify_wind(density, speed):
 
 
 def find_color_from_type(solar_wind_characteristic: str):
+    """
+    Links a characteristic to a color
+    :param solar_wind_characteristic: characteristic to associate a color to
+    :return:
+    """
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     if solar_wind_characteristic == 'very low':
         color = colors[0]
@@ -177,6 +202,13 @@ def find_color_from_type(solar_wind_characteristic: str):
 
 
 def find_density_and_speed(event: datetime, probe: int, distance: bool = False):
+    """
+    Returns density and speed of the solar wind (and more if distance is True)
+    :param event: event date
+    :param probe: 1 or 2 for Helios 1 or 2
+    :param distance: if True, also returns the distance from the sun
+    :return:
+    """
     start_analysis = event - timedelta(hours=1)
     imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), start_hour=start_analysis.hour,
                                duration=2, probe=probe)
@@ -197,13 +229,7 @@ def find_density_and_speed(event: datetime, probe: int, distance: bool = False):
 
 
 def plot_speed_relations():
-    vel = []
-    dist = []
-    np = []
-    perp_t = []
-    par_t = []
-    total_t = []
-    b_mag = []
+    vel, dist, np, perp_t, par_t, total_t, b_mag = [], [], [], [], [], [], []
     for _p in range(2):
         _probe = _p + 1
         _dates = get_events_dates(_probe)
@@ -218,6 +244,82 @@ def plot_speed_relations():
             total_t.append(all_t)
             b_mag.append(b)
     plt.scatter(dist, b_mag)
+    plt.show()
+
+
+def find_event_duration(event: datetime, probe: int):
+    """
+    Finds the start and end of the event by looking at changes in temperature
+    :param event: time and date of reconnection
+    :param probe: 1 or 2 for Helios 1 or 2
+    :return:
+    """
+    start_analysis = event - timedelta(hours=1)
+    imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), start_hour=start_analysis.hour,
+                               duration=2, probe=probe)
+    imported_data.data.dropna(inplace=True)
+    data = imported_data.data.loc[event - timedelta(minutes=4): event + timedelta(minutes=4)]
+    duration = []
+    perp_outliers = get_outliers(get_derivative(data['Tp_perp']), standard_deviations=1.5, reference='median')
+    par_outliers = get_outliers(get_derivative(data['Tp_par']), standard_deviations=1.5, reference='median')
+    for n in range(len(perp_outliers)):
+        if not np.isnan(perp_outliers[n]) and not np.isnan(par_outliers[n]):
+            if event - timedelta(minutes=2) < perp_outliers.index[n] < event + timedelta(minutes=2):
+                duration.append(perp_outliers.index[n])
+    if len(duration) <= 1:
+        event_duration = 2
+    else:
+        event_duration = (duration[-1] - duration[0]).total_seconds() / 60
+        print('DURATION', event_duration)
+    return event_duration
+
+
+def find_distance_from_xpoint(event_time, duration, probe):
+    start_analysis = event_time - timedelta(hours=1)
+    imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), start_hour=start_analysis.hour,
+                               duration=2, probe=probe)
+    imported_data.data.dropna(inplace=True)
+    imported_data.create_processed_column('vp_magnitude')
+    data = imported_data.data.loc[event_time - timedelta(minutes=5): event_time + timedelta(minutes=5)]
+
+    L, M, N = hybrid_mva(event_time, probe, outside_interval=5, inside_interval=1, mva_interval=10)
+    b = (np.array([np.mean(data['Bx'].values), np.mean(data['By'].values), np.mean(data['Bz'].values)]))
+    b_l = np.dot(b, L)
+    n = np.mean(data['n_p'].values)
+    speed = np.mean(data['vp_magnitude'].values)
+    alfven_speed = np.abs(b_l * 10 ** (-9) / np.sqrt(n * 10 ** 6 * proton_mass * mu_0)) * 10**(-3)  # in km/s
+
+    exhaust_width = duration * 60 * speed  # duration in minutes needs to be transferred to seconds
+    distance_from_xpoint = exhaust_width / (2 * np.tan(0.05))
+    print(distance_from_xpoint * 6.68459e-9)
+    flow_propagation_time = distance_from_xpoint / alfven_speed
+
+    x_point_propagation_distance = flow_propagation_time * speed
+    print(x_point_propagation_distance * 6.68459e-9)
+    print(exhaust_width * 6.68459e-9, distance_from_xpoint * 6.68459e-9, flow_propagation_time,
+          x_point_propagation_distance * 6.68459e-9)
+    radius = np.mean(data['r_sun'].values)
+
+    print(event_time)
+    return exhaust_width, distance_from_xpoint, x_point_propagation_distance, radius
+
+
+def quickplot():
+    rad, widths, x_distance, x_prop = [], [], [], []
+    for _p in range(2):
+        _probe = _p + 1
+        _dates = get_events_dates(_probe)
+        for date in _dates:
+            duration = find_event_duration(date, _probe)
+            exhaust_width, distance_from_xpoint, x_point_propagation_distance, radius = find_distance_from_xpoint(date,
+                                                                                                    duration, _probe)
+            widths.append(exhaust_width)
+            x_distance.append(distance_from_xpoint)
+            if not np.isnan(x_point_propagation_distance):
+                x_prop.append(x_point_propagation_distance* 6.68459e-9)
+                rad.append(radius)
+    plt.scatter(rad, x_prop)
+    # plt.yscale('log')
     plt.show()
 
 
@@ -262,12 +364,12 @@ if __name__ == '__main__':
     probe = 2
     start_time = '20/01/1976'
     end_time = '01/10/1979'
-    planet = 'Mercury'
+    planet = 'Earth'
     dates = get_events_dates(probe)
     orbiter = get_orbiter(probe, start_time, end_time)
     missing = find_data_gaps(probe, start_time, end_time)
     stats = time_stats(dates, mode='monthly')
     # plot_hist_dist(orbiter, probe, stats, planet, dates, missing)
     plot_hist_dist(orbiter, probe, stats, None, dates, missing, plot_sun=True)
-
+    # quickplot()
     # plot_speed_relations()

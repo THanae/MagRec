@@ -34,7 +34,6 @@ class CorrelationFinder(BaseFinder):
         datetimes_list = self.b_changes(datetimes_list, imported_data.data, minutes_b=minutes_b)
         if nt_test:
             datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
-        # self.print_reconnection_events(datetimes_list)
         return datetimes_list
 
     def b_changes(self, datetimes_list: list, data: pd.DataFrame, minutes_b: float) -> List[datetime]:
@@ -45,7 +44,6 @@ class CorrelationFinder(BaseFinder):
         :param minutes_b: number of minutes around the considered event where b will be considered
         :return: filtered list of possible events
         """
-        # TODO check if b_average should depend on same minutes_b as b_changes
         filtered_datetimes_list: List[datetime] = []
         for _datetime in datetimes_list:
             try:
