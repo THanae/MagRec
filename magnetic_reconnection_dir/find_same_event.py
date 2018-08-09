@@ -1,4 +1,3 @@
-import csv
 import pprint
 from datetime import datetime, timedelta
 from typing import List
@@ -8,7 +7,7 @@ import numpy as np
 from heliopy import spice
 
 from data_handler.data_importer.helios_data import HeliosData
-from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
+from data_handler.orbit_with_spice import get_orbiter
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
 
 
@@ -19,120 +18,127 @@ def find_two_same_events(events_list_1: List[datetime], events_list_2: List[date
     :param events_list_2: list of all events for helios 2
     :return:
     """
-    orbiter1 = kernel_loader(1)
-    times = orbit_times_generator(start_date='20/01/1976', end_date='01/10/1979')
-    orbit_generator(orbiter1, times)
-    orbiter2 = kernel_loader(2)
-    orbit_generator(orbiter2, times)
-    distance_between_spacecrafts = np.sqrt(
-        (orbiter1.x - orbiter2.x) ** 2 + (orbiter1.y - orbiter2.y) ** 2 + (orbiter1.z - orbiter2.z) ** 2)
-    _events_list_1 = [datetime(event.year, event.month, event.day) for event in events_list_1]
-    _events_list_2 = [datetime(event.year, event.month, event.day) for event in events_list_2]
-    allowed_error = 0.02  # percent
-    duration = 10  # over which speed is averaged
-    same_events_1 = get_events_relations(_events_list=_events_list_1, events_list_probe=events_list_1,
-                                         events_list_other=events_list_2,
-                                         distance_between_spacecrafts=distance_between_spacecrafts, probe=1,
-                                         orbiter=orbiter1, duration=duration, allowed_error=allowed_error)
-    # check_speed_correlations(same_events_1, 1, orbiter1, orbiter2)
-    same_events_2 = get_events_relations(_events_list=_events_list_2, events_list_probe=events_list_2,
-                                         events_list_other=events_list_1,
-                                         distance_between_spacecrafts=distance_between_spacecrafts, probe=2,
-                                         orbiter=orbiter2, duration=duration, allowed_error=allowed_error)
-    # check_speed_correlations(same_events_2, 2, orbiter2, orbiter1)
-    same_events = same_events_1 + same_events_2
-    potential_same_events = []
-    for events in same_events:
-        if events not in potential_same_events:
-            potential_same_events.append(events)
+    orbiter1 = get_orbiter(probe=1, start_time='20/01/1976', end_time='01/10/1979')
+    orbiter2 = get_orbiter(probe=2, start_time='20/01/1976', end_time='01/10/1979')
+    same_events = get_events_relations(events_list_1, events_list_2, orbiter1, orbiter2)
+    same_events = check_radial(same_events)
 
-    return potential_same_events
+    return same_events
 
 
-def get_events_relations(_events_list: List[datetime], events_list_probe: List[datetime],
-                         events_list_other: List[datetime], distance_between_spacecrafts: list, probe: int,
-                         orbiter: spice.Trajectory, duration: int, allowed_error: float):
+def get_events_relations(helios1_events: List[datetime], helios2_events: List[datetime],
+                         orbiter_helios1: spice.Trajectory, orbiter_helios2: spice.Trajectory,
+                         allowed_error: float = 0.2):
     """
-    Finds possible pairs of events
-    :param _events_list: list of events with hours=0, minutes=0, seconds=0
-    :param events_list_probe: list of events for teh probe
-    :param events_list_other: list of events for the other probe
-    :param distance_between_spacecrafts: distance between the two probes
-    :param probe: 1 or 2 for Helios 1 or 2
-    :param orbiter: spice.Trajectory
-    :param duration: time over which the speed is averaged
-    :param allowed_error: maximum percentage difference between theoretical time and real time
+    Checks whether two events might be the same by calculated the expected time taken by the solar wind to travel
+    between them
+    :param helios1_events: events detected by Helios 1
+    :param helios2_events: events detected by Helios 2
+    :param orbiter_helios1: Helios 1 orbiter
+    :param orbiter_helios2: Hlelios 2 orbiter
+    :param allowed_error: allowed percentage error between the theoretical and actual time intervals
     :return:
     """
-    same_event = []
-    print('TEST HELIOS ' + str(probe))
-    for n in range(len(events_list_probe)):
-        if _events_list[n] in orbiter.times:
-            try:
-                data_after_event = HeliosData(probe=probe, start_date=(events_list_probe[n]).strftime('%d/%m/%Y'),
-                                              duration=duration)
-                data_after_event.data.dropna(inplace=True)
-                data_after_event.create_processed_column('vp_magnitude')
-                speed_after_event = np.mean(data_after_event.data['vp_magnitude'].values)
-                data_before_event = HeliosData(probe=probe,
-                                               start_date=(events_list_probe[n] - timedelta(hours=duration)).strftime(
-                                                   '%d/%m/%Y'), duration=duration)
-                data_before_event.data.dropna(inplace=True)
-                data_before_event.create_processed_column('vp_magnitude')
-                speed_before_event = np.mean(data_after_event.data['vp_magnitude'].values)
-                if not np.isnan(speed_after_event) and not np.isnan(speed_before_event):
-                    time_taken1 = np.int(
-                        (distance_between_spacecrafts[n].to(u.km) / u.km) / speed_after_event)  # dimensionless
-                    time_taken2 = np.int(
-                        (distance_between_spacecrafts[n].to(u.km) / u.km) / speed_before_event)  # dimensionless
-                    date_expected1 = events_list_probe[n] + timedelta(seconds=time_taken1)
-                    date_expected2 = events_list_probe[n] - timedelta(seconds=time_taken2)
-                    for m in range(len(events_list_other)):
-                        if events_list_other[m] - timedelta(seconds=time_taken1 * allowed_error) <= date_expected1 <= \
-                                events_list_other[m] + timedelta(seconds=time_taken1 * allowed_error):
-                            print('expected:', date_expected1, 'from probe', str(probe), ':', events_list_probe[n],
-                                  'and got:', events_list_other[m])
-                            same_event.append([events_list_probe[n], events_list_other[m]])
-                        if events_list_other[m] - timedelta(seconds=time_taken2 * allowed_error) <= date_expected2 <= \
-                                events_list_other[m] + timedelta(seconds=time_taken2 * allowed_error):
-                            print('expected:', date_expected2, 'from probe', str(probe), ':', events_list_probe[n],
-                                  'and got:', events_list_other[m])
-                            same_event.append([events_list_probe[n], events_list_other[m]])
-            except RuntimeError:
-                print('sorry, no data')
-            except RuntimeWarning:
-                print('runtime warning')
-    return same_event
+    same_events = []
+    _helios1_events = []
+    for event in helios1_events:
+        if datetime(1976, 1, 20) < event < datetime(1979, 10, 1):
+            _helios1_events.append(event)
+    helios1_events = _helios1_events
+    for event_helios1 in helios1_events:
+        for event_helios2 in helios2_events:
+            if event_helios1 < event_helios2:
+                start, end = event_helios1, event_helios2
+                probe_start, probe_end = 1, 2
+                orbiter_start, orbiter_end = orbiter_helios1, orbiter_helios2
+            else:
+                start, end = event_helios2, event_helios1
+                probe_start, probe_end = 2, 1
+                orbiter_start, orbiter_end = orbiter_helios2, orbiter_helios1
+            imported_data_start = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
+                                             probe=probe_start, duration=10)
+            _end = end - timedelta(hours=10)
+            imported_data_end = HeliosData(start_date=_end.strftime('%d/%m/%Y'), start_hour=_end.hour, probe=probe_end,
+                                           duration=10)
+            imported_data_start.data.dropna(inplace=True)
+            imported_data_end.data.dropna(inplace=True)
+            imported_data_start.create_processed_column('vp_magnitude')
+            imported_data_end.create_processed_column('vp_magnitude')
+            speed_start = np.mean(imported_data_start.data['vp_magnitude'].values)
+            speed_end = np.mean(imported_data_end.data['vp_magnitude'].values)
+            speed = (speed_start + speed_end) / 2
+
+            start_position = orbiter_start.times.index(datetime(start.year, start.month, start.day))
+            end_position = orbiter_end.times.index(datetime(end.year, end.month, end.day))
+            start_x, start_y, start_z = orbiter_start.x[start_position].to(u.km) / u.km, orbiter_start.y[
+                start_position].to(u.km) / u.km, orbiter_start.z[start_position].to(u.km) / u.km
+            end_x, end_y, end_z = orbiter_end.x[end_position].to(u.km) / u.km, orbiter_end.y[end_position].to(
+                u.km) / u.km, orbiter_end.z[end_position].to(u.km) / u.km
+
+            distance_between_spacecrafts = np.sqrt(
+                (start_x - end_x) ** 2 + (start_y - end_y) ** 2 + (start_z - end_z) ** 2)
+            time_between_events = (end - start).total_seconds()
+            expected_time = distance_between_spacecrafts / speed
+
+            if 1 - allowed_error < time_between_events / expected_time < 1 + allowed_error:
+                print(time_between_events / expected_time)
+                print('expected ', start + timedelta(seconds=int(expected_time)), ' but got ', end,
+                      'starting with probe ', probe_start, start, 'and ending with ', probe_end, end)
+                same_events.append([start, probe_start, end, probe_end, distance_between_spacecrafts])
+
+    return same_events
 
 
-def check_speed_correlations(correlated_events: List[List[datetime]], probe, orbiter1, orbiter2):
+def check_radial(same_events: List[list]):
+    """
+    The solar wind travels mostly in the radial direction. Hence we are expecting the distance between the
+    spacecrafts to be mostly radial
+    :param same_events: list of possible same events with the distance between them
+    :return:
+    """
+    possible_same_events = []
+    for event1, probe1, event2, probe2, distance_between_events in same_events:
+        start = event1 - timedelta(hours=1)
+        imported_data1 = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, probe=probe1,
+                                    duration=2)
+        imported_data1.data.dropna(inplace=True)
+        start = event2 - timedelta(hours=1)
+        imported_data2 = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, probe=probe2,
+                                    duration=2)
+        imported_data2.data.dropna(inplace=True)
+        radius1 = np.mean(
+            imported_data1.data['r_sun'].loc[event1 - timedelta(minutes=5): event1 + timedelta(minutes=5)].values)
+        radius2 = np.mean(
+            imported_data2.data['r_sun'].loc[event2 - timedelta(minutes=5): event2 + timedelta(minutes=5)].values)
+        radial_distance = (radius2 - radius1) * 1.496e+8
+        print(radial_distance, distance_between_events, radial_distance / distance_between_events)
+        if radial_distance < 0:
+            print('no')
+        else:
+            if radial_distance > distance_between_events * 0.25:
+                print(radial_distance, distance_between_events, radial_distance / distance_between_events)
+                possible_same_events.append([event1, probe1, event2, probe2])
+    return possible_same_events
+
+
+def check_xyz_correlations(correlated_events: List[List[datetime]], probe, orbiter1, orbiter2):
     min_error = 0.4
     max_error = 1.6
     for correlated_event in correlated_events:
         duration = np.abs((correlated_event[1] - correlated_event[0]).total_seconds())
         crossing1 = datetime(correlated_event[0].year, correlated_event[0].month, correlated_event[0].day)
         crossing2 = datetime(correlated_event[1].year, correlated_event[1].month, correlated_event[1].day)
-        c1 = orbiter1.times.index(crossing1)
-        c2 = orbiter2.times.index(crossing2)
+        c1, c2 = orbiter1.times.index(crossing1), orbiter2.times.index(crossing2)
         orbiter1_x, orbiter1_y, orbiter1_z = orbiter1.x * 1.496e+8 / u.au, orbiter1.y * 1.496e+8 / u.au, orbiter1.z * 1.496e+8 / u.au
         orbiter2_x, orbiter2_y, orbiter2_z = orbiter2.x * 1.496e+8 / u.au, orbiter2.y * 1.496e+8 / u.au, orbiter2.z * 1.496e+8 / u.au
 
-        data = HeliosData(start_date=correlated_event[0].strftime('%d/%m/%Y'), duration=int(duration/3600), probe=probe)
-        v_x = np.mean(data.data['vp_x'])
-        v_y = np.mean(data.data['vp_y'])
-        v_z = np.mean(data.data['vp_z'])
-        v = np.sqrt(v_x**2 + v_y**2 + v_z**2)
-
-        print(v_x, v_y, v_z, v)
+        data = HeliosData(start_date=correlated_event[0].strftime('%d/%m/%Y'), duration=int(duration / 3600),
+                          probe=probe)
+        v_x, v_y, v_z = np.mean(data.data['vp_x']), np.mean(data.data['vp_y']), np.mean(data.data['vp_z'])
 
         x_dist = np.abs(orbiter1_x[c1] - orbiter2_x[c2])
         y_dist = np.abs(orbiter1_y[c1] - orbiter2_y[c2])
         z_dist = np.abs(orbiter1_z[c1] - orbiter2_z[c2])
-
-        _v = np.sqrt((x_dist / duration) ** 2 + (y_dist / duration) ** 2 + (z_dist / duration) ** 2)
-        print(_v)
-
-        print(x_dist / v_x, y_dist / v_y, z_dist / v_z, duration)
 
         if min_error * (x_dist / v_x) <= duration <= max_error * (x_dist / v_x) and min_error * (
                 y_dist / v_y) <= duration <= max_error * (y_dist / v_y) and min_error * (
@@ -141,7 +147,13 @@ def check_speed_correlations(correlated_events: List[List[datetime]], probe, orb
 
 
 if __name__ == '__main__':
-    helios_1 = get_dates_from_csv('helios1_magrec2.csv') + get_dates_from_csv('helios1mag_rec3.csv')
-    helios_2 = get_dates_from_csv('helios2_magrec2.csv') + get_dates_from_csv('helios2mag_rec3.csv')
+    helios_1 = get_dates_from_csv('helios1_magrec2.csv')
+    for dates in get_dates_from_csv('helios1mag_rec3.csv'):
+        if dates not in helios_1:
+            helios_1.append(dates)
+    helios_2 = get_dates_from_csv('helios2_magrec2.csv')
+    for dates in get_dates_from_csv('helios2mag_rec3.csv'):
+        if dates not in helios_2:
+            helios_2.append(dates)
     a = find_two_same_events(helios_1, helios_2)
     pprint.pprint(a)
