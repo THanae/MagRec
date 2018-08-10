@@ -9,6 +9,7 @@ from heliopy import spice
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import get_orbiter
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv
+from magnetic_reconnection_dir.mva_analysis import get_b, mva, get_side_data, hybrid_mva
 
 
 def find_two_same_events(events_list_1: List[datetime], events_list_2: List[datetime]):
@@ -28,7 +29,7 @@ def find_two_same_events(events_list_1: List[datetime], events_list_2: List[date
 
 def get_events_relations(helios1_events: List[datetime], helios2_events: List[datetime],
                          orbiter_helios1: spice.Trajectory, orbiter_helios2: spice.Trajectory,
-                         allowed_error: float = 0.2):
+                         allowed_error: float = 0.01):
     """
     Checks whether two events might be the same by calculated the expected time taken by the solar wind to travel
     between them
@@ -68,15 +69,23 @@ def get_events_relations(helios1_events: List[datetime], helios2_events: List[da
             speed_end = np.mean(imported_data_end.data['vp_magnitude'].values)
             speed = (speed_start + speed_end) / 2
 
+
             start_position = orbiter_start.times.index(datetime(start.year, start.month, start.day))
             end_position = orbiter_end.times.index(datetime(end.year, end.month, end.day))
+
+            print(np.abs(orbiter_start.x[start_position] - orbiter_end.x[end_position]),
+                  np.abs(orbiter_start.y[start_position] - orbiter_end.y[end_position]),
+                  np.abs(orbiter_start.z[start_position] - orbiter_end.z[end_position]))
+
             start_x, start_y, start_z = orbiter_start.x[start_position].to(u.km) / u.km, orbiter_start.y[
                 start_position].to(u.km) / u.km, orbiter_start.z[start_position].to(u.km) / u.km
+
             end_x, end_y, end_z = orbiter_end.x[end_position].to(u.km) / u.km, orbiter_end.y[end_position].to(
                 u.km) / u.km, orbiter_end.z[end_position].to(u.km) / u.km
 
             distance_between_spacecrafts = np.sqrt(
                 (start_x - end_x) ** 2 + (start_y - end_y) ** 2 + (start_z - end_z) ** 2)
+
             time_between_events = (end - start).total_seconds()
             expected_time = distance_between_spacecrafts / speed
 
@@ -91,8 +100,8 @@ def get_events_relations(helios1_events: List[datetime], helios2_events: List[da
 
 def check_radial(same_events: List[list]):
     """
-    The solar wind travels mostly in the radial direction. Hence we are expecting the distance between the
-    spacecrafts to be mostly radial
+    The solar wind travels more in the radial direction than in the other directions.
+    Hence we are expecting the distance between the spacecrafts to be mostly radial
     :param same_events: list of possible same events with the distance between them
     :return:
     """
@@ -110,40 +119,18 @@ def check_radial(same_events: List[list]):
             imported_data1.data['r_sun'].loc[event1 - timedelta(minutes=5): event1 + timedelta(minutes=5)].values)
         radius2 = np.mean(
             imported_data2.data['r_sun'].loc[event2 - timedelta(minutes=5): event2 + timedelta(minutes=5)].values)
-        radial_distance = (radius2 - radius1) * 1.496e+8
+        radial_distance = radius2 - radius1
+        distance_between_events = (distance_between_events * u.km).to(u.au) / u.au
         print(radial_distance, distance_between_events, radial_distance / distance_between_events)
+        x_distance = (event2 - event1).total_seconds() * np.mean(imported_data1.data['vp_x'].values)
+        print(radial_distance, x_distance)
         if radial_distance < 0:
-            print('no')
+            print('no')  # solar wind travels away from the sun
         else:
-            if radial_distance > distance_between_events * 0.25:
+            if radial_distance/distance_between_events > 0.2:
                 print(radial_distance, distance_between_events, radial_distance / distance_between_events)
                 possible_same_events.append([event1, probe1, event2, probe2])
     return possible_same_events
-
-
-def check_xyz_correlations(correlated_events: List[List[datetime]], probe, orbiter1, orbiter2):
-    min_error = 0.4
-    max_error = 1.6
-    for correlated_event in correlated_events:
-        duration = np.abs((correlated_event[1] - correlated_event[0]).total_seconds())
-        crossing1 = datetime(correlated_event[0].year, correlated_event[0].month, correlated_event[0].day)
-        crossing2 = datetime(correlated_event[1].year, correlated_event[1].month, correlated_event[1].day)
-        c1, c2 = orbiter1.times.index(crossing1), orbiter2.times.index(crossing2)
-        orbiter1_x, orbiter1_y, orbiter1_z = orbiter1.x * 1.496e+8 / u.au, orbiter1.y * 1.496e+8 / u.au, orbiter1.z * 1.496e+8 / u.au
-        orbiter2_x, orbiter2_y, orbiter2_z = orbiter2.x * 1.496e+8 / u.au, orbiter2.y * 1.496e+8 / u.au, orbiter2.z * 1.496e+8 / u.au
-
-        data = HeliosData(start_date=correlated_event[0].strftime('%d/%m/%Y'), duration=int(duration / 3600),
-                          probe=probe)
-        v_x, v_y, v_z = np.mean(data.data['vp_x']), np.mean(data.data['vp_y']), np.mean(data.data['vp_z'])
-
-        x_dist = np.abs(orbiter1_x[c1] - orbiter2_x[c2])
-        y_dist = np.abs(orbiter1_y[c1] - orbiter2_y[c2])
-        z_dist = np.abs(orbiter1_z[c1] - orbiter2_z[c2])
-
-        if min_error * (x_dist / v_x) <= duration <= max_error * (x_dist / v_x) and min_error * (
-                y_dist / v_y) <= duration <= max_error * (y_dist / v_y) and min_error * (
-                z_dist / v_z) <= duration <= max_error * (z_dist / v_z):
-            print(correlated_event)
 
 
 if __name__ == '__main__':
