@@ -14,8 +14,10 @@ from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 class CorrelationFinder(BaseFinder):
     coordinates = ['x', 'y', 'z']
 
-    def __init__(self, outlier_intersection_limit_minutes: int = 3):
+    def __init__(self, outlier_intersection_limit_minutes: int = 30):
         super().__init__()
+        # TODO find sustainable way to introduce self.outlier_intersection_limit_minutes
+        # be careful, the limit minutes depend on the interval size (around 4*interval should be fine)
         self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
     def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum: float = 3, sigma_diff: float = 2.5,
@@ -179,12 +181,11 @@ class CorrelationFinder(BaseFinder):
             print("No reconnections were found")
 
 
-def get_average_b2(_datetime: datetime, data_column) -> List[datetime]:
+def get_average_b2(_datetime: datetime, data_column: pd.DataFrame) -> List[datetime]:
     """
     Checks whether b really changes magnitude before and after a given event
     :param _datetime: list of possible event
     :param data_column: column that we check
-    :param minutes_b: not used - might need to be changed
     :return: nothing if no big change, and the event if there is indeed a change
     """
     high_changes_datetime_list = []

@@ -41,8 +41,6 @@ def test_finder_with_known_events(finder: BaseFinder):
                                ('correlation_sum', 'correlation_sum_outliers'),
                                ('correlation_diff', 'correlation_diff_outliers')])
 
-    # test on data
-
 
 def get_test_data(known_event: MagneticReconnection, additional_data_padding_hours: tuple = (1, 2)) -> ImportedData:
     """
@@ -55,7 +53,6 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
     start_date = start_datetime.strftime('%d/%m/%Y')
     start_hour = int(start_datetime.strftime('%H'))
     duration_hours = known_event.duration.seconds // (60 * 60) + sum(additional_data_padding_hours)
-    # print(known_event)
     test_data = HeliosData(start_date=start_date, start_hour=start_hour, probe=known_event.probe,
                            duration=duration_hours)
     return test_data
@@ -75,7 +72,6 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
     reconnections = []
     for n in range(np.int(duration / interval)):
         try:
-            # data: ImportedData
             if probe == 1 or probe == 2:
                 data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=interval,
                                   probe=probe)
@@ -133,7 +129,6 @@ def plot_csv(csv_file_name: str, interval: int = 6):
             start_of_plot = date - timedelta(hours=interval / 2)
             imported_data = HeliosData(start_date=start_of_plot.strftime('%d/%m/%Y'), start_hour=start_of_plot.hour,
                                        duration=interval)
-            # print('radius: ', row['radius'])
             plot_imported_data(imported_data)
 
 
@@ -220,7 +215,7 @@ if __name__ == '__main__':
     helios = 1
     # helios = 2
     parameters = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
-    parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 35, 'minutes': 35}
+    parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 30, 'minutes': 30}
     # start_date = '17/12/1974'
     # end_date = '21/12/1975'
     # start_date = '17/01/1976'
@@ -235,8 +230,10 @@ if __name__ == '__main__':
     # get_possible_reconnections(probe=helios, parameters=parameters, start_time=start_date, end_time=end_date,
     #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
 
-    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='01/01/1991',
-                               end_time='01/06/2009', radius=10, to_csv=True, data_split='yearly')
+    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
+                               end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
+    # imported_data = UlyssesData(start_date='09/02/1998', start_hour=17, duration=3)
+    # print(imported_data.data)
 
 
     # for no temperature and density check
