@@ -12,12 +12,16 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('b_magnitude', 'vp_magnitude')]
 
 
-def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False, event_date=None, boundaries=None, scatter_points=None):
+def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False,
+                       event_date=None, boundaries=None, scatter_points=None):
     """
     Plots given set of columns for a given ImportedData
     :param imported_data: ImportedData
     :param columns_to_plot: list of column names
     :param save: if True, saves generated plot instead of showing
+    :param: event_date: date of event to be marked on plot, None if no event to be indicated
+    :param: boundaries: boundaries of the event to be indicated on plot, None if no boundaries to be indicated
+    :param: scatter_points: points to be scattered on the plots
     :return:
     """
     fig, axs = plt.subplots(len(columns_to_plot), 1, sharex=True, figsize=(15, 8.5))
@@ -42,7 +46,8 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
                     if column_to_plot != 'Tp_perp' and column_to_plot != 'Tp_par':
                         ax = ax.twinx()  # creates new ax which shares x
                     else:
-                        ax = fig.add_subplot(int(str(len(columns_to_plot)) +str(1) + str(ax_index+1)), sharey=ax, frameon=False)
+                        ax = fig.add_subplot(int(str(len(columns_to_plot)) + str(1) + str(ax_index + 1)), sharey=ax,
+                                             frameon=False)
                         ax.xaxis.set_ticklabels([])
                     subplot_plot_count += 1
 
@@ -53,13 +58,10 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
 
         # ax.legend(loc=1)
         if event_date is not None:
-            # ax.axvline(x=event_date-timedelta(minutes=3), linewidth=2)
-            # ax.axvline(x=event_date + timedelta(minutes=3), linewidth=2)
             ax.axvline(x=event_date, linewidth=1.5, color='k')
         if boundaries is not None:
             for n in range(len(boundaries)):
                 ax.axvline(x=boundaries[n], linewidth=1.2, color='k')
-
 
     if not save:
         plt.show()
@@ -67,9 +69,9 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
         fig.set_size_inches((15, 10), forward=False)
         if event_date is None:
             plt.savefig('helios_{}_{:%Y_%m_%d_%H}_interval_{}_hours.png'.format(imported_data.probe,
-                                                                            imported_data.start_datetime,
-                                                                            imported_data.duration),
-                    bbox_inches='tight')
+                                                                                imported_data.start_datetime,
+                                                                                imported_data.duration),
+                        bbox_inches='tight')
         else:
             plt.savefig('h{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
 
@@ -89,7 +91,6 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     if column_name == 'Tp_par':
         ax.yaxis.set_label_position("right")
     ax.set_ylabel(column_name, color=colour)
-
     ax.grid()
 
 
@@ -97,4 +98,4 @@ if __name__ == '__main__':
     # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
     # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24))
     # plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6))
-    plot_imported_data(HeliosData(start_date='12/04/1978', start_hour=18, duration=6))
+    plot_imported_data(HeliosData(start_date='29/05/1981', start_hour=12, duration=6, probe=1))
