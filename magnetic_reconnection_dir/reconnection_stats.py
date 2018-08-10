@@ -1,4 +1,3 @@
-import csv
 import os
 import pprint
 import numpy as np
@@ -283,7 +282,7 @@ def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, pr
     return time_radius
 
 
-def analyse_all_probes(mode='radius'):
+def analyse_all_probes(mode: str = 'radius'):
     file1 = 'helios1_magrec2.csv'
     events1 = get_dates_from_csv(file1)
     for events in get_dates_from_csv('helios1mag_rec3.csv'):
@@ -296,8 +295,7 @@ def analyse_all_probes(mode='radius'):
             events2.append(events)
 
     if mode == 'radius':
-        dis1 = distances_stats(events1, probe=1)
-        dis2 = distances_stats(events2, probe=2)
+        dis1, dis2 = distances_stats(events1, probe=1), distances_stats(events2, probe=2)
         for key in dis1.keys():
             if key in dis2.keys():
                 dis1[key] = int(dis1[key]) + int(dis2[key])

@@ -1,6 +1,5 @@
 from datetime import timedelta, datetime
 from typing import List, Union
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,10 +7,8 @@ import matplotlib.lines as mlines
 from scipy.stats import linregress
 
 from data_handler.data_importer.helios_data import HeliosData
-from data_handler.imported_data_plotter import plot_imported_data
 from data_handler.utils.column_processing import get_outliers, get_derivative
-from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, create_events_list_from_csv_files
-from magnetic_reconnection_dir.lmn_coordinates import plot_lmn
+from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 proton_mass = 1.67 * 10e-27
@@ -48,9 +45,8 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
             else:
                 b_l, n = [(b_l_left + b_l_right) / 2], [(n_left + n_right) / 2]
 
-            delta_t, dt_perp, dt_par, other_dt_total = find_temperature(imported_data, b_l, n, left_interval_start,
-                                                                        left_interval_end,
-                                                                        right_interval_start, right_interval_end)
+            delta_t, dt_perp, dt_par = find_temperature(imported_data, b_l, n, left_interval_start, left_interval_end,
+                                                        right_interval_start, right_interval_end)
             predicted_increase, alfven_speed = find_predicted_temperature(b_l, n)
             if 0.8 * delta_t <= predicted_increase * 0.13 <= 1.2 * delta_t:
                 satisfied_test += 1
@@ -101,12 +97,10 @@ def plot_relations(related_lists: List[list], slope=None):
         a = [x[0] for x in related_lists[n][0] if not np.isnan(x[0]) and not np.isnan(x[1])]
         b = [y[1] for y in related_lists[n][0] if not np.isnan(y[0]) and not np.isnan(y[1])]
         color = [c[2] for c in related_lists[n][0] if not np.isnan(c[0]) and not np.isnan(c[1])]
-        # print(a, b)
         print(linregress(a, b))
         print(np.median(np.array(b) / np.array(a)))
         slope_linreg, intercept, rvalue, pvalue, stderr = linregress(a, b)
         slopes.append(slope_linreg)
-        # print(np.polyfit(a, b, 1))
         plt.scatter(a, b, c=color, marker='+')
         plt.title(related_lists[n][1])
         if slope is not None:
@@ -122,13 +116,13 @@ def plot_relations(related_lists: List[list], slope=None):
         else:
             plt.xlabel(r'$mv^2$' + ' (eV)')
             plt.ylabel(r'$\Delta$' + 'T (eV)')
+
         blue_cross = mlines.Line2D([], [], color='blue', marker='+', linestyle='None',
                                    label='High shear angle ' + r'($\theta > 135\degree $)')
         red_cross = mlines.Line2D([], [], color='red', marker='+', linestyle='None',
                                   label='Low shear angle ' + r'($\theta < 90\degree $)')
         green_cross = mlines.Line2D([], [], color='green', marker='+', linestyle='None',
                                     label='Medium shear angle ' + r'($90\degree < \theta < 135\degree $)')
-
         plt.legend(handles=[blue_cross, red_cross, green_cross], loc=2)
 
         plt.xscale('log')
@@ -139,7 +133,7 @@ def plot_relations(related_lists: List[list], slope=None):
 
 def find_predicted_temperature(b_l: List, n: List):
     """
-    Finds the predicted change from the alfven speep
+    Finds the predicted change from the alfven speed
     :param b_l: B in the L direction
     :param n: number density of the protons
     :return:
@@ -183,7 +177,6 @@ def find_intervals(imported_data: HeliosData, event: datetime):
             event_end = duration[0] + timedelta(minutes=event_duration / 2)
     else:
         event_duration = (duration[-1] - duration[0]).total_seconds() / 60
-
         event_start = duration[0]
         event_end = duration[-1]
     return event_duration, event_start, event_end
@@ -192,7 +185,7 @@ def find_intervals(imported_data: HeliosData, event: datetime):
 def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interval_start: datetime,
                      left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
     """
-    Finds the inflow and exaust temperatures in order to find delta t
+    Finds the inflow and exhaust temperatures in order to find delta t
     :param imported_data: ImportedData
     :param b_l: B in the L direction
     :param n: number density of protons
@@ -214,7 +207,7 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
         inflow = (n[0] * t_left / b_l[0] + n[1] * t_right / b_l[1]) / (n[0] / b_l[0] + n[1] / b_l[1])
         return inflow
 
-    def get_inflow_temp_1b(temperature: pd.DataFrame, n: List, b_l: List):  # when we use only one b
+    def get_inflow_temp_1b(temperature: pd.DataFrame):
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (t_left + t_right) / 2
@@ -230,18 +223,16 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
         perp_inflow = get_inflow_temp_2b(perpendicular_temperature, n, b_l)
         par_inflow = get_inflow_temp_2b(parallel_temperature, n, b_l)
     else:
-        total_inflow = get_inflow_temp_1b(total_temperature, n, b_l)
-        perp_inflow = get_inflow_temp_1b(perpendicular_temperature, n, b_l)
-        par_inflow = get_inflow_temp_1b(parallel_temperature, n, b_l)
+        total_inflow = get_inflow_temp_1b(total_temperature)
+        perp_inflow = get_inflow_temp_1b(perpendicular_temperature)
+        par_inflow = get_inflow_temp_1b(parallel_temperature)
 
     delta_t_total = get_delta_t(total_temperature, total_inflow)
     delta_t_perp = get_delta_t(perpendicular_temperature, perp_inflow)
     delta_t_par = get_delta_t(parallel_temperature, par_inflow)
 
-    print(total_inflow, delta_t_total, delta_t_perp, delta_t_par, (2 * delta_t_perp + delta_t_par) / 3)
     print('TEMPERATURE: ', kelvin_to_ev(delta_t_total), kelvin_to_ev(delta_t_perp), kelvin_to_ev(delta_t_par))
-    return kelvin_to_ev(delta_t_total), kelvin_to_ev(delta_t_perp), kelvin_to_ev(delta_t_par), (
-            2 * kelvin_to_ev(delta_t_perp) + kelvin_to_ev(delta_t_par)) / 3
+    return kelvin_to_ev(delta_t_total), kelvin_to_ev(delta_t_perp), kelvin_to_ev(delta_t_par)
 
 
 def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
@@ -264,7 +255,6 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
                          np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'By']).values),
                          np.mean(
                              (imported_data.data.loc[right_interval_start: right_interval_end, 'Bz']).values)]))
-    print(b_left, b_right)
     b_l_left, b_l_right = np.abs(np.dot(b_left, L)), np.abs(np.dot(b_right, L))
     n_left = np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'n_p']).values)
     n_right = np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'n_p']).values)
@@ -316,10 +306,6 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
 
 
 if __name__ == '__main__':
-    # events1 = get_dates_from_csv(filename='helios1_magrec2.csv', probe=1)
-    # events2 = get_dates_from_csv(filename='helios2_magrec2.csv', probe=2)
-    # events_to_analyse = events1 + events2
-
     events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
         [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
