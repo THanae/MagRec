@@ -20,7 +20,6 @@ def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, ou
     :param inside_interval: minutes to consider in the event for hybrid mva
     :return:
     """
-    print('gzrgerg', inside_interval, outside_interval)
     L, M, N = hybrid_mva(event_date, probe, outside_interval=outside_interval, inside_interval=inside_interval)
     L_w, M_w, N_w = hybrid_mva(weird_thing_date, probe, outside_interval=outside_interval, inside_interval=inside_interval)
     print('dot product', np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(L_w, M_w), np.dot(L_w, N_w), np.dot(M_w, N_w))
@@ -346,7 +345,7 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     ax.quiver(x, y, z, a, b, c, color='k', length=0.5 * vec_length, normalize=True)
 
 
-def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float]):
+def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float], current=None):
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('$X$', rotation=150)
@@ -358,10 +357,15 @@ def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float])
     ax.plot_surface(xx, yy, z, alpha=0.4, color='b')
     ax.scatter(0, 0, 0, color='k')
     colors = ['m', 'g', 'r', 'y', 'c', 'k']
+    if current is not None:
+        print(current[0])
+        ax.quiver(0, 0, 0, current[0][0], current[0][1], current[0][2], length=3*max(distances))
     for n in range(len(distances)):
         d = - normal[n + 1][0] * sum(distances[:n + 1])
         z = (-normal[n + 1][0] * xx - normal[n + 1][1] * yy - d) * 1. / normal[n + 1][2]
-        ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
+        # ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
+        if current is not None:
+            ax.quiver(sum(distances[:n + 1]), 0, 0, -current[n+1][0], -current[n+1][1], -current[n+1][2], length=3*max(distances), color=colors[n])
         ax.scatter(sum(distances[:n + 1]), 0, 0, color='k')
 
     ax.plot([-4 * sum(distances), 4 * sum(distances)], [0, 0], [0, 0])
@@ -379,10 +383,10 @@ if __name__ == '__main__':
                 'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
     crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
                 'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
-    crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
-                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
-    crossing = {'ev_date': datetime(1976, 12, 1, 7, 16), 'w_date': datetime(1976, 12, 1, 7, 31), 'probe': 1,
-                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
+    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    # crossing = {'ev_date': datetime(1976, 12, 1, 7, 16), 'w_date': datetime(1976, 12, 1, 7, 31), 'probe': 1,
+    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
 
     # crossing = {'ev_date': datetime(1976, 12, 6, 6, 3), 'w_date': datetime(1976, 12, 6, 6, 37), 'probe': 2,
     #             'comment': 'normal reconnection with turbulent field? maybe 3 crossings?'}
@@ -409,7 +413,7 @@ if __name__ == '__main__':
     print(b)
     # plot_vectors_2d_3d(a, b)
 
-    plot_current_sheet(a, b, ev_date, w_date, probe)
+    # plot_current_sheet(a, b, ev_date, w_date, probe)
 
     # 06/12/1976
     # plot_possible_folded_sheet([np.array([0.39828885, 0.26623724, -0.87777202]),
@@ -420,9 +424,14 @@ if __name__ == '__main__':
     # plot_possible_folded_sheet([np.array([ 0.53842085,  0.83226682,  0.13204142]),
     #                              np.array([ 0.82988484, -0.36531417,  0.42170691]),
     #                              np.array([-0.93136905, -0.02975537, -0.36285852])], [452062.781834, 207985.190599])
-    # plot_possible_folded_sheet([np.array([0.53842085, 0.83226682, 0.13204142]),
-    #                             np.array([0.82988484, -0.36531417, 0.42170691]),
-    #                             np.array([-0.93136905, -0.02975537, -0.36285852]),
-    #                             np.array([-0.06672256, 0.7672766, -0.63783596]),
-    #                             np.array([0.55796194, -0.59920598, 0.57413472])],
-    #                            [452062.781834, 207985.190599, 1005439.93777, 287286.345991])
+    plot_possible_folded_sheet([np.array([0.53842085, 0.83226682, 0.13204142]),
+                                np.array([0.82988484, -0.36531417, 0.42170691]),
+                                np.array([-0.93136905, -0.02975537, -0.36285852]),
+                                np.array([-0.06672256, 0.7672766, -0.63783596]),
+                                np.array([0.55796194, -0.59920598, 0.57413472])],
+                               [452062.781834, 207985.190599, 1005439.93777, 287286.345991],
+                               current=[np.array([0.82207833, -0.48433881, -0.29933784]),
+                                        np.array([-0.45301754,  0.,  0.89150161]),
+                                        np.array([0.36301926,  0., -0.93178163]),
+                                        np.array([0., -0.63926051, -0.76899025]),
+                                        np.array([-0.,  0.69183982,  0.72205101])])
