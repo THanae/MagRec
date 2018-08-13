@@ -6,6 +6,7 @@ from typing import List
 
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.data_importer.imported_data import ImportedData
+from data_handler.data_importer.ulysses_data import UlyssesData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, send_dates_to_csv
@@ -159,7 +160,6 @@ def changes_in_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.nd
         reconnection_points = reconnection_points + 1
     else:
         print('correlation error')
-
     if reconnection_points > 1:
         return True
     else:
@@ -217,53 +217,71 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
     if mode == 'interactive':
         rogue_events = []
     for event_date in event_dates:
-        try:
-            start_time = event_date - timedelta(hours=duration / 2)
+        # try:
+        start_time = event_date - timedelta(hours=duration / 2)
+        if probe == 1 or probe == 2:
             imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                        duration=duration, probe=probe)
-            imported_data.data.dropna(inplace=True)
+        elif probe == 'ulysses':
+            imported_data = UlyssesData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                                        duration=duration)
+        else:
+            raise NotImplementedError('Only Ulysses and the Helios probes have been implemented so far')
+        imported_data.data.dropna(inplace=True)
+        if probe == 1  or probe == 2:
             B = get_b(imported_data, event_date, 30)
             L, M, N = mva(B)
             B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                       event_date, 10,
-                                                                                                       2)
-            L, M, N = hybrid(L, B1, B2)
-            print('LMN:', L, M, N)
+                                                                                                   event_date, 10,
+                                                                                                   2)
+            min_len = 70
+        elif probe == 'ulysses':
+            B = get_b(imported_data, event_date, 60)
+            L, M, N = mva(B)
+            B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
+                                                                                                       event_date, 30,
+                                                                                                       10)
+            min_len = 5
+        else:
+            return
+        L, M, N = hybrid(L, B1, B2)
+        print('LMN:', L, M, N)
 
-            B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
-            B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
-            v1_L, v2_L = v1_changed[0], v2_changed[0]
+        B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
+        B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
+        v1_L, v2_L = v1_changed[0], v2_changed[0]
 
-            walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2, minimum_fraction, maximum_fraction)
-            BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
-            B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data,
-                                                event_date, L)
-            if walen and BL_check and len(imported_data.data) > 70 and B_and_v_checks:  # avoid not enough data points
-                print('RECONNECTION AT ', str(event_date))
-                if mode == 'static':
-                    events_that_passed_test.append(event_date)
-                elif mode == 'interactive':
-                    answered = False
-                    # plot_all(imported_data, L, M, N, event_date)
-                    while not answered:
-                        is_event = str(input('Do you think this is an event?'))
-                        is_event.lower()
-                        if is_event[0] == 'y':
-                            answered = True
-                            events_that_passed_test.append(event_date)
-                        elif is_event[0] == 'n':
-                            answered = True
-                            rogue_events.append(event_date)
-                        else:
-                            print('Please reply by yes or no')
+        walen = walen_test(B1_L, B2_L, v1_L, v2_L, density_1, density_2, minimum_fraction, maximum_fraction)
+        BL_check = b_l_biggest(B1_L, B2_L, B1_M, B2_M)
+        B_and_v_checks = changes_in_b_and_v(B1_changed, B2_changed, v1_changed, v2_changed, imported_data,
+                                            event_date, L)
 
-                if plot and mode == 'static' and event_date not in known_events:
-                    plot_lmn(imported_data, L, M, N, event_date, probe=probe)
+        if walen and BL_check and len(imported_data.data) > min_len and B_and_v_checks:  # avoid not enough data points
+            print('RECONNECTION AT ', str(event_date))
+            if mode == 'static':
+                events_that_passed_test.append(event_date)
+            elif mode == 'interactive':
+                answered = False
+                # plot_all(imported_data, L, M, N, event_date)
+                while not answered:
+                    is_event = str(input('Do you think this is an event?'))
+                    is_event.lower()
+                    if is_event[0] == 'y':
+                        answered = True
+                        events_that_passed_test.append(event_date)
+                    elif is_event[0] == 'n':
+                        answered = True
+                        rogue_events.append(event_date)
+                    else:
+                        print('Please reply by yes or no')
 
-            else:
-                print('NO RECONNECTION AT ', str(event_date))
-        except Exception:
-            print('could not recover the data')
+            if plot and mode == 'static' and event_date not in known_events:
+                plot_lmn(imported_data, L, M, N, event_date, probe=probe)
+
+        else:
+            print('NO RECONNECTION AT ', str(event_date))
+        # except Exception:
+        #     print('could not recover the data')
 
     if mode == 'interactive':
         print('rogue events: ', rogue_events)
@@ -288,4 +306,4 @@ if __name__ == '__main__':
     # test_reconnections_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
-    test_reconnection_lmn([datetime(1975, 11, 9, 21, 17)], 1, 0.9, 1.1, plot=True)
+    test_reconnections_from_csv('reconnections_helios_ulysses_no_nt_27_19_5.csv',probe='ulysses', plot=True)
