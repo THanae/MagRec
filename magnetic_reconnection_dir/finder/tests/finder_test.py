@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime
-from typing import List
-
-import pandas as pd
+from typing import List, Optional
+import csv
+import numpy as np
 
 from data_handler.distances_with_spice import find_radii, get_time_indices, get_dates, get_data
 from data_handler.data_importer.imported_data import ImportedData
@@ -13,9 +13,6 @@ from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from magnetic_reconnection_dir.finder.tests.known_events import get_known_magnetic_reconnections
 from magnetic_reconnection_dir.magnetic_reconnection import MagneticReconnection
-
-import csv
-import numpy as np
 
 
 def test_finder_with_known_events(finder: BaseFinder):
@@ -168,7 +165,8 @@ def reconnections_with_finder(probe: int, parameters: dict, start_time: str, end
 
 
 def get_possible_reconnections(probe: int, parameters: dict, start_time: str = '17/12/1974',
-                               end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False, data_split=None):
+                               end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False,
+                               data_split: Optional[str] = None):
     """
     :param probe: 1 or 2 for Helios 1 or 2
     :param parameters: dictionary of parameters for the finder
@@ -234,7 +232,6 @@ if __name__ == '__main__':
                                end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
     # imported_data = UlyssesData(start_date='09/02/1998', start_hour=17, duration=3)
     # print(imported_data.data)
-
 
     # for no temperature and density check
     # [0.5643202107628984, [2.4641859422774792, 2.7660314936753307, 7.2469545891470277]]

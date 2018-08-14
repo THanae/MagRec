@@ -97,7 +97,6 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray) ->Tuple[np.ndarray, n
 
 def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2,
                mva_interval: int = 30):
-    print(outside_interval, inside_interval, probe, duration)
     start_time = event_date - timedelta(hours=duration / 2)
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                duration=duration, probe=probe)

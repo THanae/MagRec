@@ -228,12 +228,12 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
         else:
             raise NotImplementedError('Only Ulysses and the Helios probes have been implemented so far')
         imported_data.data.dropna(inplace=True)
-        if probe == 1  or probe == 2:
+        if probe == 1 or probe == 2:
             B = get_b(imported_data, event_date, 30)
             L, M, N = mva(B)
             B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                   event_date, 10,
-                                                                                                   2)
+                                                                                                       event_date, 10,
+                                                                                                       2)
             min_len = 70
         elif probe == 'ulysses':
             B = get_b(imported_data, event_date, 60)
@@ -306,4 +306,4 @@ if __name__ == '__main__':
     # test_reconnections_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
-    test_reconnections_from_csv('reconnections_helios_ulysses_no_nt_27_19_5.csv',probe='ulysses', plot=True)
+    test_reconnections_from_csv('reconnections_helios_ulysses_no_nt_27_19_5.csv', probe='ulysses', plot=True)

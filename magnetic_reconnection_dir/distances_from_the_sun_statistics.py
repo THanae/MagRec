@@ -1,6 +1,6 @@
 import os
 from datetime import timedelta, datetime
-from typing import List
+from typing import List, Optional
 
 from astropy.visualization import quantity_support
 import matplotlib.pyplot as plt
@@ -20,7 +20,8 @@ proton_mass = 1.6e-27
 mu_0 = np.pi * 4e-7
 
 
-def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_data=None, plot_sun: bool = False):
+def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, events: Optional[List[datetime]] = None,
+                   missing_data: Optional[list] = None, plot_sun: bool = False):
     quantity_support()
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -81,7 +82,8 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet=None, events=None, missing_
     plt.show()
 
 
-def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft, plot_each_point: bool = False):
+def plot_event_info(ax, spacecraft_planet: np.ndarray, events: List[datetime], spacecraft: int,
+                    plot_each_point: bool = False):
     args = {}
     normal_size = 10
     for event in events:
@@ -114,7 +116,7 @@ def plot_event_info(ax, spacecraft_planet, events: List[datetime], spacecraft, p
                 args[str(arg)] = 1
 
 
-def str_to_datetime(date: str):
+def str_to_datetime(date: str) ->datetime:
     """
     Transforms a date string to a datetime object
     :param date: date string
@@ -128,7 +130,7 @@ def str_to_datetime(date: str):
     return _date
 
 
-def get_events_dates(probe: int):
+def get_events_dates(probe: int) ->List[datetime]:
     """
     Gets all events dates for a given probe
     :param probe: 1 or 2 for Helios 1 or 2
@@ -199,6 +201,38 @@ def find_color_from_type(solar_wind_characteristic: str):
     else:
         color = colors[4]
     return color
+
+
+def histogram_speed_density():
+    n, v = [], []
+    b, rad = [], []
+
+    probe = 1
+    events = get_events_dates(probe)
+    for event in events:
+        density, speed, radius, t_perp, t_par, t_tot, b_field = find_density_and_speed(event, probe, distance=True)
+        n.append(density)
+        v.append(speed)
+        b.append(b_field)
+        rad.append(radius)
+
+    probe = 2
+    events = get_events_dates(probe)
+    for event in events:
+        density, speed, radius, t_perp, t_par, t_tot, b_field = find_density_and_speed(event, probe, distance=True)
+        n.append(density)
+        v.append(speed)
+        b.append(b_field)
+        rad.append(radius)
+
+    plt.hist(n, bins=25)
+    plt.show()
+    plt.hist(v, bins=25, width=5)
+    plt.show()
+    plt.hist(b, bins=25)
+    plt.show()
+    plt.hist(rad, bins=25)
+    plt.show()
 
 
 def find_density_and_speed(event: datetime, probe: int, distance: bool = False):
@@ -287,7 +321,7 @@ def find_distance_from_xpoint(event_time, duration, probe):
     b_l = np.dot(b, L)
     n = np.mean(data['n_p'].values)
     speed = np.mean(data['vp_magnitude'].values)
-    alfven_speed = np.abs(b_l * 10 ** (-9) / np.sqrt(n * 10 ** 6 * proton_mass * mu_0)) * 10**(-3)  # in km/s
+    alfven_speed = np.abs(b_l * 10 ** (-9) / np.sqrt(n * 10 ** 6 * proton_mass * mu_0)) * 10 ** (-3)  # in km/s
 
     exhaust_width = duration * 60 * speed  # duration in minutes needs to be transferred to seconds
     distance_from_xpoint = exhaust_width / (2 * np.tan(0.05))
@@ -312,18 +346,19 @@ def quickplot():
         for date in _dates:
             duration = find_event_duration(date, _probe)
             exhaust_width, distance_from_xpoint, x_point_propagation_distance, radius = find_distance_from_xpoint(date,
-                                                                                                    duration, _probe)
+                                                                                                                  duration,
+                                                                                                                  _probe)
             widths.append(exhaust_width)
             x_distance.append(distance_from_xpoint)
             if not np.isnan(x_point_propagation_distance):
-                x_prop.append(x_point_propagation_distance* 6.68459e-9)
+                x_prop.append(x_point_propagation_distance * 6.68459e-9)
                 rad.append(radius)
     plt.scatter(rad, x_prop)
     # plt.yscale('log')
     plt.show()
 
 
-def find_data_gaps(probe, start_time: str, end_time: str):
+def find_data_gaps(probe, start_time: str, end_time: str) -> list:
     start = datetime.strptime(start_time, '%d/%m/%Y')
     start = datetime(start.year, start.month, 1)
     end = datetime.strptime(end_time, '%d/%m/%Y')
@@ -358,18 +393,19 @@ def find_data_gaps(probe, start_time: str, end_time: str):
 
 
 if __name__ == '__main__':
-    # probe = 1
-    # start_time = '15/12/1974'
-    # end_time = '15/08/1984'
-    probe = 2
-    start_time = '20/01/1976'
-    end_time = '01/10/1979'
+    probe = 1
+    start_time = '15/12/1974'
+    end_time = '15/08/1984'
+    # probe = 2
+    # start_time = '20/01/1976'
+    # end_time = '01/10/1979'
     planet = 'Earth'
     dates = get_events_dates(probe)
     orbiter = get_orbiter(probe, start_time, end_time)
     missing = find_data_gaps(probe, start_time, end_time)
     stats = time_stats(dates, mode='monthly')
     # plot_hist_dist(orbiter, probe, stats, planet, dates, missing)
-    plot_hist_dist(orbiter, probe, stats, None, dates, missing, plot_sun=True)
+    # plot_hist_dist(orbiter, probe, stats, None, dates, missing, plot_sun=True)
     # quickplot()
     # plot_speed_relations()
+    histogram_speed_density()

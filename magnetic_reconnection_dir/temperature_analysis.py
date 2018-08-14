@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import List, Union
+from typing import List, Union, Optional
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -90,7 +90,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
     return slopes
 
 
-def plot_relations(related_lists: List[list], slope=None):
+def plot_relations(related_lists: List[list], slope: Optional[float]=None):
     slopes = []
     for n in range(len(related_lists)):
         fig = plt.figure(n + 1)
@@ -300,7 +300,7 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
         else:
             medium_shear.append([event, probe])
     print('shear', shear)
-    # plt.hist(shear, bins=15)
+    # plt.hist(shear, bins=18)
     # plt.show()
     return shear, small_shear, big_shear, medium_shear
 
@@ -317,3 +317,9 @@ if __name__ == '__main__':
     # temperature_analysis(big_shear_angle)
     # print('medium shear angle', medium_shear_angle)
     # temperature_analysis(medium_shear_angle)
+
+    # print(get_shear_angle(
+    #     [[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1], [datetime(1976, 12, 1, 6, 23), 1],
+    #      [datetime(1976, 12, 1, 7, 16), 1], [datetime(1976, 12, 1, 7, 31), 1]]))
+    # temperature_analysis(events=[[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1], [datetime(1976, 12, 1, 6, 23), 1],
+    #      [datetime(1976, 12, 1, 7, 16), 1], [datetime(1976, 12, 1, 7, 31), 1]])

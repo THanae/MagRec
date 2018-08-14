@@ -1,4 +1,5 @@
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 import matplotlib.pyplot as plt
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.data_importer.imported_data import ImportedData
@@ -13,7 +14,8 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
 
 
 def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False,
-                       event_date=None, boundaries=None, scatter_points=None):
+                       event_date: Optional[datetime] = None, boundaries: Optional[List[datetime]] = None,
+                       scatter_points: Optional[list] = None):
     """
     Plots given set of columns for a given ImportedData
     :param imported_data: ImportedData
@@ -27,7 +29,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
     fig, axs = plt.subplots(len(columns_to_plot), 1, sharex=True, figsize=(15, 8.5))
     # colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     colours = ['m', 'b'] + plt.rcParams['axes.prop_cycle'].by_key()['color']
-    axs[0].set_title('Helios ' + str(imported_data.probe) + ' between ' + str(
+    axs[0].set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
         imported_data.start_datetime.strftime('%d/%m/%Y')) + ' and ' + str(
         imported_data.end_datetime.strftime('%d/%m/%Y')) + ' at ' + str(
         imported_data.data['r_sun'].values[0]) + ' astronomical units')
@@ -87,7 +89,7 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     """
     if column_name not in imported_data.data.columns.values:
         imported_data.create_processed_column(column_name)
-    ax.plot(imported_data.data[column_name], '-', markersize=2, label=column_name, color=colour)
+    ax.plot(imported_data.data[column_name], 'o-', markersize=2, label=column_name, color=colour)
     if column_name == 'Tp_par':
         ax.yaxis.set_label_position("right")
     ax.set_ylabel(column_name, color=colour)

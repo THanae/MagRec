@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg import inv
@@ -10,7 +10,7 @@ from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 
 def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, outside_interval: int = 10,
-                inside_interval: int = 2) ->Tuple[list, list]:
+                inside_interval: int = 2) -> Tuple[list, list]:
     """
     Gets the lmn coordinates for the event and the other event close to it
     :param event_date: time of the event
@@ -21,7 +21,8 @@ def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, ou
     :return:
     """
     L, M, N = hybrid_mva(event_date, probe, outside_interval=outside_interval, inside_interval=inside_interval)
-    L_w, M_w, N_w = hybrid_mva(weird_thing_date, probe, outside_interval=outside_interval, inside_interval=inside_interval)
+    L_w, M_w, N_w = hybrid_mva(weird_thing_date, probe, outside_interval=outside_interval,
+                               inside_interval=inside_interval)
     print('dot product', np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(L_w, M_w), np.dot(L_w, N_w), np.dot(M_w, N_w))
     print('handedness tests', np.dot(np.cross(L, M), N), np.dot(np.cross(L_w, M_w), N_w))
     return [L, M, N], [L_w, M_w, N_w]
@@ -345,7 +346,8 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     ax.quiver(x, y, z, a, b, c, color='k', length=0.5 * vec_length, normalize=True)
 
 
-def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float], current=None):
+def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float],
+                               current: Optional[List[np.ndarray]] = None):
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('$X$', rotation=150)
@@ -359,13 +361,14 @@ def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float],
     colors = ['m', 'g', 'r', 'y', 'c', 'k']
     if current is not None:
         print(current[0])
-        ax.quiver(0, 0, 0, current[0][0], current[0][1], current[0][2], length=3*max(distances))
+        ax.quiver(0, 0, 0, current[0][0], current[0][1], current[0][2], length=3 * max(distances))
     for n in range(len(distances)):
         d = - normal[n + 1][0] * sum(distances[:n + 1])
         z = (-normal[n + 1][0] * xx - normal[n + 1][1] * yy - d) * 1. / normal[n + 1][2]
         # ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
         if current is not None:
-            ax.quiver(sum(distances[:n + 1]), 0, 0, -current[n+1][0], -current[n+1][1], -current[n+1][2], length=3*max(distances), color=colors[n])
+            ax.quiver(sum(distances[:n + 1]), 0, 0, -current[n + 1][0], -current[n + 1][1], -current[n + 1][2],
+                      length=3 * max(distances), color=colors[n])
         ax.scatter(sum(distances[:n + 1]), 0, 0, color='k')
 
     ax.plot([-4 * sum(distances), 4 * sum(distances)], [0, 0], [0, 0])
@@ -431,7 +434,7 @@ if __name__ == '__main__':
                                 np.array([0.55796194, -0.59920598, 0.57413472])],
                                [452062.781834, 207985.190599, 1005439.93777, 287286.345991],
                                current=[np.array([0.82207833, -0.48433881, -0.29933784]),
-                                        np.array([-0.45301754,  0.,  0.89150161]),
-                                        np.array([0.36301926,  0., -0.93178163]),
+                                        np.array([-0.45301754, 0., 0.89150161]),
+                                        np.array([0.36301926, 0., -0.93178163]),
                                         np.array([0., -0.63926051, -0.76899025]),
-                                        np.array([-0.,  0.69183982,  0.72205101])])
+                                        np.array([-0., 0.69183982, 0.72205101])])
