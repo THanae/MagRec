@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -90,7 +90,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
     return slopes
 
 
-def plot_relations(related_lists: List[list], slope: Optional[float]=None):
+def plot_relations(related_lists: List[list], slope: Optional[float] = None):
     slopes = []
     for n in range(len(related_lists)):
         fig = plt.figure(n + 1)
@@ -213,8 +213,15 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
         inflow = (t_left + t_right) / 2
         return inflow
 
+    def get_t_exhaust(temperature: pd.DataFrame):
+        density_inside = imported_data.data.loc[left_interval_end:right_interval_start, 'n_p'].values
+        n_t_inside = (temperature.loc[left_interval_end:right_interval_start]).values * density_inside
+        t_exhaust = np.percentile(n_t_inside, 90)/ np.percentile(density_inside, 90)
+        return t_exhaust
+
     def get_delta_t(temperature: pd.DataFrame, t_inflow: float):
         t_exhaust = np.percentile((temperature.loc[left_interval_end:right_interval_start]).values, 90)
+        # t_exhaust = get_t_exhaust(temperature)
         print(t_exhaust, np.max((temperature.loc[left_interval_end:right_interval_start]).values))
         return np.abs(t_exhaust - t_inflow) * np.sign(t_exhaust - t_inflow)
 
@@ -236,7 +243,8 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
 
 
 def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
-            left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
+            left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime,
+            guide_field: bool = False):
     """
     :param event: event date
     :param probe: 1 or 2 for Helios 1 or 2
@@ -245,6 +253,7 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
     :param left_interval_end: end of left interval
     :param right_interval_start: start of right interval
     :param right_interval_end: end of right interval
+    :param guide_field: if True, returns bm_left and bm_right
     :return:
     """
     L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
@@ -259,10 +268,45 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
     n_left = np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'n_p']).values)
     n_right = np.mean((imported_data.data.loc[right_interval_start: right_interval_end, 'n_p']).values)
     print(b_l_left, b_l_right, n_left, n_right)
+    if guide_field:
+        b_m_left, b_m_right = np.abs(np.dot(b_left, M)), np.abs(np.dot(b_right, M))
+        return b_l_left, b_l_right, b_m_left, b_m_right, n_left, n_right
     return b_l_left, b_l_right, n_left, n_right, L, M, N
 
 
-def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
+def n_to_shear():
+    density = []
+    angle = []
+    guide = []
+    events = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
+    events += create_events_list_from_csv_files([['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
+    for n in range(len(events)):
+        print(events[n])
+        start = events[n][0] - timedelta(hours=2)
+        imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=4,
+                                   probe=events[n][1])
+        imported_data.data.dropna(inplace=True)
+        duration, event_start, event_end = find_intervals(imported_data, events[n][0])
+        left_interval_end, right_interval_start = event_start, event_end
+        left_interval_start = event_start - timedelta(minutes=5)
+        right_interval_end = event_end + timedelta(minutes=5)
+        b_l_left, b_l_right, b_m_left, b_m_right, n_left, n_right = get_n_b(events[n][0], events[n][1], imported_data,
+                                                                            left_interval_start, left_interval_end,
+                                                                            right_interval_start, right_interval_end,
+                                                                            guide_field=True)
+        b_g = (b_l_left + b_l_right) / (b_m_left + b_m_right)
+        shear, a, b, c = get_shear_angle([events[n]])
+        if shear:
+            angle.append(shear[0])
+            n_p = (n_left + n_right) / 2
+            density.append(n_p)
+
+    plt.scatter(angle, density)
+    plt.show()
+
+
+def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
+    List[np.ndarray], List[list], List[list], List[list]]:
     """
     Finds the shear angle of events
     :param events_list: list of events to be analysed
@@ -300,7 +344,9 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]):
         else:
             medium_shear.append([event, probe])
     print('shear', shear)
-    # plt.hist(shear, bins=18)
+    # plt.hist(shear, bins=10, width=10)
+    # plt.xlabel('Shear angle in degrees')
+    # plt.ylabel('Frequency')
     # plt.show()
     return shear, small_shear, big_shear, medium_shear
 
@@ -317,6 +363,7 @@ if __name__ == '__main__':
     # temperature_analysis(big_shear_angle)
     # print('medium shear angle', medium_shear_angle)
     # temperature_analysis(medium_shear_angle)
+    # n_to_shear()
 
     # print(get_shear_angle(
     #     [[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1], [datetime(1976, 12, 1, 6, 23), 1],
