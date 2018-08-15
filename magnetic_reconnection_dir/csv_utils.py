@@ -57,7 +57,7 @@ def send_dates_to_csv(filename: str, events_list: List[datetime], probe: int, ad
                     {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds})
 
 
-def create_events_list_from_csv_files(files:List[List[Union[str, int]]]):
+def create_events_list_from_csv_files(files: List[List[Union[str, int]]]):
     """
     Creates list from different events and probes
     :param files: list of lists of files and associated probe
