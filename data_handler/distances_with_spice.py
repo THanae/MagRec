@@ -1,4 +1,4 @@
-from data_handler.data_importer.data_import import get_imported_data
+from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.orbit_with_spice import get_orbiter
 import numpy as np
@@ -80,7 +80,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         hours = np.int(delta_t.total_seconds() / 3600)
         start_date = start.strftime('%d/%m/%Y')
         try:
-            _data = get_imported_data(probe=probe, start_date=start_date, duration=hours)
+            _data = get_probe_data(probe=probe, start_date=start_date, duration=hours)
             imported_data.append(_data)
         except Exception:
             print('Previous method not working, switching to "day-to-day" method')
@@ -89,7 +89,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
             number_of_loops = np.int(hours/interval)
             for n in range(number_of_loops):
                 try:
-                    hard_data = get_imported_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
+                    hard_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
                     hard_to_get_data.append(hard_data)
                 except Exception:
                     potential_end_time = start+timedelta(hours=interval)
@@ -98,20 +98,28 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
 
             for n in range(len(hard_to_get_data)):
                 imported_data.append(hard_to_get_data[n])
-    entries = 0
-    for n in range(len(imported_data)):
-        a = imported_data[n]
-        entries = entries + len(a.data)
-    print(entries, ' entries')
     return imported_data
+
+
+def get_imported_data_sets(probe, orbiter: spice.Trajectory, radius: float):
+    """
+    Finds the imported data sets that correspond to a given radius
+    :param probe: probe to consider
+    :param orbiter: orbiter of the given probe
+    :param radius: radius to consider
+    :return:
+    """
+    data = find_radii(orbiter, radius=radius)
+    time_indices = get_time_indices(data)
+    dates = get_dates(orbiter.times, time_indices)
+    imported_data_sets = get_data(dates, probe=probe)
+    return imported_data_sets
 
 
 if __name__ == '__main__':
     orbiter = get_orbiter(probe=2, start_time='17/01/1976', end_time='17/01/1979', interval=1)
-    data = find_radii(orbiter, radius=0.3)
-    time_indices = get_time_indices(data)
-    dates = get_dates(orbiter.times, time_indices)
-    imported_data_sets = get_data(dates, probe=2)
+    imported_data_sets = get_imported_data_sets(probe=2, orbiter=orbiter, radius=0.3)
+    print(imported_data_sets)
 
 # Helios 1 : December 10, 1974 to February 18, 1985
 # Helios 2 : January 15, 1976 to December 23, 1979
