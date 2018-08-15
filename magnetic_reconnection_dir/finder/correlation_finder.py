@@ -1,12 +1,9 @@
 from datetime import timedelta, datetime
 from typing import List
-
 import pandas as pd
 import numpy as np
 
 from data_handler.data_importer.imported_data import ImportedData
-from data_handler.data_importer.helios_data import HeliosData
-from data_handler.data_importer.ulysses_data import UlyssesData
 from data_handler.utils.column_processing import get_moving_average, get_derivative, get_outliers
 from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 
@@ -28,6 +25,8 @@ class CorrelationFinder(BaseFinder):
         :param sigma_sum: float
         :param sigma_diff: float
         :param minutes_b: int
+        :param minutes: minutes around which find_outliers will be considered
+        :param nt_test: if True, runs a density and temperature test
         :return:
         """
         self.find_correlations(imported_data.data)
@@ -52,8 +51,8 @@ class CorrelationFinder(BaseFinder):
                 interval = timedelta(minutes=minutes_b)
                 for coordinate in self.coordinates:
                     b = data['B{}'.format(coordinate)].loc[_datetime - interval:_datetime + interval].dropna()
-                    if (b < 0).any() and (b > 0).any() and _datetime in get_average_b2(_datetime,
-                                                                                       data['B{}'.format(coordinate)]):
+                    if (b < 0).any() and (b > 0).any() and _datetime in get_average_b(_datetime,
+                                                                                      data['B{}'.format(coordinate)]):
                         filtered_datetimes_list.append(_datetime)
                         break
             except Exception:
@@ -88,12 +87,11 @@ class CorrelationFinder(BaseFinder):
 
     def find_correlations(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Finds all the correlations by multiplying the diffs of b and v together (divided by the time between the data
-        points in question)
+        Finds the correlations by multiplying the diffs of b and v (divided by the time between the data points)
         These are divided by the standard deviations of b and v to obtain a kind of scaling
         The total correlation is then obtained by summing all correlations
         :param data: ImportedData
-        :return:
+        :return: data with additional columns
         """
         coordinate_correlation_column_names = []
 
@@ -120,12 +118,13 @@ class CorrelationFinder(BaseFinder):
         return data
 
     def find_outliers(self, data: pd.DataFrame, sigma_sum: float, sigma_diff: float, minutes: float = 10) -> List[
-        datetime]:
+                      datetime]:
         """
         Finds all events which have high changes in correlation
         :param data: ImportedData
         :param sigma_sum: sigma faction used in finding the high changes in the total correlations
         :param sigma_diff: sigma faction used in finding the high changes in the difference of the total correlations
+        :param minutes: minutes during which the data will be considered in get_outliers
         :return: list of possible events
         """
         data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=sigma_sum,
@@ -134,7 +133,6 @@ class CorrelationFinder(BaseFinder):
                                                          minutes=minutes)
 
         outlier_datetimes = []
-        # find intersection
         for index, value in data['correlation_diff_outliers'].iteritems():
             index: pd.Timestamp = index
             interval = timedelta(minutes=self.outlier_intersection_limit_minutes)
@@ -156,13 +154,9 @@ class CorrelationFinder(BaseFinder):
                 n += 1
             groups = groups + 1
 
-        # if grouped_outliers:
-        #     print(grouped_outliers, len(grouped_outliers))
-
         datetimes_list = []
         for group in grouped_outliers:
-            # find max correlation_diff_outliers
-            maximum_in_group = data.loc[group, 'correlation_diff_outliers']
+            maximum_in_group = data.loc[group, 'correlation_diff_outliers']  # find max correlation_diff_outliers
             datetimes_list.append(maximum_in_group.idxmax())
 
         print('Outliers check returned: ', datetimes_list)
@@ -181,7 +175,7 @@ class CorrelationFinder(BaseFinder):
             print("No reconnections were found")
 
 
-def get_average_b2(_datetime: datetime, data_column: pd.DataFrame) -> List[datetime]:
+def get_average_b(_datetime: datetime, data_column: pd.DataFrame, minutes_around: int = 10) -> List[datetime]:
     """
     Checks whether b really changes magnitude before and after a given event
     :param _datetime: list of possible event
@@ -189,8 +183,7 @@ def get_average_b2(_datetime: datetime, data_column: pd.DataFrame) -> List[datet
     :return: nothing if no big change, and the event if there is indeed a change
     """
     high_changes_datetime_list = []
-    minutes_b = 10
-    interval = timedelta(minutes=minutes_b)
+    interval = timedelta(minutes=minutes_around)
     b_left = data_column.loc[_datetime - interval:_datetime].dropna()
     b_right = data_column.loc[_datetime:_datetime + interval].dropna()
 

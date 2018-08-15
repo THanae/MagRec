@@ -1,18 +1,17 @@
 from functools import partial
-
-from data_handler.data_importer.helios_data import HeliosData
-
-from datetime import timedelta, datetime
 import numpy as np
-from magnetic_reconnection_dir.finder.base_finder import BaseFinder
-from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from multiprocessing import Pool
 import csv
 from typing import List
+from datetime import timedelta, datetime
 
-# lists [event, probe, number of reconnections]
+from data_handler.data_importer.helios_data import HeliosData
+from magnetic_reconnection_dir.finder.base_finder import BaseFinder
+from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from magnetic_reconnection_dir.lmn_coordinates import test_reconnection_lmn
 
+
+# lists [event, probe, number of reconnections]
 event_list = [[datetime(1974, 12, 15, 14, 0, 0), 1, 1], [datetime(1974, 12, 15, 20, 0, 0), 1, 1],
               [datetime(1975, 1, 18, 13, 0, 0), 1, 1], [datetime(1975, 2, 7, 1, 0, 0), 1, 1],
               [datetime(1975, 9, 22, 3, 30, 0), 1, 1], [datetime(1975, 12, 19, 21, 0, 0), 1, 1],
@@ -42,7 +41,8 @@ test_data = []  # try some of the best mcc's on the test data and hope for the s
 def test_with_values(parameters: dict, finder: BaseFinder) -> list:
     """
     Returns the mcc with corresponding sigma_sum, sigma_diff and minutes_b
-    :param sigma_and_mins: tuple of sigma_sum, sigma_diff and minutes_b
+    :param parameters: dictionary of the parameters to be tested
+    :param finder: finder to be used in the tests
     :return:
     """
     f_n, t_n, t_p, f_p = 0, 0, 0, 0
@@ -50,8 +50,8 @@ def test_with_values(parameters: dict, finder: BaseFinder) -> list:
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
-        data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour,
-                            duration=interval, probe=probe)
+        data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_hour, duration=interval,
+                          probe=probe)
 
         # making sure this function can possibly be used with other finders
         # this way we unfold the arguments necessary for the finder, that are fed in the function
@@ -103,7 +103,9 @@ def send_to_csv(name: str, mcc: list, params: List[dict], keys: list):
     """
     Sends the data to a csv file
     :param name: string, name of the file (without the .csv part)
+    :param mcc: mcc values obtained in the mcc implementation
     :param params: parameters tested in the mcc implementation
+    :param keys: names of the parameters tested in the implementation
     :return:
     """
     with open(name + '.csv', 'w', newline='') as csv_file:
@@ -118,8 +120,7 @@ def send_to_csv(name: str, mcc: list, params: List[dict], keys: list):
 
 
 if __name__ == '__main__':
-    # multiprocessing is faster if your laptop can take it
-    # check max number of processes another laptop could take
+    # multiprocessing is faster if your laptop can take it - check max number of processes another laptop could take
 
     # in np.arange, if args are floats, length of output is ceil((stop - start) / step)
     # eg for np.arange(0.7, 1, 0.1), we get 0.7, 0.8, 0.9, 1.0
