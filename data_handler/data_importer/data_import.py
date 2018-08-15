@@ -9,5 +9,5 @@ def get_imported_data(probe, start_date: str, start_hour: int = 0, duration: int
     elif probe == 'ulysses':
         imported_data = UlyssesData(start_date=start_date, start_hour=start_hour, duration=duration)
     else:
-        raise NotImplementedError('This function has only been implemented for Helios 1, Helios 2 and ULysses so far')
+        raise NotImplementedError('This function has only been implemented for Helios 1, Helios 2 and Ulysses so far')
     return imported_data
