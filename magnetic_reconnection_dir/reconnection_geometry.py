@@ -6,6 +6,7 @@ from numpy.linalg import inv
 from mpl_toolkits.mplot3d import Axes3D
 
 from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.imported_data import ImportedData
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 
@@ -50,12 +51,11 @@ def rotation_matrix_to_euler(rotation: np.ndarray) -> np.ndarray:
         singular = True
     else:
         singular = False
+    theta = np.arcsin(-rotation[2, 0])
     if not singular:
-        theta = np.arcsin(-rotation[2, 0])
         psi = np.arctan2(rotation[2, 1] * np.sign(np.cos(theta)), rotation[2, 2] * np.sign(np.cos(theta)))
         phi = np.arctan2(rotation[1, 0] * np.sign(rotation[2, 0]), rotation[0, 0] * np.sign(rotation[2, 0]))
     else:
-        theta = np.arccos(-rotation[2, 0])
         psi = np.arctan2(rotation[2, 1] * np.sign(rotation[2, 0]), rotation[2, 2] * np.sign(rotation[2, 0]))
         phi = 0
     print('theta, psi, phi', np.degrees(np.array([theta, psi, phi])))
@@ -78,10 +78,10 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
     ax.set_xlabel('$X$', rotation=150)
     ax.set_ylabel('$Y$')
     ax.set_zlabel('$Z$', rotation=60)
-
     ax.set_xlim([-1, 1])
     ax.set_ylim([-1, 1])
     ax.set_zlim([-1, 1])
+
     for n in range(len(lmn_coordinates)):
         U, V, W = zip(lmn_coordinates[n])
         ax.quiver(X, Y, Z, U, V, W, color=colors[n])
@@ -89,32 +89,21 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
         ax.quiver(X, 1, Z, np.dot(x, lmn_coordinates[n]), 0, np.dot(z, lmn_coordinates[n]), color='#808080')
         ax.quiver(-1, Y, Z, 0, np.dot(y, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n]), color='#808080')
 
+    def plot_2d(ax, label1, label2, origin1, origin2, point1, point2):
+        ax.set_xlim([-1, 1])
+        ax.set_ylim([-1, 1])
+        for n in range(len(lmn_coordinates)):
+            ax.set_xlabel(label1)
+            ax.set_ylabel(label2)
+            vec1, vec2 = np.dot(point1, lmn_coordinates[n]), np.dot(point2, lmn_coordinates[n])
+            ax.quiver(origin1, origin2, vec1, vec2, color=colors[n], angles='xy', scale_units='xy', scale=1)
+
     ax = fig_name.add_subplot(222, aspect='equal')
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    for n in range(len(lmn_coordinates)):
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        x_c, y_c = np.dot(x, lmn_coordinates[n]), np.dot(y, lmn_coordinates[n])
-        ax.quiver(X, Y, x_c, y_c, color=colors[n], angles='xy', scale_units='xy', scale=1)
-
+    plot_2d(ax, 'x', 'y', X, Y, x, y)
     ax = fig_name.add_subplot(223, aspect='equal')
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    for n in range(len(lmn_coordinates)):
-        ax.set_xlabel('x')
-        ax.set_ylabel('z')
-        x_c, z_c = np.dot(x, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n])
-        ax.quiver(X, Z, x_c, z_c, color=colors[n], angles='xy', scale_units='xy', scale=1)
-
+    plot_2d(ax, 'x', 'z', X, Z, x, z)
     ax = fig_name.add_subplot(224, aspect='equal')
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    for n in range(len(lmn_coordinates)):
-        ax.set_xlabel('y')
-        ax.set_ylabel('z')
-        y_c, z_c = np.dot(y, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n])
-        ax.quiver(Y, Z, y_c, z_c, color=colors[n], angles='xy', scale_units='xy', scale=1)
+    plot_2d(ax, 'y', 'z', Y, Z, y, z)
 
 
 def plot_vectors_2d_3d(event: List[np.ndarray], weird: List[np.ndarray]):
@@ -148,19 +137,16 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
         first, end = event, weird
         print('EVENT IN BLUE, WEIRD IN MAGENTA')
         future = True
-    try:
-        start_date = start - timedelta(hours=1)
-        imported_data = HeliosData(start_date=start_date.strftime('%d/%m/%Y'), start_hour=start_date.hour, duration=3,
-                                   probe=probe)
-    except ValueError:
-        imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=3,
-                                   probe=probe)
 
+    start_date = start - timedelta(hours=1)
+    imported_data = HeliosData(start_date=start_date.strftime('%d/%m/%Y'), start_hour=start_date.hour, duration=3,
+                               probe=probe)
     imported_data.create_processed_column('vp_magnitude')
+
     t = np.abs((weird_date - event_date).total_seconds())
     v = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_magnitude'])
     distance = t * v
-    print('distance', distance, 'theoretical distance to X-line: ', distance / (2 * np.tan(0.05)))
+    print('distance', distance)
 
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d', aspect='equal')
@@ -184,12 +170,12 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
 
     starting_position = [0, 0, 0]
     trajectory = find_spacecraft_trajectory(imported_data, t, start, starting_position, future)
-    x = [pos[0] for pos in trajectory]
-    y = [pos[1] for pos in trajectory]
-    z = [pos[2] for pos in trajectory]
+    x, y, z = [pos[0] for pos in trajectory], [pos[1] for pos in trajectory], [pos[2] for pos in trajectory]
+
     ax.scatter(x, y, z)
     ax.scatter(x[0], y[0], z[0], color='k')
     ax.scatter(x[9], y[9], z[9], color='k')
+
     distance_plane_to_point = (normal_2[0] * x[-1] + normal_2[1] * y[-1] + normal_2[2] * z[-1] + d) / np.sqrt(
         normal_2[0] ** 2 + normal_2[1] ** 2 + normal_2[2] ** 2)
     print('distance from 2: ', distance_plane_to_point)
@@ -219,8 +205,16 @@ def add_m_n_vectors(ax, event: list, weird: list, distance: float, future: bool)
     ax.quiver(X, Y, Z, U, V, W, color='r', length=distance, normalize=True)
 
 
-def find_spacecraft_trajectory(imported_data: HeliosData, t: float, start: datetime, starting_position: List[float],
+def find_spacecraft_trajectory(imported_data: ImportedData, t: float, start: datetime, starting_position: List[float],
                                future: bool) -> List[np.ndarray]:
+    """
+    :param imported_data: ImportedData
+    :param t: time it took the spacecraft to travel between the two current sheets
+    :param start: start point of the spacecraft
+    :param starting_position: starting position of the spacecraft, usually [0,0,0]
+    :param future: True if the event is before the weirder crossing
+    :return:
+    """
     trajectory = [np.array(starting_position)]
     pos_x, pos_y, pos_z = starting_position[0], starting_position[1], starting_position[2]
     default_vx = np.mean(imported_data.data.loc[start: start + timedelta(seconds=t), 'vp_x'])
@@ -255,7 +249,6 @@ def find_d_from_distance(distance: float, normal2: np.ndarray):
     :return:
     """
     # point = [0,0,0] belongs to plane 1, so [distance, 0, 0] belongs to plane 2, equation ax+by+cz+d=0
-    # distance is mostly in x, so we assume y and z will not noticeably change
     d = - normal2[0] * distance
     return d
 
@@ -289,8 +282,9 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
                         np.mean(imported_data.data.loc[start_time - timedelta(seconds=t):start_time, 'vp_z'])])
 
     # pos_x, pos_y, pos_z = starting_position[0], starting_position[1], starting_position[2]
-    pos_x, pos_y, pos_z = starting_position[0] + vel[0] * t, starting_position[1] + vel[1] * t, starting_position[2] + \
-                          vel[2] * t
+    pos_x = starting_position[0] + vel[0] * t
+    pos_y = starting_position[1] + vel[1] * t
+    pos_z = starting_position[2] + vel[2] * t
     time_split = t / 10
     start = start_time - timedelta(seconds=t)
     for loop in range(30):
@@ -307,9 +301,6 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
         _v = np.array([-np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_x']),
                        -np.mean((imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_y'])),
                        -np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_z'])])
-        vs = np.array([-np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_x']),
-                       np.mean((imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_y'])),
-                       np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'vp_z'])])
         if np.isnan(_v[0]) or np.isnan(_v[1]) or np.isnan(_v[2]):
             _v = np.array([-default_vx, -default_vy, -default_vz])
         t1 = np.mean(imported_data.data.loc[start:start + timedelta(seconds=time_split), 'Tp_par'])
@@ -328,9 +319,8 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
         v_field.append(_v)
         start += timedelta(seconds=time_split)
         b_lmn = np.array([np.dot(b, event[0]), np.dot(b, event[1]), np.dot(b, event[2])])
-        v_lmn = np.array([np.dot(vs, event[0]), np.dot(vs, event[1]), np.dot(vs, event[2])])
         if not np.isnan(b[0]):
-            print(start, b_lmn, v_lmn, np.sqrt(b[0] ** 2 + b[1] ** 2 + b[2] ** 2),
+            print(start, b_lmn, np.sqrt(b[0] ** 2 + b[1] ** 2 + b[2] ** 2),
                   np.sqrt(_v[0] ** 2 + _v[1] ** 2 + _v[2] ** 2), t1, t2, n)
 
     u, v, w = [b[0] for b in mag_field], [b[1] for b in mag_field], [b[2] for b in mag_field]
@@ -348,6 +338,13 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
 
 def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float],
                                current: Optional[List[np.ndarray]] = None):
+    """
+    Plots the different current sheets that the spacecraft crosses to check whether they might be a single folded sheet
+    :param normal: normals to the sheets
+    :param distances: distances between the sheets
+    :param current: current directions for each sheet
+    :return:
+    """
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d')
     ax.set_xlabel('$X$', rotation=150)
@@ -365,7 +362,7 @@ def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float],
     for n in range(len(distances)):
         d = - normal[n + 1][0] * sum(distances[:n + 1])
         z = (-normal[n + 1][0] * xx - normal[n + 1][1] * yy - d) * 1. / normal[n + 1][2]
-        # ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
+        ax.plot_surface(xx, yy, z, alpha=0.4, color=colors[n])
         if current is not None:
             ax.quiver(sum(distances[:n + 1]), 0, 0, -current[n + 1][0], -current[n + 1][1], -current[n + 1][2],
                       length=3 * max(distances), color=colors[n])
@@ -414,7 +411,7 @@ if __name__ == '__main__':
     a, b = compare_lmn(ev_date, w_date, probe, 5, 1)
     print(a)
     print(b)
-    # plot_vectors_2d_3d(a, b)
+    plot_vectors_2d_3d(a, b)
 
     # plot_current_sheet(a, b, ev_date, w_date, probe)
 
