@@ -1,6 +1,5 @@
 from datetime import timedelta, datetime
 from typing import List, Tuple
-
 import numpy as np
 from numpy import linalg as LA
 
@@ -12,6 +11,8 @@ def get_b(imported_data: ImportedData, event_date, interval: int = 30) -> List[n
     """
     Returns the imported data in a suitable vector form to be analysed
     :param imported_data: ImportedData
+    :param event_date: time of the possible reconnection event
+    :param interval: interval over which we get the magnetic field
     :return: array [bx, by, bz]
     """
     B = []
@@ -23,12 +24,15 @@ def get_b(imported_data: ImportedData, event_date, interval: int = 30) -> List[n
 
 
 def get_side_data(imported_data: ImportedData, event_date: datetime, outside_interval: int = 10,
-                  inside_interval: int = 2):
+                  inside_interval: int = 2) -> Tuple[
+    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Returns B around the reconnection event. We need B to be stable over a period of time on both sides of the exhaust.
     We then take the average in that region. Hard to determine computationally, so use 10-2 intervals
     :param imported_data: ImportedData
     :param event_date: date of possible reconnection
+    :param outside_interval: interval outside of the event that will be considered
+    :param inside_interval: interval inside the event that will be considered
     :return:
     """
     data_1 = imported_data.data[
@@ -51,7 +55,7 @@ def get_side_data(imported_data: ImportedData, event_date: datetime, outside_int
     return B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2
 
 
-def mva(B: List[np.ndarray]) ->Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def mva(B: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the LMN component of the new coordinates system, by solving the magnetic matrix eigenvalue problem
     :param B: field around interval that will be considered
@@ -79,7 +83,7 @@ def mva(B: List[np.ndarray]) ->Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return L, M, N
 
 
-def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray) ->Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the other components of the new coordinates system, useful if eigenvalues not well resolved
     :param _L: L vector found with mva
@@ -96,7 +100,7 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray) ->Tuple[np.ndarray, n
 
 
 def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2,
-               mva_interval: int = 30):
+               mva_interval: int = 30) ->Tuple[np.ndarray, np.ndarray, np.ndarray]:
     start_time = event_date - timedelta(hours=duration / 2)
     imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
                                duration=duration, probe=probe)

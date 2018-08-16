@@ -12,15 +12,6 @@ from data_handler.utils.column_processing import get_derivative
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, send_dates_to_csv
 from magnetic_reconnection_dir.mva_analysis import get_b, mva, hybrid, get_side_data
 
-# test data
-# B = [np.array([-13.6, -24.7, 54.6]), np.array([-14.8, -24.9, 58.7]), np.array([-13.4, -17.2, 62.4]),
-#          np.array([-14.0, -25.0, 43.8]), np.array([-7.1, -4.5, 33.5]), np.array([-0.9, -5.0, 44.4]),
-#          np.array([-10.0, -0.4, 44.6]), np.array([-6.1, -4.8, 21.1]), np.array([1.2, 1.6, 21.1]),
-#          np.array([-3.4, -3.9, 4.1]), np.array([-0.9, 1.2, 5.0]), np.array([-1.0, -1.5, 12.3]),
-#          np.array([11.0, 13.2, 29.7]), np.array([19.1, 34.4, 20.1]), np.array([24.9, 50.1, 1.9]),
-#          np.array([29.2, 47.1, -10.6])]
-
-
 mu_0 = 4e-7 * np.pi
 k = 1.38e-23
 proton_mass = 1.67e-27
@@ -246,6 +237,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
             return
         L, M, N = hybrid(L, B1, B2)
         print('LMN:', L, M, N)
+        print(np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
 
         B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
         B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
@@ -306,4 +298,5 @@ if __name__ == '__main__':
     # test_reconnections_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
-    test_reconnections_from_csv('reconnections_helios_ulysses_no_nt_27_19_5.csv', probe='ulysses', plot=True)
+    # test_reconnections_from_csv('reconnections_helios_ulysses_no_nt_27_19_5.csv', probe='ulysses', plot=True)
+    test_reconnection_lmn([datetime(1977, 11, 25, 4, 50)], probe=1, minimum_fraction=0.9, maximum_fraction=1.1, plot=True)
