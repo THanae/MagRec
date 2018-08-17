@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime
-from typing import List, Optional
+from typing import List, Optional, Union
 import csv
 import numpy as np
 
@@ -56,7 +56,7 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
 
 
 def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedData, parameters: list,
-                                    plot_reconnection: bool = True, interval: int = 24) -> list:
+                                    plot_reconnection: bool = True, interval: int = 24) -> List[list]:
     """
     Returns the possible reconnection times as well as the distance from the sun at this time
     :param finder: method to find the reconnection events, right now CorrelationFinder
@@ -64,7 +64,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
     :param parameters: parameters that will be used in the finder
     :param plot_reconnection: if True, every time a reconnection is detected, it is plotted
     :param interval: interval over which the data is analysed to detect events
-    :return:
+    :return: list of possible reconnection events and associated radius from the Sun
     """
     duration = imported_data.duration
     start = imported_data.start_datetime
@@ -126,15 +126,15 @@ def plot_csv(csv_file_name: str, interval: int = 6):
             plot_imported_data(imported_data)
 
 
-def reconnections_with_finder(probe: int, parameters: dict, start_time: str, end_time: str, radius: float) -> List[
-    datetime]:
+def reconnections_with_finder(probe: Union[int, str], parameters: dict, start_time: str, end_time: str,
+                              radius: float) -> List[list]:
     """
     :param probe: 1 or 2 for Helios 1 or 2
     :param parameters: dictionary of parameters for the finder
     :param start_time: start time of the analysis
     :param end_time:  end time of the analysis
     :param radius: maximum radius to consider
-    :return:
+    :return: all possible reconnection events within the given time frame, with associated radius
     """
     orbiter = get_orbiter(probe=probe, start_time=start_time, end_time=end_time, interval=1)
     imported_data_sets = get_imported_data_sets(probe=probe, orbiter=orbiter, radius=radius)
@@ -155,9 +155,9 @@ def reconnections_with_finder(probe: int, parameters: dict, start_time: str, end
     return all_reconnections
 
 
-def get_possible_reconnections(probe: int, parameters: dict, start_time: str = '17/12/1974',
+def get_possible_reconnections(probe: Union[int, str], parameters: dict, start_time: str = '17/12/1974',
                                end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False,
-                               data_split: Optional[str] = None):
+                               data_split: Optional[str] = None) -> List[list]:
     """
     :param probe: 1 or 2 for Helios 1 or 2
     :param parameters: dictionary of parameters for the finder
@@ -166,7 +166,7 @@ def get_possible_reconnections(probe: int, parameters: dict, start_time: str = '
     :param radius: maximum radius to be considered
     :param to_csv: true if we want the data to be sent to csv, false otherwise
     :param data_split: None if we want to download in bulk, 'yearly' otherwise (recommended option for Helios 1 for now)
-    :return:
+    :return: list of all possible reconnection events and associated radius
     """
     supported_options = [None, 'yearly']
     all_reconnections = []

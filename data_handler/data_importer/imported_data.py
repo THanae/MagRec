@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from typing import Union
+
 import numpy as np
 import pandas as pd
 
@@ -6,7 +8,8 @@ from data_handler.utils.column_creator import SUPPORTED_COLUMNS
 
 
 class ImportedData:
-    def __init__(self, start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: int = 2):
+    def __init__(self, start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0,
+                 probe: Union[int, str] = 2):
         """
         :param start_date: string of 'DD/MM/YYYY'
         :param duration: int in hours
@@ -53,4 +56,3 @@ class ImportedData:
             self.data.loc[index, column_name + '_moving_average'] = np.mean(
                 self.data.loc[start_time:end_time, column_name])
             # print(index)
-
