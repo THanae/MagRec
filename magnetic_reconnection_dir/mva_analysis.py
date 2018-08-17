@@ -24,8 +24,8 @@ def get_b(imported_data: ImportedData, event_date, interval: int = 30) -> List[n
 
 
 def get_side_data(imported_data: ImportedData, event_date: datetime, outside_interval: int = 10,
-                  inside_interval: int = 2) -> Tuple[
-    np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                  inside_interval: int = 2) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                                                     np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Returns B around the reconnection event. We need B to be stable over a period of time on both sides of the exhaust.
     We then take the average in that region. Hard to determine computationally, so use 10-2 intervals
@@ -59,7 +59,7 @@ def mva(B: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the LMN component of the new coordinates system, by solving the magnetic matrix eigenvalue problem
     :param B: field around interval that will be considered
-    :return:
+    :return: the L, M, and N vectors
     """
     M_b = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
     for n in range(3):

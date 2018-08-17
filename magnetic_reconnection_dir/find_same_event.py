@@ -7,11 +7,12 @@ from heliopy import spice
 
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import get_orbiter, kernel_loader, orbit_times_generator, orbit_generator
-from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, create_events_list_from_csv_files
+from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
 
-def find_two_same_events(events_list_1: List[datetime], events_list_2: List[datetime]):
+def find_two_same_events(events_list_1: List[datetime], events_list_2: List[datetime]) -> List[
+                         List[Union[datetime, int]]]:
     """
     Finds all pairs of related events
     :param events_list_1: list of all events for helios 1
@@ -34,9 +35,9 @@ def find_two_same_events(events_list_1: List[datetime], events_list_2: List[date
 
 def get_events_relations(helios1_events: List[datetime], helios2_events: List[datetime],
                          orbiter_helios1: spice.Trajectory, orbiter_helios2: spice.Trajectory,
-                         allowed_error: float = 0.2) ->List[List[Union[Union[datetime, int], Any]]]:
+                         allowed_error: float = 0.2) -> List[List[Union[Union[datetime, int], Any]]]:
     """
-    Checks whether two events might be the same by calculated the expected time taken by the solar wind to travel
+    Checks whether two events might be the same by calculating the expected time taken by the solar wind to travel
     between them
     :param helios1_events: events detected by Helios 1
     :param helios2_events: events detected by Helios 2
@@ -105,7 +106,7 @@ def get_events_relations(helios1_events: List[datetime], helios2_events: List[da
 
 
 def find_directions(event1: datetime, event2: datetime, probe1: int, probe2: int, allowed_error=0.2) -> List[
-                    Union[datetime, int]]:
+    Union[datetime, int]]:
     """
     Checks whether the solar wind could have travelled between the two probes by finding the distances between
     the probes in SSE and comparing them to the distance traveled by the solar wind
