@@ -21,9 +21,9 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
     :param imported_data: ImportedData
     :param columns_to_plot: list of column names
     :param save: if True, saves generated plot instead of showing
-    :param: event_date: date of event to be marked on plot, None if no event to be indicated
-    :param: boundaries: boundaries of the event to be indicated on plot, None if no boundaries to be indicated
-    :param: scatter_points: points to be scattered on the plots
+    :param event_date: date of event to be marked on plot, None if no event to be indicated
+    :param boundaries: boundaries of the event to be indicated on plot, None if no boundaries to be indicated
+    :param scatter_points: points to be scattered on the plots
     :return:
     """
     fig, axs = plt.subplots(len(columns_to_plot), 1, sharex=True, figsize=(15, 8.5))

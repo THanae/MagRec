@@ -27,7 +27,7 @@ def kernel_loader(spacecraft: int = 2) -> spice.Trajectory:
 
 
 def orbit_times_generator(start_date: str = '20/01/1976', end_date: str = '01/10/1979', interval: float = 1) -> List[
-    datetime]:
+                          datetime]:
     """
     Generates a list of times between the start and end dates, with 1 day intervals
     :param start_date: date at which we start considering the data
@@ -159,18 +159,18 @@ def plot_period(orbiter, spacecraft: int = 2):
 
 
 if __name__ == '__main__':
-    probe = 1
-    start_time = '15/12/1974'
-    end_time = '08/08/1984'
-    # probe = 2
-    # probe = 'ulysses'
-    orbiter = kernel_loader(probe)
-    # times = orbit_times_generator(start_date='20/10/1990', end_date='30/06/2009')
-    times = orbit_times_generator(start_date=start_time, end_date=end_time)
-    # times = orbit_times_generator()
-    orbit_generator(orbiter, times)
-    radius = np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2)
-    print('the perihelion is ', np.min(radius), ' at ', orbiter.times[np.argmin(radius)])
-    print('the aphelion is ', np.max(radius), ' at ', orbiter.times[np.argmax(radius)])
-    plot_orbit(orbiter, spacecraft=probe, planets=['Venus', 'Earth', 'Mercury'])
+    space_probe = 1
+    start_datetime = '15/12/1974'
+    end_datetime = '08/08/1984'
+    # space_probe = 2
+    # space_probe = 'ulysses'
+    probe_orbiter = kernel_loader(space_probe)
+    # probe_times = orbit_times_generator(start_date='20/10/1990', end_date='30/06/2009')
+    probe_times = orbit_times_generator(start_date=start_datetime, end_date=start_datetime)
+    # probe_times = orbit_times_generator()
+    orbit_generator(probe_orbiter, probe_times)
+    probe_radius = np.sqrt(probe_orbiter.x ** 2 + probe_orbiter.y ** 2 + probe_orbiter.z ** 2)
+    print('the perihelion is ', np.min(probe_radius), ' at ', probe_orbiter.times[np.argmin(probe_radius)])
+    print('the aphelion is ', np.max(probe_radius), ' at ', probe_orbiter.times[np.argmax(probe_radius)])
+    plot_orbit(probe_orbiter, spacecraft=space_probe, planets=['Venus', 'Earth', 'Mercury'])
     # plot_period(orbiter, spacecraft=probe)

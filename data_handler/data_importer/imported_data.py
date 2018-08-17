@@ -32,7 +32,7 @@ class ImportedData:
                                                                                    len(self.data))
 
     def get_imported_data(self):
-        raise NotImplementedError('Need to implement get_imorted_data that imports the data for a given spacecraft')
+        raise NotImplementedError('Need to implement get_imported_data that imports the data for a given spacecraft')
 
     def create_processed_column(self, column_to_create: str):
         if column_to_create not in SUPPORTED_COLUMNS:

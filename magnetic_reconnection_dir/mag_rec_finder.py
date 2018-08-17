@@ -1,5 +1,5 @@
 from magnetic_reconnection_dir.csv_utils import send_dates_to_csv
-from magnetic_reconnection_dir.finder.tests.finder_test import get_possible_reconnections
+from magnetic_reconnection_dir.finder.tests.finder_test import get_possible_reconnection_events
 from magnetic_reconnection_dir.lmn_coordinates import test_reconnection_lmn
 
 import os
@@ -33,9 +33,9 @@ noise_when_part1_done = True
 """
 During the first part of the program, changes in correlation are detected by the program
 """
-possible_reconnection_events = get_possible_reconnections(probe=probe, parameters=parameters, start_time=start_date,
-                                                          end_time=end_date, radius=radius_to_consider,
-                                                          data_split='yearly')
+possible_reconnection_events = get_possible_reconnection_events(probe=probe, parameters=parameters, start_time=start_date,
+                                                                end_time=end_date, radius=radius_to_consider,
+                                                                data_split='yearly')
 
 
 def beep():

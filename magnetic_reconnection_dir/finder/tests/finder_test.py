@@ -11,7 +11,7 @@ from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTT
 from data_handler.orbit_with_spice import get_orbiter
 from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
-from magnetic_reconnection_dir.finder.tests.known_events import get_known_magnetic_reconnections
+from magnetic_reconnection_dir.finder.tests.known_events import get_known_magnetic_reconnection_events
 from magnetic_reconnection_dir.magnetic_reconnection import MagneticReconnection
 
 
@@ -21,7 +21,7 @@ def test_finder_with_known_events(finder: BaseFinder):
     :param finder: for now CorrelationFinder
     :return:
     """
-    known_events = get_known_magnetic_reconnections()
+    known_events = get_known_magnetic_reconnection_events()
     for magnetic_reconnection in known_events:
         try:
             test_imported_data = get_test_data(magnetic_reconnection)
@@ -69,7 +69,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
     duration = imported_data.duration
     start = imported_data.start_datetime
     probe = imported_data.probe
-    reconnections = []
+    reconnection_events = []
     for n in range(np.int(duration / interval)):
         try:
             data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
@@ -78,7 +78,7 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
             if reconnection:
                 for event in reconnection:
                     radius = data.data['r_sun'].loc[event]
-                    reconnections.append([event, radius])
+                    reconnection_events.append([event, radius])
 
             if reconnection and plot_reconnection:
                 plot_imported_data(data, DEFAULT_PLOTTED_COLUMNS + [
@@ -88,13 +88,13 @@ def test_finder_with_unknown_events(finder: BaseFinder, imported_data: ImportedD
             print('Exception in test_finder_with_unknown_events')
         start = start + timedelta(hours=interval)
 
-    return reconnections
+    return reconnection_events
 
 
 def send_reconnection_events_to_csv(reconnection_events_list: list, name: str = 'reconnection_events.csv'):
     """
     :param reconnection_events_list: list of reconnection events dates and radius
-    :param name: name of the file to send the events informations to
+    :param name: name of the file to send the events information to
     :return:
     """
     with open(name, 'w', newline='') as csv_file:
@@ -126,8 +126,8 @@ def plot_csv(csv_file_name: str, interval: int = 6):
             plot_imported_data(imported_data)
 
 
-def reconnections_with_finder(probe: Union[int, str], parameters: dict, start_time: str, end_time: str,
-                              radius: float) -> List[list]:
+def reconnection_detector_with_finder(probe: Union[int, str], parameters: dict, start_time: str, end_time: str,
+                                      radius: float) -> List[list]:
     """
     :param probe: 1 or 2 for Helios 1 or 2
     :param parameters: dictionary of parameters for the finder
@@ -139,7 +139,7 @@ def reconnections_with_finder(probe: Union[int, str], parameters: dict, start_ti
     orbiter = get_orbiter(probe=probe, start_time=start_time, end_time=end_time, interval=1)
     imported_data_sets = get_imported_data_sets(probe=probe, orbiter=orbiter, radius=radius)
 
-    all_reconnections = []
+    all_reconnection_events = []
     for n in range(len(imported_data_sets)):
         imported_data = imported_data_sets[n]
         print(imported_data)
@@ -149,15 +149,15 @@ def reconnections_with_finder(probe: Union[int, str], parameters: dict, start_ti
                                                               params, plot_reconnection=False)
         if reconnection_events:
             for event in reconnection_events:
-                all_reconnections.append(event)
-    print(start_time, end_time, 'reconnection number: ', str(len(all_reconnections)))
-    print(all_reconnections)
-    return all_reconnections
+                all_reconnection_events.append(event)
+    print(start_time, end_time, 'reconnection number: ', str(len(all_reconnection_events)))
+    print(all_reconnection_events)
+    return all_reconnection_events
 
 
-def get_possible_reconnections(probe: Union[int, str], parameters: dict, start_time: str = '17/12/1974',
-                               end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False,
-                               data_split: Optional[str] = None) -> List[list]:
+def get_possible_reconnection_events(probe: Union[int, str], parameters: dict, start_time: str = '17/12/1974',
+                                     end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False,
+                                     data_split: Optional[str] = None) -> List[list]:
     """
     :param probe: 1 or 2 for Helios 1 or 2
     :param parameters: dictionary of parameters for the finder
@@ -169,9 +169,10 @@ def get_possible_reconnections(probe: Union[int, str], parameters: dict, start_t
     :return: list of all possible reconnection events and associated radius
     """
     supported_options = [None, 'yearly']
-    all_reconnections = []
+    all_reconnection_events = []
     if data_split is None:
-        all_reconnections = reconnections_with_finder(probe, parameters, start_time, end_time, radius=radius)
+        all_reconnection_events = reconnection_detector_with_finder(probe, parameters, start_time, end_time,
+                                                                    radius=radius)
     elif data_split == 'yearly':
         start_year = datetime.strptime(start_time, '%d/%m/%Y').year
         end_year = datetime.strptime(end_time, '%d/%m/%Y').year
@@ -179,20 +180,20 @@ def get_possible_reconnections(probe: Union[int, str], parameters: dict, start_t
         _start_time = datetime.strptime(start_time, '%d/%m/%Y')
         for n in range(number_of_years):
             _end_time = datetime(start_year + 1, 1, 1, 0, 0)
-            reconnections = reconnections_with_finder(probe, parameters, _start_time.strftime('%d/%m/%Y'),
-                                                      _end_time.strftime('%d/%m/%Y'), radius=radius)
-            for reconnection in reconnections:
-                all_reconnections.append(reconnection)
+            reconnection_events = reconnection_detector_with_finder(probe, parameters, _start_time.strftime('%d/%m/%Y'),
+                                                                    _end_time.strftime('%d/%m/%Y'), radius=radius)
+            for reconnection in reconnection_events:
+                all_reconnection_events.append(reconnection)
             start_year += 1
             _start_time = _end_time
     else:
         print('SORRY, THIS OPTION HAS NOT BEEN IMPLEMENTED. THE IMPLEMENTED OPTIONS ARE', supported_options)
-    print(start_time, end_time, 'reconnection number: ', str(len(all_reconnections)))
-    print(all_reconnections)
+    print(start_time, end_time, 'reconnection number: ', str(len(all_reconnection_events)))
+    print(all_reconnection_events)
     if to_csv:
-        send_reconnection_events_to_csv(all_reconnections, 'reconnections_helios_' + str(probe) + '_no_nt_3_25_30.csv')
+        send_reconnection_events_to_csv(all_reconnection_events, 'events_probe_' + str(probe) + '_no_nt_3_25_30.csv')
 
-    return all_reconnections
+    return all_reconnection_events
 
 
 if __name__ == '__main__':
@@ -205,30 +206,35 @@ if __name__ == '__main__':
     parameters_helios = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
     # parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 30, 'minutes': 30}
     parameters_uly = {'sigma_sum': 3, 'sigma_diff': 2.5, 'minutes_b': 30, 'minutes': 30}
-    # start_date = '17/12/1974'
-    # end_date = '21/12/1975'
-    # start_date = '17/01/1976'
-    # end_date = '17/01/1979'
-    start_date = '13/12/1974'
-    end_date = '15/08/1984'
+    # analysis_start_date = '17/12/1974'
+    # analysis_end_date = '21/12/1975'
+    # analysis_start_date = '17/01/1976'
+    # analysis_end_date = '17/01/1979'
+    analysis_start_date = '13/12/1974'
+    analysis_end_date = '15/08/1984'
     radius_to_consider = 1
 
-    # get_possible_reconnections(probe=helios, parameters=parameters_helios, start_time=start_date, end_time=end_date,
-    #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
+    # get_possible_reconnection_events(probe=helios, parameters=parameters_helios, start_time=analysis_start_date,
+    #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
+    #                            data_split='yearly')
 
-    # get_possible_reconnections(probe=helios, parameters=parameters_helios, start_time=start_date, end_time=end_date,
-    #                            radius=radius_to_consider, to_csv=True, data_split='yearly')
+    # get_possible_reconnection_events(probe=helios, parameters=parameters_helios, start_time=analysis_start_date,
+    #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
+    #                            data_split='yearly')
 
-    get_possible_reconnections(probe=2, parameters=parameters_helios, start_time='23/01/1976', end_time='30/01/1976',
-                               radius=1, to_csv=False)
+    get_possible_reconnection_events(probe=2, parameters=parameters_helios, start_time='23/01/1976',
+                                     end_time='30/01/1976', radius=1, to_csv=False)
 
-    get_possible_reconnections(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
-                               end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
+    get_possible_reconnection_events(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
+                                     end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
 
     # for no temperature and density check
-    # [0.6415029025857748, [2.6218234455767924, 3.095027734156329, 7.2593589782476995, 0.70195081788266145, 2.2455507200639859]]
-    # [0.60733816702295851, [2.6218234455767924, 2.6336660039080351, 7.2593589782476995, 0.62350710758313632, 2.2455507200639859]]
-    # [0.60567724060434713, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911, 0.52318189602675891, 1.3497446427829947]]
+    # [0.6415029025857748, [2.6218234455767924, 3.095027734156329, 7.2593589782476995,
+    # 0.70195081788266145, 2.2455507200639859]]
+    # [0.60733816702295851, [2.6218234455767924, 2.6336660039080351, 7.2593589782476995,
+    # 0.62350710758313632, 2.2455507200639859]]
+    # [0.60567724060434713, [2.6067535580543777, 2.6188803433547658, 6.5797744662938911,
+    # 0.52318189602675891, 1.3497446427829947]]
     # [0.5643202107628984, [2.4641859422774792, 2.7660314936753307, 7.2469545891470277]]
     # [0.56377144873581087, [2.4641859422774792, 1.8348170104492854, 7.2469545891470277]]
 

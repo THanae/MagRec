@@ -5,7 +5,7 @@ from typing import List
 from magnetic_reconnection_dir.magnetic_reconnection import MagneticReconnection
 
 
-def get_known_magnetic_reconnections() -> List[MagneticReconnection]:
+def get_known_magnetic_reconnection_events() -> List[MagneticReconnection]:
     with open('known_events.json', 'r') as f:
         loaded_json = json.load(f)
 
@@ -23,11 +23,11 @@ def get_known_magnetic_reconnections() -> List[MagneticReconnection]:
         duration: timedelta = end_datetime - start_datetime
         return MagneticReconnection(start_datetime=start_datetime, duration=duration, probe=json_dict['probe'])
 
-    magnetic_reconnections = [parse_json_dict_to_magnetic_reconnection(json_dict) for json_dict in loaded_json]
+    magnetic_reconnection = [parse_json_dict_to_magnetic_reconnection(json_dict) for json_dict in loaded_json]
     # list(map(parse_json_dict_to_magnetic_reconnection, loaded_json))
-    return magnetic_reconnections
+    return magnetic_reconnection
 
 
 if __name__ == '__main__':
     import pprint
-    pprint.pprint(get_known_magnetic_reconnections())
+    pprint.pprint(get_known_magnetic_reconnection_events())

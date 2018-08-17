@@ -87,7 +87,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
             hard_to_get_data = []
             interval = 24
             number_of_loops = np.int(hours/interval)
-            for n in range(number_of_loops):
+            for loop in range(number_of_loops):
                 try:
                     hard_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
                     hard_to_get_data.append(hard_data)
@@ -96,7 +96,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
                     print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
                 start = start + timedelta(hours=interval)
 
-            for n in range(len(hard_to_get_data)):
+            for loop in range(len(hard_to_get_data)):
                 imported_data.append(hard_to_get_data[n])
     return imported_data
 
@@ -117,9 +117,9 @@ def get_imported_data_sets(probe, orbiter: spice.Trajectory, radius: float):
 
 
 if __name__ == '__main__':
-    orbiter = get_orbiter(probe=2, start_time='17/01/1976', end_time='17/01/1979', interval=1)
-    imported_data_sets = get_imported_data_sets(probe=2, orbiter=orbiter, radius=0.3)
-    print(imported_data_sets)
+    spacecraft_orbiter = get_orbiter(probe=2, start_time='17/01/1976', end_time='17/01/1979', interval=1)
+    data_sets = get_imported_data_sets(probe=2, orbiter=spacecraft_orbiter, radius=0.3)
+    print(data_sets)
 
 # Helios 1 : December 10, 1974 to February 18, 1985
 # Helios 2 : January 15, 1976 to December 23, 1979
