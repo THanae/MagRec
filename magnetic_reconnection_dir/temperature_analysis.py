@@ -17,7 +17,12 @@ electron_charge = 1.6e-19
 k_b = 1.38e-23
 
 
-def temperature_analysis(events: List[List[Union[datetime, int]]]):
+def temperature_analysis(events: List[List[Union[datetime, int]]]) ->List[float]:
+    """
+    Analyses the actual and theoretical temperature increases
+    :param events: list of reconnection events dates and associated probes
+    :return: relations between theoretical and actual temperature increases
+    """
     satisfied_test = 0
     use_2_b = True
     print(len(events))
@@ -90,7 +95,13 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]):
     return slopes
 
 
-def plot_relations(related_lists: List[list], slope: Optional[float] = None):
+def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->List[float]:
+    """
+    Plots the relations between predicted increase in temperature and actual increase in temerature
+    :param related_lists: list of lists of predicted increase vs actual increase
+    :param slope: expected gradient between predicted and actual increase
+    :return: actual gradients between each list
+    """
     slopes = []
     for n in range(len(related_lists)):
         fig = plt.figure(n + 1)
@@ -131,12 +142,12 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None):
     return slopes
 
 
-def find_predicted_temperature(b_l: List, n: List):
+def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
     """
     Finds the predicted change from the alfven speed
     :param b_l: B in the L direction
     :param n: number density of the protons
-    :return:
+    :return: predicted temprature increase and Alfven speed
     """
     if len(b_l) == 1 and len(n) == 1:
         alfven_speed = b_l[0] * 10 ** (-9) / np.sqrt(n[0] * 10 ** 6 * proton_mass * mu_0)  # b in nT, n in cm^-3
@@ -151,12 +162,12 @@ def find_predicted_temperature(b_l: List, n: List):
     return predicted_increase, alfven_speed
 
 
-def find_intervals(imported_data: HeliosData, event: datetime):
+def find_intervals(imported_data: HeliosData, event: datetime) ->Tuple:
     """
     Finds the start and end of the event by looking at changes in temperature
     :param imported_data: ImportedData
     :param event: time and date of reconnection
-    :return:
+    :return: duration of the event, start of the event, end of the event
     """
     duration = []
     perp_outliers = get_outliers(get_derivative(imported_data.data['Tp_perp']), standard_deviations=1.5,
@@ -183,7 +194,8 @@ def find_intervals(imported_data: HeliosData, event: datetime):
 
 
 def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interval_start: datetime,
-                     left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime):
+                     left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime) -> \
+                     Tuple[float, float, float]:
     """
     Finds the inflow and exhaust temperatures in order to find delta t
     :param imported_data: ImportedData
@@ -193,33 +205,33 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
     :param left_interval_end: end of the left interval
     :param right_interval_start: start of the right interval
     :param right_interval_end: end of the right interval
-    :return:
+    :return: changes in total, peroendicular and parallel temperature
     """
     perpendicular_temperature, parallel_temperature = imported_data.data['Tp_perp'], imported_data.data['Tp_par']
     total_temperature = (2 * perpendicular_temperature + parallel_temperature) / 3
 
-    def kelvin_to_ev(temperature: float):
+    def kelvin_to_ev(temperature: float) ->float:
         return temperature * k_b / electron_charge
 
-    def get_inflow_temp_2b(temperature: pd.DataFrame, n: List, b_l: List):  # when we have b left and b right
+    def get_inflow_temp_2b(temperature: pd.DataFrame, n: List, b_l: List) ->float:  # when we have b left and b right
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (n[0] * t_left / b_l[0] + n[1] * t_right / b_l[1]) / (n[0] / b_l[0] + n[1] / b_l[1])
         return inflow
 
-    def get_inflow_temp_1b(temperature: pd.DataFrame):
+    def get_inflow_temp_1b(temperature: pd.DataFrame) ->np.ndarray:
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (t_left + t_right) / 2
         return inflow
 
-    def get_t_exhaust(temperature: pd.DataFrame):
+    def get_t_exhaust(temperature: pd.DataFrame) ->float:
         density_inside = imported_data.data.loc[left_interval_end:right_interval_start, 'n_p'].values
         n_t_inside = (temperature.loc[left_interval_end:right_interval_start]).values * density_inside
-        t_exhaust = np.percentile(n_t_inside, 90)/ np.percentile(density_inside, 90)
+        t_exhaust = np.percentile(n_t_inside, 90) / np.percentile(density_inside, 90)
         return t_exhaust
 
-    def get_delta_t(temperature: pd.DataFrame, t_inflow: float):
+    def get_delta_t(temperature: pd.DataFrame, t_inflow: float) ->float:
         t_exhaust = np.percentile((temperature.loc[left_interval_end:right_interval_start]).values, 90)
         # t_exhaust = get_t_exhaust(temperature)
         print(t_exhaust, np.max((temperature.loc[left_interval_end:right_interval_start]).values))
@@ -244,7 +256,7 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
 
 def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
             left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime,
-            guide_field: bool = False):
+            guide_field: bool = False) -> Tuple:
     """
     :param event: event date
     :param probe: 1 or 2 for Helios 1 or 2
@@ -275,9 +287,11 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
 
 
 def n_to_shear():
-    density = []
-    angle = []
-    guide = []
+    """
+    Plots relationships between solar wind characteristics
+    :return:
+    """
+    density, angle, guide = [], [], []
     events = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     events += create_events_list_from_csv_files([['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
     for n in range(len(events)):
@@ -300,6 +314,7 @@ def n_to_shear():
             angle.append(shear[0])
             n_p = (n_left + n_right) / 2
             density.append(n_p)
+            guide.append(b_g)
 
     plt.scatter(angle, density)
     plt.show()
@@ -352,6 +367,7 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
 
 
 if __name__ == '__main__':
+    # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios2_magrec2.csv', 2]])
     events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
         [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
@@ -368,5 +384,6 @@ if __name__ == '__main__':
     # print(get_shear_angle(
     #     [[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1], [datetime(1976, 12, 1, 6, 23), 1],
     #      [datetime(1976, 12, 1, 7, 16), 1], [datetime(1976, 12, 1, 7, 31), 1]]))
-    # temperature_analysis(events=[[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1], [datetime(1976, 12, 1, 6, 23), 1],
+    # temperature_analysis(events=[[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1],
+    #                              [datetime(1976, 12, 1, 6, 23), 1],
     #      [datetime(1976, 12, 1, 7, 16), 1], [datetime(1976, 12, 1, 7, 31), 1]])
