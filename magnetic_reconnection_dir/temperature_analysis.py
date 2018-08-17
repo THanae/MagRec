@@ -144,7 +144,7 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->L
 
 def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
     """
-    Finds the predicted change from the alfven speed
+    Finds the predicted change from the Alfven speed
     :param b_l: B in the L direction
     :param n: number density of the protons
     :return: predicted temprature increase and Alfven speed
@@ -205,7 +205,7 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
     :param left_interval_end: end of the left interval
     :param right_interval_start: start of the right interval
     :param right_interval_end: end of the right interval
-    :return: changes in total, peroendicular and parallel temperature
+    :return: changes in total, perpendicular and parallel temperature
     """
     perpendicular_temperature, parallel_temperature = imported_data.data['Tp_perp'], imported_data.data['Tp_par']
     total_temperature = (2 * perpendicular_temperature + parallel_temperature) / 3
@@ -321,7 +321,7 @@ def n_to_shear():
 
 
 def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
-    List[np.ndarray], List[list], List[list], List[list]]:
+                    List[np.ndarray], List[list], List[list], List[list]]:
     """
     Finds the shear angle of events
     :param events_list: list of events to be analysed

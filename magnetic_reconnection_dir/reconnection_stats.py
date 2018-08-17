@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 from data_handler.data_importer.helios_data import HeliosData
-from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator
+from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator, get_orbiter
 from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
 
 months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october',
@@ -18,7 +18,7 @@ radii_names = ['less than 0.3 au', '0.3 to 0.4 au', '0.4 to 0.5 au', '0.5 to 0.6
 
 def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = True) -> dict:
     """
-    :param events_list: list of reconection events
+    :param events_list: list of reconnection events
     :param probe: 1 or 2 for Helios 1 or 2
     :param only_stats: if True, only returns the number of events per distance, if False, also returns the dates
     :return: number of reconnection events at given distances from the sun
@@ -46,7 +46,7 @@ def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = 
             times_and_radii[key] = (str(len(times_and_radii[key])))
         else:
             times_and_radii[key].append(str(len(times_and_radii[key])))
-    times_and_radii['total number of reconnections'] = len(events_list)
+    times_and_radii['total number of reconnection events'] = len(events_list)
     pprint.pprint(times_and_radii)
     return times_and_radii
 
@@ -55,7 +55,7 @@ def time_stats(events_list: List[datetime], mode: str = 'yearly') -> dict:
     """
     :param events_list: list of reconnection events
     :param mode: yearly or monthly
-    :return:
+    :return: dictionary of the number of reconnection events per year or per month
     """
     implemented_modes = ['yearly', 'monthly']
     times = {}
@@ -77,7 +77,7 @@ def time_stats(events_list: List[datetime], mode: str = 'yearly') -> dict:
                     times[str(event.year)][months[event.month - 1]] += 1
     else:
         raise NotImplementedError('NO OTHER MODES IMPLEMENTED, CHOOSE FROM LIST', implemented_modes)
-    times['total number of reconnections'] = len(events_list)
+    times['total number of reconnection events'] = len(events_list)
     pprint.pprint(times)
     return times
 
@@ -87,21 +87,16 @@ def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
     :param probe: 1 or 2 for Helios 1 or 2
     :param start_date: start date of analysis
     :param end_date: end date of analysis
-    :return:
+    :return: dictionary of the time spent per distance from the sun
     """
-    orbiter = kernel_loader(probe)
-    times = orbit_times_generator(start_date, end_date, interval=1)
-    orbit_generator(orbiter, times)
+    orbiter = get_orbiter(start_time=start_date, end_time=end_date, probe=probe, interval=1)
     radii = np.array(np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2))
     time_spent = {}
-    time_spent['less than 0.3 au'] = len(radii[np.all([radii < 0.3], axis=0)])
-    time_spent['0.3 to 0.4 au'] = len(radii[np.all([radii >= 0.3, radii < 0.4], axis=0)])
-    time_spent['0.4 to 0.5 au'] = len(radii[np.all([radii >= 0.4, radii < 0.5], axis=0)])
-    time_spent['0.5 to 0.6 au'] = len(radii[np.all([radii >= 0.5, radii < 0.6], axis=0)])
-    time_spent['0.6 to 0.7 au'] = len(radii[np.all([radii >= 0.6, radii < 0.7], axis=0)])
-    time_spent['0.7 to 0.8 au'] = len(radii[np.all([radii >= 0.7, radii < 0.8], axis=0)])
-    time_spent['0.8 to 0.9 au'] = len(radii[np.all([radii >= 0.8, radii < 0.9], axis=0)])
-    time_spent['above 0.9 au'] = len(radii[np.all([radii >= 0.9], axis=0)])
+    radius_types = radii_divisions + [100]
+    for n in range(len(radii_divisions)):
+        time_spent[radii_names[n]] = len(radii[np.all([radii >= radius_types[n], radii < radius_types[n + 1]], axis=0)])
+
+    time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
     for n in range(len(orbiter.times)):
         date = orbiter.times[n]
         _dir = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios"
@@ -110,15 +105,14 @@ def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
         day_of_year = date.strftime('%j')
         if 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv' not in fls[0]:
             radius = radii[n]
-            for n in range(len(radii_divisions)):
-                radius_division = radii_divisions[len(radii_divisions) - n - 1]
+            time_spent['total time'] -= 1
+            for m in range(len(radii_divisions)):
+                radius_division = radii_divisions[len(radii_divisions) - m - 1]
                 if radius > radius_division:
-                    radius_type = radii_names[len(radii_divisions) - n - 1]
+                    radius_type = radii_names[len(radii_divisions) - m - 1]
                     time_spent[radius_type] -= 1
                     break
             print('no such file: ', 'h' + str(probe) + '_' + str(date.year) + '_' + str(day_of_year) + '_corefit.csv')
-
-    time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
     pprint.pprint(time_spent)
     return time_spent
 
@@ -130,7 +124,7 @@ def time_spent_at_date(probe: int, start_date: str, end_date: str, accuracy: flo
     :param end_date: end date of analysis
     :param accuracy: daily accuracy
     :param mode: yearly or monthly
-    :return:
+    :return: time spent per year or per month
     """
     implemented_modes = ['yearly', 'monthly']
     orbiter = kernel_loader(probe)
@@ -171,30 +165,30 @@ def analyse_dates(events_list: List[datetime], probe: int, start_date: str, end_
     :param mode: yearly or monthly
     :return:
     """
-    reconnections_at_dates = time_stats(events_list, mode=mode)
+    events_at_dates = time_stats(events_list, mode=mode)
     time_spent = time_spent_at_date(probe=probe, start_date=start_date, end_date=end_date, mode=mode)
-    keys_reconnections = reconnections_at_dates.keys()
+    keys_reconnection_events = events_at_dates.keys()
     keys_dates = time_spent.keys()
     if mode == 'yearly':
-        for key in keys_reconnections:
+        for key in keys_reconnection_events:
             if key in keys_dates:
-                predicted = reconnections_at_dates['total number of reconnections'] * time_spent[key]
-                if predicted * 0.7 < float(reconnections_at_dates[key]) < 1.3 * predicted:
-                    print('as predicted for ', key, 'with', reconnections_at_dates[key], 'instead of', predicted)
+                predicted = events_at_dates['total number of reconnection events'] * time_spent[key]
+                if predicted * 0.7 < float(events_at_dates[key]) < 1.3 * predicted:
+                    print('as predicted for ', key, 'with', events_at_dates[key], 'instead of', predicted)
                 else:
-                    print('not as predicted for ', key, 'with', reconnections_at_dates[key], 'instead of',
+                    print('not as predicted for ', key, 'with', events_at_dates[key], 'instead of',
                           predicted)
     elif mode == 'monthly':
-        for key in keys_reconnections:
+        for key in keys_reconnection_events:
             if key in keys_dates:
-                for key_m in reconnections_at_dates[key].keys():
+                for key_m in events_at_dates[key].keys():
                     if key_m in time_spent[key].keys():
-                        predicted = reconnections_at_dates['total number of reconnections'] * time_spent[key][key_m]
-                        if predicted * 0.7 < float(reconnections_at_dates[key][key_m]) < 1.3 * predicted:
-                            print('as predicted for ', key, key_m, 'with', reconnections_at_dates[key][key_m],
+                        predicted = events_at_dates['total number of reconnection events'] * time_spent[key][key_m]
+                        if predicted * 0.7 < float(events_at_dates[key][key_m]) < 1.3 * predicted:
+                            print('as predicted for ', key, key_m, 'with', events_at_dates[key][key_m],
                                   'instead of', predicted)
                         else:
-                            print('not as predicted for ', key, key_m, 'with', reconnections_at_dates[key][key_m],
+                            print('not as predicted for ', key, key_m, 'with', events_at_dates[key][key_m],
                                   'instead of', predicted)
 
 
@@ -207,17 +201,17 @@ def analyse_by_radii(events_list: List[datetime], probe: int, start_date: str, e
     :param end_date: end date of analysis
     :return:
     """
-    reconnections_at_radii = distances_stats(events_list, probe)
+    reconnection_events_at_radii = distances_stats(events_list, probe)
     time_spent = time_spent_at_distances(probe, start_date, end_date)
-    keys_reconnections = reconnections_at_radii.keys()
+    keys_reconnection_events = reconnection_events_at_radii.keys()
     keys_dists = time_spent.keys()
-    for key in keys_reconnections:
+    for key in keys_reconnection_events:
         if key in keys_dists:
-            predicted = reconnections_at_radii['total number of reconnections'] * time_spent[key]
-            if predicted * 0.7 < float(reconnections_at_radii[key]) < 1.3 * predicted:
-                print('as predicted for ', key, ' with', reconnections_at_radii[key], 'instead of ', predicted)
+            predicted = reconnection_events_at_radii['total number of reconnection events'] * time_spent[key]
+            if predicted * 0.7 < float(reconnection_events_at_radii[key]) < 1.3 * predicted:
+                print('as predicted for ', key, ' with', reconnection_events_at_radii[key], 'instead of ', predicted)
             else:
-                print('not as predicted for ', key, 'with', reconnections_at_radii[key], 'instead of ', predicted)
+                print('not as predicted for ', key, 'with', reconnection_events_at_radii[key], 'instead of ', predicted)
 
 
 def get_month_dict(days_of_year: list, year: int) -> dict:
@@ -257,28 +251,6 @@ def filecount(probe: int, year: int = 0):
         days_of_year.append(doy)
     file_number = sum([len(files) for r, d, files in os.walk(directory) if files])
     return file_number, days_of_year
-
-
-def get_radius(events_list: List[datetime], year: int = 1976, month: int = 0, probe: int = 2) -> list:
-    """
-    Finds the position of events compared to the sun duing a given year (and given month)
-    :param events_list: list of events to be analysed
-    :param year: year to be analysed
-    :param month: month to be considered (all year if month = 0)
-    :param probe: 1 or 2 for Helios 1 or 2
-    :return:
-    """
-    time_radius = []
-    for event in events_list:
-        if event.year == year:
-            if month == 0 or event.month == month:
-                start_time = event
-                imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                           duration=1, probe=probe)
-                radius = imported_data.data['r_sun'].loc[event]
-                time_radius.append([event, radius])
-    print(time_radius)
-    return time_radius
 
 
 def analyse_all_probes(mode: str = 'radius'):
@@ -333,7 +305,7 @@ def plot_trend(stat: dict, mode='yearly'):
         plt.xticks(range(len(stat)), list(stat.keys()))
     elif mode == 'monthly':
         new_stat = {}
-        stat.pop('total number of reconnections', None)
+        stat.pop('total number of reconnection events', None)
         for key in stat.keys():
             for key_m in stat[key].keys():
                 new_stat[key_m[0] + key_m[1] + key_m[2] + '_' + key[2] + key[3]] = stat[key][key_m]
@@ -346,7 +318,7 @@ def plot_trend(stat: dict, mode='yearly'):
 
 
 if __name__ == '__main__':
-    mode = 'monthly'
+    # mode = 'monthly'
     # probe = 1
     # analysis_start_date = '15/12/1974'
     # analysis_end_date = '15/08/1984'
