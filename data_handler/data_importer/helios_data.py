@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from heliopy.data import helios
 
 from data_handler.data_importer.imported_data import ImportedData
@@ -24,7 +26,7 @@ class HeliosData(ImportedData):
 
     def get_imported_data(self):
         data = helios.corefit(self.probe, self.start_datetime, self.end_datetime)
-        return data
+        return data.data
 
 
 if __name__ == '__main__':

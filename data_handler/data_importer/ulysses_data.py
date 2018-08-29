@@ -30,6 +30,8 @@ class UlyssesData(ImportedData):
     def get_imported_data(self):
         data_b = ulysses.fgm_hires(self.start_datetime, self.end_datetime)
         data_v = ulysses.swoops_ions(self.start_datetime, self.end_datetime)
+        data_b = data_b.data  # fgm_hires now returns a time series (sunpy)
+        data_v = data_v.data  # swoops_ions now returns a time series (sunpy)
         indices = [pd.Timestamp(index).to_pydatetime() for index in data_v.index.values]
         combined_data = pd.DataFrame(index=indices)
         iteration = 0
