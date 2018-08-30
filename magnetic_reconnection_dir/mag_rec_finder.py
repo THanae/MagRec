@@ -37,6 +37,8 @@ possible_reconnection_events = get_possible_reconnection_events(probe=probe, par
                                                                 end_time=end_date, radius=radius_to_consider,
                                                                 data_split='yearly')
 
+possible_reconnection_dates = [possible_reconnection[0] for possible_reconnection in possible_reconnection_events]
+
 
 def beep():
     return os.system("echo '\a'")
@@ -51,7 +53,7 @@ if noise_when_part1_done:
 """
 The events are then run though a series of tests in LMN coordinates
 """
-lmn_events = test_reconnection_lmn(event_dates=possible_reconnection_events, probe=probe, minimum_fraction=min_walen,
+lmn_events = test_reconnection_lmn(event_dates=possible_reconnection_dates, probe=probe, minimum_fraction=min_walen,
                                    maximum_fraction=max_walen)
 
 print(lmn_events)
