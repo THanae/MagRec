@@ -5,24 +5,29 @@ import astropy.units as u
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.visualization import quantity_support
-from typing import List, Optional
+from typing import List, Optional, Union
 
 
-def kernel_loader(spacecraft: int = 2) -> spice.Trajectory:
+def kernel_loader(spacecraft: Union[int, str] = 2) -> spice.Trajectory:
     """
     :param spacecraft: 1 or 2 for Helios 1  or 2, can also be 'ulysses'
     :return:
     """
     if spacecraft == 1 or spacecraft == 2:
-        orbiter_kernel = spice_data.get_kernel('helios' + str(spacecraft))
+        if spacecraft == 1:
+            orbiter_kernel = spice_data.get_kernel('helios1_rec')
+        else:
+            orbiter_kernel = spice_data.get_kernel('helios2')
         spice.furnish(orbiter_kernel)
         orbiter = spice.Trajectory('Helios ' + str(spacecraft))
+
     elif spacecraft == 'ulysses':
         orbiter_kernel = spice_data.get_kernel(str(spacecraft))
         spice.furnish(orbiter_kernel)
         orbiter = spice.Trajectory(spacecraft)
     else:
         raise NotImplementedError('The only probes that can be imported are Helios 1 , Helios 2 and Ulysses')
+
     return orbiter
 
 
@@ -161,14 +166,16 @@ def plot_period(orbiter, spacecraft: int = 2):
 if __name__ == '__main__':
     space_probe = 1
     start_datetime = '15/12/1974'
-    end_datetime = '08/08/1984'
+    end_datetime = '30/09/1981'  # Position data are available in the period from 1974-12-10 to 1981-09-30 for Helios 1
     # space_probe = 2
     # space_probe = 'ulysses'
     probe_orbiter = kernel_loader(space_probe)
     # probe_times = orbit_times_generator(start_date='20/10/1990', end_date='30/06/2009')
-    probe_times = orbit_times_generator(start_date=start_datetime, end_date=start_datetime)
+    probe_times = orbit_times_generator(start_date=start_datetime, end_date=end_datetime)
     # probe_times = orbit_times_generator()
     orbit_generator(probe_orbiter, probe_times)
+    print(probe_orbiter.times)
+    print(probe_orbiter.x)
     probe_radius = np.sqrt(probe_orbiter.x ** 2 + probe_orbiter.y ** 2 + probe_orbiter.z ** 2)
     print('the perihelion is ', np.min(probe_radius), ' at ', probe_orbiter.times[np.argmin(probe_radius)])
     print('the aphelion is ', np.max(probe_radius), ' at ', probe_orbiter.times[np.argmax(probe_radius)])

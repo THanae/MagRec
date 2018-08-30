@@ -101,7 +101,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
     return imported_data
 
 
-def get_imported_data_sets(probe, orbiter: spice.Trajectory, radius: float):
+def get_imported_data_sets(probe, orbiter: spice.Trajectory, radius: float) ->List[ImportedData]:
     """
     Finds the imported data sets that correspond to a given radius
     :param probe: probe to consider

@@ -4,7 +4,7 @@ import csv
 import numpy as np
 
 from data_handler.data_importer.data_import import get_probe_data
-from data_handler.distances_with_spice import get_imported_data_sets
+from data_handler.distances_with_spice import get_imported_data_sets, get_data
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
@@ -136,8 +136,19 @@ def reconnection_detector_with_finder(probe: Union[int, str], parameters: dict, 
     :param radius: maximum radius to consider
     :return: all possible reconnection events within the given time frame, with associated radius
     """
-    orbiter = get_orbiter(probe=probe, start_time=start_time, end_time=end_time, interval=1)
-    imported_data_sets = get_imported_data_sets(probe=probe, orbiter=orbiter, radius=radius)
+    try:
+        orbiter = get_orbiter(probe=probe, start_time=start_time, end_time=end_time, interval=1)
+        imported_data_sets = get_imported_data_sets(probe=probe, orbiter=orbiter, radius=radius)
+    except ValueError:  # probe not implemented in spice
+        print('NO RADIUS ANALYSIS BECAUSE PROBE NOT EXISTING IN SPICE YET')
+        start_time = datetime.strptime(start_time, '%d/%m/%Y')
+        end_time = datetime.strptime(end_time, '%d/%m/%Y')
+        times = []
+        while start_time < end_time:
+            times.append([start_time, start_time + timedelta(days=1)])
+            start_time = start_time + timedelta(days=1)
+        imported_data_sets = get_data(dates=times, probe=probe)
+
 
     all_reconnection_events = []
     for n in range(len(imported_data_sets)):
@@ -222,11 +233,11 @@ if __name__ == '__main__':
     #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
     #                            data_split='yearly')
 
-    get_possible_reconnection_events(probe=2, parameters=parameters_helios, start_time='23/01/1976',
-                                     end_time='30/01/1976', radius=1, to_csv=False)
+    get_possible_reconnection_events(probe=1, parameters=parameters_helios, start_time='13/12/1974',
+                                     end_time='17/12/1974', radius=1, to_csv=False)
 
-    get_possible_reconnection_events(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
-                                     end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
+    # get_possible_reconnection_events(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
+    #                                  end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
 
     # for no temperature and density check
     # [0.6415029025857748, [2.6218234455767924, 3.095027734156329, 7.2593589782476995,
