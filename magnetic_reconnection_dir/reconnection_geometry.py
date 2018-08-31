@@ -5,7 +5,7 @@ import numpy as np
 from numpy.linalg import inv
 from mpl_toolkits.mplot3d import Axes3D
 
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 
@@ -13,13 +13,12 @@ from magnetic_reconnection_dir.mva_analysis import hybrid_mva
 def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, outside_interval: int = 10,
                 inside_interval: int = 2) -> Tuple[list, list]:
     """
-    Gets the lmn coordinates for the event and the other event close to it
     :param event_date: time of the event
     :param weird_thing_date: time of the weird thing
     :param probe: 1 or 2 for Helios 1 or 2
     :param outside_interval: minutes to consider outside of the event for hybrid mva
     :param inside_interval: minutes to consider in the event for hybrid mva
-    :return:
+    :return: the lmn coordinates for the event and the other event close to it
     """
     L, M, N = hybrid_mva(event_date, probe, outside_interval=outside_interval, inside_interval=inside_interval)
     L_w, M_w, N_w = hybrid_mva(weird_thing_date, probe, outside_interval=outside_interval,
@@ -31,10 +30,9 @@ def compare_lmn(event_date: datetime, weird_thing_date: datetime, probe: int, ou
 
 def get_rotation_matrix(event: List[np.ndarray], weird: List[np.ndarray]) -> np.ndarray:
     """
-    Finds the rotation matrix between the two events
     :param event: LMN coordinates of the reconnection event
     :param weird: LMN coordinates of the other thing
-    :return:
+    :return: the rotation matrix between two events
     """
     rotation = np.matmul(np.matrix(weird), inv(np.matrix(event)))  # rotation * event = weird
     print('det', np.linalg.det(rotation))
@@ -43,9 +41,8 @@ def get_rotation_matrix(event: List[np.ndarray], weird: List[np.ndarray]) -> np.
 
 def rotation_matrix_to_euler(rotation: np.ndarray) -> np.ndarray:
     """
-    Finds the rotation angles between the two events coordinates
     :param rotation: rotation matrix
-    :return:
+    :return: the rotation angles between the two events coordinates
     """
     if rotation[2, 0] < -0.9 or rotation[2, 0] > 0.9:
         singular = True
@@ -89,14 +86,14 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
         ax.quiver(X, 1, Z, np.dot(x, lmn_coordinates[n]), 0, np.dot(z, lmn_coordinates[n]), color='#808080')
         ax.quiver(-1, Y, Z, 0, np.dot(y, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n]), color='#808080')
 
-    def plot_2d(ax, label1, label2, origin1, origin2, point1, point2):
-        ax.set_xlim([-1, 1])
-        ax.set_ylim([-1, 1])
-        for n in range(len(lmn_coordinates)):
-            ax.set_xlabel(label1)
-            ax.set_ylabel(label2)
-            vec1, vec2 = np.dot(point1, lmn_coordinates[n]), np.dot(point2, lmn_coordinates[n])
-            ax.quiver(origin1, origin2, vec1, vec2, color=colors[n], angles='xy', scale_units='xy', scale=1)
+    def plot_2d(_ax, label1, label2, origin1, origin2, point1, point2):
+        _ax.set_xlim([-1, 1])
+        _ax.set_ylim([-1, 1])
+        for loop in range(len(lmn_coordinates)):
+            _ax.set_xlabel(label1)
+            _ax.set_ylabel(label2)
+            vec1, vec2 = np.dot(point1, lmn_coordinates[loop]), np.dot(point2, lmn_coordinates[loop])
+            _ax.quiver(origin1, origin2, vec1, vec2, color=colors[loop], angles='xy', scale_units='xy', scale=1)
 
     ax = fig_name.add_subplot(222, aspect='equal')
     plot_2d(ax, 'x', 'y', X, Y, x, y)
@@ -139,8 +136,8 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
         future = True
 
     start_date = start - timedelta(hours=1)
-    imported_data = HeliosData(start_date=start_date.strftime('%d/%m/%Y'), start_hour=start_date.hour, duration=3,
-                               probe=probe)
+    imported_data = get_probe_data(probe=probe, start_date=start_date.strftime('%d/%m/%Y'), start_hour=start_date.hour,
+                                   duration=3)
     imported_data.create_processed_column('vp_magnitude')
 
     t = np.abs((weird_date - event_date).total_seconds())
@@ -213,7 +210,7 @@ def find_spacecraft_trajectory(imported_data: ImportedData, t: float, start: dat
     :param start: start point of the spacecraft
     :param starting_position: starting position of the spacecraft, usually [0,0,0]
     :param future: True if the event is before the weirder crossing
-    :return:
+    :return: the trajectory of the spacecraft as a list of x, y, z coordinates
     """
     trajectory = [np.array(starting_position)]
     pos_x, pos_y, pos_z = starting_position[0], starting_position[1], starting_position[2]
@@ -246,14 +243,14 @@ def find_d_from_distance(distance: float, normal2: np.ndarray):
     Spacecraft passes though origin as well and moves nearly only in x direction
     :param distance: distance that the spacecraft travels before encountering plane 2
     :param normal2: normal of plane 2
-    :return:
+    :return: the d component
     """
     # point = [0,0,0] belongs to plane 1, so [distance, 0, 0] belongs to plane 2, equation ax+by+cz+d=0
     d = - normal2[0] * distance
     return d
 
 
-def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_time: datetime,
+def b_and_v_plotting(ax, imported_data: ImportedData, event_time: datetime, weird_time: datetime,
                      starting_position: list, future: bool, event: list, weird: list):
     """
     Plots the b and v fields on the current sheet plot
@@ -263,6 +260,8 @@ def b_and_v_plotting(ax, imported_data: HeliosData, event_time: datetime, weird_
     :param weird_time: time of other event
     :param starting_position: position where the spacecraft starts
     :param future: false if weird is before event, true otherwise
+    :param event: L, M, N vectors of the magnetic reconnection event
+    :param weird: L, M, N vectors of the other thing
     :return:
     """
     mag_field, v_field = [], []
@@ -379,8 +378,8 @@ if __name__ == '__main__':
     # crossing = {'ev_date': datetime(1977, 12, 4, 7, 13), 'w_date': datetime(1977, 12, 4, 7, 20), 'probe': 2,
     #             'comment': 'normal reconnection, with turbulent bm'}
     #
-    crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 5, 48), 'probe': 1,
-                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 5, 48), 'probe': 1,
+    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
     crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
                 'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
     # crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
@@ -407,13 +406,13 @@ if __name__ == '__main__':
     #
     # crossing = {'ev_date': datetime(1976, 1, 29, 0, 4), 'w_date': datetime(1976, 1, 28, 23, 48), 'probe': 2}
 
-    ev_date, w_date, probe = crossing['ev_date'], crossing['w_date'], crossing['probe']
-    a, b = compare_lmn(ev_date, w_date, probe, 5, 1)
-    print(a)
-    print(b)
-    plot_vectors_2d_3d(a, b)
+    ev_date, w_date, space_probe = crossing['ev_date'], crossing['w_date'], crossing['probe']
+    event_lmn, weird_lmn = compare_lmn(ev_date, w_date, space_probe, 5, 1)
+    print(event_lmn)
+    print(weird_lmn)
+    plot_vectors_2d_3d(event_lmn, weird_lmn)
 
-    # plot_current_sheet(a, b, ev_date, w_date, probe)
+    # plot_current_sheet(event_lmn, weird_lmn, ev_date, w_date, probe)
 
     # 06/12/1976
     # plot_possible_folded_sheet([np.array([0.39828885, 0.26623724, -0.87777202]),

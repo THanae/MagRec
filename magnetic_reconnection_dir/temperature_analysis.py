@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 from scipy.stats import linregress
 
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
+from data_handler.data_importer.imported_data import ImportedData
 from data_handler.utils.column_processing import get_outliers, get_derivative
 from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
@@ -32,8 +33,8 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]) ->List[float]
         print(event, probe)
         try:
             start = event - timedelta(hours=2)
-            imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=4,
-                                       probe=probe)
+            imported_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
+                                           duration=4)
             imported_data.data.dropna(inplace=True)
             radius = imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0]
             duration, event_start, event_end = find_intervals(imported_data, event)
@@ -147,7 +148,7 @@ def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
     Finds the predicted change from the Alfven speed
     :param b_l: B in the L direction
     :param n: number density of the protons
-    :return: predicted temprature increase and Alfven speed
+    :return: predicted temperature increase and Alfven speed
     """
     if len(b_l) == 1 and len(n) == 1:
         alfven_speed = b_l[0] * 10 ** (-9) / np.sqrt(n[0] * 10 ** 6 * proton_mass * mu_0)  # b in nT, n in cm^-3
@@ -162,7 +163,7 @@ def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
     return predicted_increase, alfven_speed
 
 
-def find_intervals(imported_data: HeliosData, event: datetime) ->Tuple:
+def find_intervals(imported_data: ImportedData, event: datetime) ->Tuple:
     """
     Finds the start and end of the event by looking at changes in temperature
     :param imported_data: ImportedData
@@ -193,7 +194,7 @@ def find_intervals(imported_data: HeliosData, event: datetime) ->Tuple:
     return event_duration, event_start, event_end
 
 
-def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interval_start: datetime,
+def find_temperature(imported_data: ImportedData, b_l: List, n: List, left_interval_start: datetime,
                      left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime) -> \
                      Tuple[float, float, float]:
     """
@@ -213,10 +214,10 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
     def kelvin_to_ev(temperature: float) ->float:
         return temperature * k_b / electron_charge
 
-    def get_inflow_temp_2b(temperature: pd.DataFrame, n: List, b_l: List) ->float:  # when we have b left and b right
+    def get_inflow_temp_2b(temperature: pd.DataFrame, _n: List, _b_l: List) ->float:  # when we have b left and b right
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
-        inflow = (n[0] * t_left / b_l[0] + n[1] * t_right / b_l[1]) / (n[0] / b_l[0] + n[1] / b_l[1])
+        inflow = (_n[0] * t_left / _b_l[0] + _n[1] * t_right / _b_l[1]) / (_n[0] / _b_l[0] + _n[1] / _b_l[1])
         return inflow
 
     def get_inflow_temp_1b(temperature: pd.DataFrame) ->np.ndarray:
@@ -254,10 +255,11 @@ def find_temperature(imported_data: HeliosData, b_l: List, n: List, left_interva
     return kelvin_to_ev(delta_t_total), kelvin_to_ev(delta_t_perp), kelvin_to_ev(delta_t_par)
 
 
-def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interval_start: datetime,
+def get_n_b(event: datetime, probe: int, imported_data: ImportedData, left_interval_start: datetime,
             left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime,
             guide_field: bool = False) -> Tuple:
     """
+    Finds the right and left number densities and magnetic fields to be fed in the rest of the program
     :param event: event date
     :param probe: 1 or 2 for Helios 1 or 2
     :param imported_data: ImportedData
@@ -266,7 +268,7 @@ def get_n_b(event: datetime, probe: int, imported_data: HeliosData, left_interva
     :param right_interval_start: start of right interval
     :param right_interval_end: end of right interval
     :param guide_field: if True, returns bm_left and bm_right
-    :return:
+    :return: the left and right L magnetic fields and densities, and the L, M, N vectors
     """
     L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
     b_left = (np.array([np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']).values),
@@ -297,8 +299,8 @@ def n_to_shear():
     for n in range(len(events)):
         print(events[n])
         start = events[n][0] - timedelta(hours=2)
-        imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=4,
-                                   probe=events[n][1])
+        imported_data = get_probe_data(probe=events[n][1], start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
+                                       duration=4)
         imported_data.data.dropna(inplace=True)
         duration, event_start, event_end = find_intervals(imported_data, events[n][0])
         left_interval_end, right_interval_start = event_start, event_end
@@ -327,13 +329,12 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
     :param events_list: list of events to be analysed
     :return: shear angles, and lists of events with low, medium and high shear angles
     """
-    shear = []
-    small_shear, big_shear, medium_shear = [], [], []
+    shear, small_shear, big_shear, medium_shear = [], [], [], []
     for event, probe in events_list:
         print(event)
         start = event - timedelta(hours=1)
-        imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2,
-                                   probe=probe)
+        imported_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
+                                       duration=2)
         imported_data.data.dropna(inplace=True)
         duration, event_start, event_end = find_intervals(imported_data, event)
         left_interval_end, right_interval_start = event_start, event_end
