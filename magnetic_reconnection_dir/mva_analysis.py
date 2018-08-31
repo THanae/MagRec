@@ -3,7 +3,7 @@ from typing import List, Tuple
 import numpy as np
 from numpy import linalg as LA
 
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 
 
@@ -33,7 +33,7 @@ def get_side_data(imported_data: ImportedData, event_date: datetime, outside_int
     :param event_date: date of possible reconnection
     :param outside_interval: interval outside of the event that will be considered
     :param inside_interval: interval inside the event that will be considered
-    :return:
+    :return: B around the reconnection event
     """
     data_1 = imported_data.data[
              event_date - timedelta(minutes=outside_interval):event_date - timedelta(minutes=inside_interval)]
@@ -102,8 +102,8 @@ def hybrid(_L: np.ndarray, B1: np.ndarray, B2: np.ndarray) -> Tuple[np.ndarray, 
 def hybrid_mva(event_date, probe, duration: int = 4, outside_interval: int = 10, inside_interval: int = 2,
                mva_interval: int = 30) ->Tuple[np.ndarray, np.ndarray, np.ndarray]:
     start_time = event_date - timedelta(hours=duration / 2)
-    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                               duration=duration, probe=probe)
+    imported_data = get_probe_data(probe=probe, start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                                   duration=duration)
     imported_data.data.dropna(inplace=True)
     B = get_b(imported_data, event_date, interval=mva_interval)
     L, M, N = mva(B)

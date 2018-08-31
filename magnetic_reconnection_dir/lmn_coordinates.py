@@ -4,9 +4,8 @@ from datetime import timedelta
 import pandas as pd
 from typing import List, Tuple, Union, Optional
 
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
-from data_handler.data_importer.ulysses_data import UlyssesData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, send_dates_to_csv
@@ -111,8 +110,8 @@ def plot_walen_test(event_date: datetime, probe: int, duration: int = 4, outside
     :return: Alfven speed at the exhaust
     """
     start_time = event_date - timedelta(hours=duration / 2)
-    imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                               duration=duration, probe=probe)
+    imported_data = get_probe_data(probe=probe, start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
+                                   duration=duration)
     imported_data.data.dropna(inplace=True)
     B = get_b(imported_data, event_date, 30)
     L, M, N = mva(B)
@@ -266,7 +265,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
     :param maximum_fraction: maximum walen fraction
     :param plot: bool, true of we want to plot reconnection events that passed the test
     :param mode: interactive (human input to the code, more precise but time consuming) or static (purely computational)
-    :return:
+    :return: all events that managed to pass the lmn tests
     """
     implemented_modes = ['static', 'interactive']
     if mode not in implemented_modes:
@@ -278,14 +277,8 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
     for event_date in event_dates:
         # try:
         start_time = event_date - timedelta(hours=duration / 2)
-        if probe == 1 or probe == 2:
-            imported_data = HeliosData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                       duration=duration, probe=probe)
-        elif probe == 'ulysses':
-            imported_data = UlyssesData(start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-                                        duration=duration)
-        else:
-            raise NotImplementedError('Only Ulysses and the Helios probes have been implemented so far')
+        imported_data = get_probe_data(probe=probe, start_date=start_time.strftime('%d/%m/%Y'),
+                                       start_hour=start_time.hour, duration=duration)
         imported_data.data.dropna(inplace=True)
         if probe == 1 or probe == 2:
             B = get_b(imported_data, event_date, 30)
@@ -339,7 +332,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: int, minimum_fract
                 plot_lmn(imported_data, L, M, N, event_date, probe=probe)
 
         else:
-            print('NO RECONNECTION AT ', str(event_date))
+            print('NO RECONNECTION ON ', str(event_date))
         # except Exception:
         #     print('could not recover the data')
 
