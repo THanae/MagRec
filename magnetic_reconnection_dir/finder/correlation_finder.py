@@ -11,11 +11,10 @@ from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 class CorrelationFinder(BaseFinder):
     coordinates = ['x', 'y', 'z']
 
-    def __init__(self, outlier_intersection_limit_minutes: int = 30):
+    def __init__(self):
         super().__init__()
-        # TODO find sustainable way to introduce self.outlier_intersection_limit_minutes
         # be careful, the limit minutes depend on the interval size (around 4*interval should be fine)
-        self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
+        # self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
     def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum: float = 3, sigma_diff: float = 2.5,
                                     minutes_b: float = 3, minutes: float = 10, nt_test: bool = False) -> List[datetime]:
@@ -27,7 +26,7 @@ class CorrelationFinder(BaseFinder):
         :param minutes_b: int
         :param minutes: minutes around which find_outliers will be considered
         :param nt_test: if True, runs a density and temperature test
-        :return:
+        :return: list of possible magnetic reconnection events
         """
         self.find_correlations(imported_data.data)
         datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff,
@@ -135,7 +134,7 @@ class CorrelationFinder(BaseFinder):
         outlier_datetimes = []
         for index, value in data['correlation_diff_outliers'].iteritems():
             index: pd.Timestamp = index
-            interval = timedelta(minutes=self.outlier_intersection_limit_minutes)
+            interval = timedelta(minutes=minutes)
             sum_outliers = data.loc[index - interval:index + interval, 'correlation_sum_outliers']
             # ensure there is a positive and a negative value in sum_outliers
             if (sum_outliers > 0).any() and (sum_outliers < 0).any():
@@ -162,24 +161,13 @@ class CorrelationFinder(BaseFinder):
         print('Outliers check returned: ', datetimes_list)
         return datetimes_list
 
-    def print_reconnection_events(self, reconnection_dates: List[datetime]):
-        """
-        Prints the events dates in a more readable form
-        Can be used later when logs from each tests are not outputted anymore
-        :param reconnection_dates: all events that passed the tests
-        :return:
-        """
-        for reconnection_date in reconnection_dates:
-            print('event detected at ' + reconnection_date.strftime('%H:%M:%S %d/%m/%Y'))
-        if len(reconnection_dates) == 0:
-            print("No reconnections were found")
-
 
 def get_average_b(_datetime: datetime, data_column: pd.DataFrame, minutes_around: int = 10) -> List[datetime]:
     """
     Checks whether b really changes magnitude before and after a given event
     :param _datetime: list of possible event
     :param data_column: column that we check
+    :param minutes_around: number of minutes around the event which are considered
     :return: nothing if no big change, and the event if there is indeed a change
     """
     high_changes_datetime_list = []
