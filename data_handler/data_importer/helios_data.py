@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from heliopy.data import helios
 
 from data_handler.data_importer.imported_data import ImportedData

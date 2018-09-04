@@ -174,8 +174,6 @@ if __name__ == '__main__':
     probe_times = orbit_times_generator(start_date=start_datetime, end_date=end_datetime)
     # probe_times = orbit_times_generator()
     orbit_generator(probe_orbiter, probe_times)
-    print(probe_orbiter.times)
-    print(probe_orbiter.x)
     probe_radius = np.sqrt(probe_orbiter.x ** 2 + probe_orbiter.y ** 2 + probe_orbiter.z ** 2)
     print('the perihelion is ', np.min(probe_radius), ' at ', probe_orbiter.times[np.argmin(probe_radius)])
     print('the aphelion is ', np.max(probe_radius), ' at ', probe_orbiter.times[np.argmax(probe_radius)])
