@@ -1,10 +1,9 @@
 import csv
 from datetime import datetime, timedelta
 from typing import List, Union
-
 import numpy as np
 
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
 
 
 def get_dates_from_csv(filename: str, probe=None):
@@ -45,8 +44,8 @@ def send_dates_to_csv(filename: str, events_list: List[datetime], probe: int, ad
             hour, minutes, seconds = reconnection_date.hour, reconnection_date.minute, reconnection_date.second
             if add_radius:
                 start = reconnection_date - timedelta(hours=1)
-                imported_data = HeliosData(start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour, duration=2,
-                                             probe=probe)
+                imported_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'),
+                                               start_hour=start.hour, duration=2)
                 radius = imported_data.data['r_sun'].loc[
                          reconnection_date - timedelta(minutes=1): reconnection_date + timedelta(minutes=1)][0]
                 writer.writerow(
