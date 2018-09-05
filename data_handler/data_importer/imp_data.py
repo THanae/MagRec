@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import numpy as np
 import pandas as pd
 from heliopy.data import imp
@@ -29,37 +27,26 @@ class ImpData(ImportedData):
 
     def get_imported_data(self):
         # only works with imp_8 so far
-        data_b = imp.mag15s(self.probe[4], self.start_datetime, self.end_datetime)
-        data_v = imp.merged(self.probe[4], self.start_datetime, self.end_datetime)
-        data_b = data_b.data  # data_b was previously a time series
-        data_v = data_v.data  # data_b was previously a time series
-        indices = [pd.Timestamp(index).to_pydatetime() for index in data_v.index.values]
+        data_bv = imp.merged(self.probe[4], self.start_datetime, self.end_datetime)
+        data_bv = data_bv.data  # data_b was previously a time series
+        indices = [pd.Timestamp(index).to_pydatetime() for index in data_bv.index.values]
         combined_data = pd.DataFrame(index=indices)
-        iteration = 0
         for index in indices:
-            interval = 2
-            if iteration != 0 and iteration != len(indices) - 1:
-                interval = (indices[iteration + 1] - indices[iteration - 1]).total_seconds() / 60
-            combined_data.loc[index, 'vp_x'] = data_v.loc[index, 'vx_mom_gse']
-            combined_data.loc[index, 'vp_y'] = data_v.loc[index, 'vy_mom_gse']
-            combined_data.loc[index, 'vp_z'] = data_v.loc[index, 'vz_mom_gse']
-            combined_data.loc[index, 'n_p'] = data_v.loc[index, 'np_mom']
+            combined_data.loc[index, 'vp_x'] = data_bv.loc[index, 'vx_mom_gse']
+            combined_data.loc[index, 'vp_y'] = data_bv.loc[index, 'vy_mom_gse']
+            combined_data.loc[index, 'vp_z'] = data_bv.loc[index, 'vz_mom_gse']
+            combined_data.loc[index, 'n_p'] = data_bv.loc[index, 'np_mom']
             # for now both temperatures are equal to keep it similar to other classes as no separate data was found
-            combined_data.loc[index, 'Tp_par'] = data_v.loc[index, 'Tp_mom']
-            combined_data.loc[index, 'Tp_perp'] = data_v.loc[index, 'Tp_mom']
+            combined_data.loc[index, 'Tp_par'] = data_bv.loc[index, 'Tp_mom']
+            combined_data.loc[index, 'Tp_perp'] = data_bv.loc[index, 'Tp_mom']
             combined_data.loc[index, 'r_sun'] = 1 - np.sqrt(
-                data_v.loc[index, 'x_gse'] ** 2 + data_v.loc[index, 'y_gse'] ** 2 + data_v.loc[
+                data_bv.loc[index, 'x_gse'] ** 2 + data_bv.loc[index, 'y_gse'] ** 2 + data_bv.loc[
                     index, 'z_gse'] ** 2) * 4.26354E-5  # earth radius to au, 1- because distance initially from earth
-            combined_data.loc[index, 'Bx'] = np.mean(
-                data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'Bx gse'])
-            combined_data.loc[index, 'By'] = np.mean(
-                data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'By gse'])
-            combined_data.loc[index, 'Bz'] = np.mean(
-                data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'Bz gse'])
+            combined_data.loc[index, 'Bx'] = data_bv.loc[index, 'Bx_gse']
+            combined_data.loc[index, 'By'] = data_bv.loc[index, 'By_gse']
+            combined_data.loc[index, 'Bz'] = data_bv.loc[index, 'Bz_gse']
 
-            iteration += 1
-        self.data = combined_data
-        return self.data
+        return combined_data
 
 
 if __name__ == '__main__':
