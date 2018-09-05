@@ -44,7 +44,7 @@ def get_test_data(known_event: MagneticReconnection, additional_data_padding_hou
 
     :param known_event: MagneticReconnection with a start_datetime
     :param additional_data_padding_hours: (hours_before, hours_after)
-    :return:
+    :return: ImportedData around the magnetic reconnection
     """
     start_datetime = known_event.start_datetime - timedelta(hours=additional_data_padding_hours[0])
     start_date = start_datetime.strftime('%d/%m/%Y')
@@ -139,7 +139,7 @@ def reconnection_detector_with_finder(probe: Union[int, str], parameters: dict, 
     try:
         orbiter = get_orbiter(probe=probe, start_time=start_time, end_time=end_time, interval=1)
         imported_data_sets = get_imported_data_sets(probe=probe, orbiter=orbiter, radius=radius)
-    except ValueError:  # probe not implemented in spice
+    except NotImplementedError:  # probe not implemented in spice :(
         print('NO RADIUS ANALYSIS BECAUSE PROBE NOT EXISTING IN SPICE YET')
         start_time = datetime.strptime(start_time, '%d/%m/%Y')
         end_time = datetime.strptime(end_time, '%d/%m/%Y')
@@ -148,7 +148,6 @@ def reconnection_detector_with_finder(probe: Union[int, str], parameters: dict, 
             times.append([start_time, start_time + timedelta(days=1)])
             start_time = start_time + timedelta(days=1)
         imported_data_sets = get_data(dates=times, probe=probe)
-
 
     all_reconnection_events = []
     for n in range(len(imported_data_sets)):
@@ -202,9 +201,19 @@ def get_possible_reconnection_events(probe: Union[int, str], parameters: dict, s
     print(start_time, end_time, 'reconnection number: ', str(len(all_reconnection_events)))
     print(all_reconnection_events)
     if to_csv:
-        send_reconnection_events_to_csv(all_reconnection_events, 'events_probe_' + str(probe) + '_no_nt_3_25_30.csv')
+        sigma_sum, sigma_dif, minutes_b = parameters['sigma_sum'], parameters['sigma_dif'], parameters['minutes_b']
+        sigma_sum, sigma_dif, minutes_b = to_int_str(sigma_sum), to_int_str(sigma_dif), to_int_str(minutes_b)
+        send_reconnection_events_to_csv(all_reconnection_events, 'events_probe_' + str(
+            probe) + '_' + sigma_sum + '_' + sigma_dif + '_' + minutes_b + '.csv')
 
     return all_reconnection_events
+
+
+def to_int_str(param):
+    if type(param) == float:
+        return str(int(10 * param))
+    else:
+        return str(param)
 
 
 if __name__ == '__main__':
@@ -217,6 +226,7 @@ if __name__ == '__main__':
     parameters_helios = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
     # parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 30, 'minutes': 30}
     parameters_uly = {'sigma_sum': 3, 'sigma_diff': 2.5, 'minutes_b': 30, 'minutes': 30}
+    parameters_imp = {'sigma_sum': 3, 'sigma_diff': 2.5, 'minutes_b': 2, 'minutes': 2}
     # analysis_start_date = '17/12/1974'
     # analysis_end_date = '21/12/1975'
     # analysis_start_date = '17/01/1976'
@@ -233,8 +243,14 @@ if __name__ == '__main__':
     #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
     #                            data_split='yearly')
 
-    get_possible_reconnection_events(probe=1, parameters=parameters_helios, start_time='13/12/1974',
-                                     end_time='17/12/1974', radius=1, to_csv=False)
+    get_possible_reconnection_events(probe='imp_8', parameters=parameters_imp, start_time='01/01/1974',
+                                     end_time='31/12/2000', radius=1, to_csv=True)
+    # get_possible_reconnection_events(probe='ulysses',
+    #                                  parameters={'sigma_sum': 1.5, 'sigma_diff': 1, 'minutes_b': 15, 'minutes': 20},
+    #                                  start_time='09/02/1998', end_time='10/02/1998', radius=10, to_csv=False)
+    # get_possible_reconnection_events(probe='ulysses',
+    #                                  parameters={'sigma_sum': 2, 'sigma_diff': 2.5, 'minutes_b': 15, 'minutes': 20},
+    #                                  start_time='01/02/1992', end_time='01/01/2000', radius=10, to_csv=True)
 
     # get_possible_reconnection_events(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
     #                                  end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')

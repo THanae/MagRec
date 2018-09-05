@@ -68,7 +68,7 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
     :return:
     """
     origin = [0, 0, 0]
-    X, Y, Z = zip(origin, origin, origin)
+    x_0, y_0, z_0 = zip(origin, origin, origin)
     x, y, z = np.array([1, 0, 0]), np.array([0, 1, 0]), np.array([0, 0, 1])
 
     ax = fig_name.add_subplot(221, projection='3d', aspect='equal')
@@ -81,10 +81,10 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
 
     for n in range(len(lmn_coordinates)):
         U, V, W = zip(lmn_coordinates[n])
-        ax.quiver(X, Y, Z, U, V, W, color=colors[n])
-        ax.quiver(X, Y, -1, np.dot(x, lmn_coordinates[n]), np.dot(y, lmn_coordinates[n]), 0, color='#808080')
-        ax.quiver(X, 1, Z, np.dot(x, lmn_coordinates[n]), 0, np.dot(z, lmn_coordinates[n]), color='#808080')
-        ax.quiver(-1, Y, Z, 0, np.dot(y, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n]), color='#808080')
+        ax.quiver(x_0, y_0, z_0, U, V, W, color=colors[n])
+        ax.quiver(x_0, y_0, -1, np.dot(x, lmn_coordinates[n]), np.dot(y, lmn_coordinates[n]), 0, color='#808080')
+        ax.quiver(x_0, 1, z_0, np.dot(x, lmn_coordinates[n]), 0, np.dot(z, lmn_coordinates[n]), color='#808080')
+        ax.quiver(-1, y_0, z_0, 0, np.dot(y, lmn_coordinates[n]), np.dot(z, lmn_coordinates[n]), color='#808080')
 
     def plot_2d(_ax, label1, label2, origin1, origin2, point1, point2):
         _ax.set_xlim([-1, 1])
@@ -96,11 +96,11 @@ def plot_2d_3d(fig_name, lmn_coordinates: List[np.ndarray], colors: list):
             _ax.quiver(origin1, origin2, vec1, vec2, color=colors[loop], angles='xy', scale_units='xy', scale=1)
 
     ax = fig_name.add_subplot(222, aspect='equal')
-    plot_2d(ax, 'x', 'y', X, Y, x, y)
+    plot_2d(ax, 'x', 'y', x_0, y_0, x, y)
     ax = fig_name.add_subplot(223, aspect='equal')
-    plot_2d(ax, 'x', 'z', X, Z, x, z)
+    plot_2d(ax, 'x', 'z', x_0, z_0, x, z)
     ax = fig_name.add_subplot(224, aspect='equal')
-    plot_2d(ax, 'y', 'z', Y, Z, y, z)
+    plot_2d(ax, 'y', 'z', y_0, z_0, y, z)
 
 
 def plot_vectors_2d_3d(event: List[np.ndarray], weird: List[np.ndarray]):
@@ -184,22 +184,22 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
 
 def add_m_n_vectors(ax, event: list, weird: list, distance: float, future: bool):
     if future:
-        X, Y, Z = zip([0, 0, 0], [0, 0, 0], [0, 0, 0])
+        x_0, y_0, z_0 = zip([0, 0, 0], [0, 0, 0], [0, 0, 0])
     else:
-        X, Y, Z = zip([-distance, 0, 0], [-distance, 0, 0], [-distance, 0, 0])
+        x_0, y_0, z_0 = zip([-distance, 0, 0], [-distance, 0, 0], [-distance, 0, 0])
     U, V, W = zip(event[1])
-    ax.quiver(X, Y, Z, U, V, W, color='r', length=distance, normalize=True)
+    ax.quiver(x_0, y_0, z_0, U, V, W, color='r', length=distance, normalize=True)
     U, V, W = zip(event[2])
-    ax.quiver(X, Y, Z, U, V, W, color='r', length=distance, normalize=True)
+    ax.quiver(x_0, y_0, z_0, U, V, W, color='r', length=distance, normalize=True)
     U, V, W = zip(event[0])
-    ax.quiver(X, Y, Z, U, V, W, color='k', length=distance, normalize=True)
+    ax.quiver(x_0, y_0, z_0, U, V, W, color='k', length=distance, normalize=True)
 
     if not future:
-        X, Y, Z = zip([0, 0, 0], [0, 0, 0], [0, 0, 0])
+        x_0, y_0, z_0 = zip([0, 0, 0], [0, 0, 0], [0, 0, 0])
     else:
-        X, Y, Z = zip([distance, 0, 0], [distance, 0, 0], [distance, 0, 0])
+        x_0, y_0, z_0 = zip([distance, 0, 0], [distance, 0, 0], [distance, 0, 0])
     U, V, W = zip(weird[1])
-    ax.quiver(X, Y, Z, U, V, W, color='r', length=distance, normalize=True)
+    ax.quiver(x_0, y_0, z_0, U, V, W, color='r', length=distance, normalize=True)
 
 
 def find_spacecraft_trajectory(imported_data: ImportedData, t: float, start: datetime, starting_position: List[float],

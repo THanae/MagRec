@@ -3,7 +3,7 @@ from typing import List, Union, Optional, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.lines as mlines
+import matplotlib.lines as m_lines
 from scipy.stats import linregress
 
 from data_handler.data_importer.data_import import get_probe_data
@@ -98,7 +98,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]) ->List[float]
 
 def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->List[float]:
     """
-    Plots the relations between predicted increase in temperature and actual increase in temerature
+    Plots the relations between predicted increase in temperature and actual increase in temperature
     :param related_lists: list of lists of predicted increase vs actual increase
     :param slope: expected gradient between predicted and actual increase
     :return: actual gradients between each list
@@ -111,15 +111,15 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->L
         color = [c[2] for c in related_lists[n][0] if not np.isnan(c[0]) and not np.isnan(c[1])]
         print(linregress(a, b))
         print(np.median(np.array(b) / np.array(a)))
-        slope_linreg, intercept, rvalue, pvalue, stderr = linregress(a, b)
-        slopes.append(slope_linreg)
+        slope_lin_reg, intercept, rvalue, p_value, stderr = linregress(a, b)
+        slopes.append(slope_lin_reg)
         plt.scatter(a, b, c=color, marker='+')
         plt.title(related_lists[n][1])
         if slope is not None:
             plt.plot([np.min(a), np.max(a)], [slope * np.min(a), slope * np.max(a)],
                      label='Expected gradient: ' + str(slope))
-        plt.plot([np.min(a), np.max(a)], [slope_linreg * np.min(a), slope_linreg * np.max(a)],
-                 label='Calculated gradient: ' + str(np.float16(slope_linreg)))
+        plt.plot([np.min(a), np.max(a)], [slope_lin_reg * np.min(a), slope_lin_reg * np.max(a)],
+                 label='Calculated gradient: ' + str(np.float16(slope_lin_reg)))
         gradient_legend = plt.legend(loc=4)
         plt.gca().add_artist(gradient_legend)
         if related_lists[n][1] == 'Perpendicular versus parallel proton temperature changes':
@@ -129,12 +129,12 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->L
             plt.xlabel(r'$mv^2$' + ' (eV)')
             plt.ylabel(r'$\Delta$' + 'T (eV)')
 
-        blue_cross = mlines.Line2D([], [], color='blue', marker='+', linestyle='None',
-                                   label='High shear angle ' + r'($\theta > 135\degree $)')
-        red_cross = mlines.Line2D([], [], color='red', marker='+', linestyle='None',
-                                  label='Low shear angle ' + r'($\theta < 90\degree $)')
-        green_cross = mlines.Line2D([], [], color='green', marker='+', linestyle='None',
-                                    label='Medium shear angle ' + r'($90\degree < \theta < 135\degree $)')
+        blue_cross = m_lines.Line2D([], [], color='blue', marker='+', linestyle='None',
+                                    label='High shear angle ' + r'($\theta > 135\degree $)')
+        red_cross = m_lines.Line2D([], [], color='red', marker='+', linestyle='None',
+                                   label='Low shear angle ' + r'($\theta < 90\degree $)')
+        green_cross = m_lines.Line2D([], [], color='green', marker='+', linestyle='None',
+                                     label='Medium shear angle ' + r'($90\degree < \theta < 135\degree $)')
         plt.legend(handles=[blue_cross, red_cross, green_cross], loc=2)
 
         plt.xscale('log')

@@ -4,8 +4,8 @@ from typing import List, Optional
 from astropy.visualization import quantity_support
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.lines as mlines
-import matplotlib.patches as mpatches
+import matplotlib.lines as m_lines
+import matplotlib.patches as m_patches
 from dateutil.relativedelta import relativedelta
 
 from data_handler.data_importer.helios_data import HeliosData
@@ -29,7 +29,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, even
         sun_distance = np.sqrt(orbiter.x ** 2 + orbiter.y ** 2 + orbiter.z ** 2)
         ax.plot(orbiter.times, sun_distance, label='Helios' + str(spacecraft) + ' orbit')
         if events is not None:
-            plot_event_info(ax, sun_distance, events, spacecraft)
+            plot_event_info(ax, orbiter, sun_distance, events, spacecraft)
 
     ax.set_title('Helios ' + str(spacecraft) + '  between ' + str(orbiter.times[0]) + ' and ' + str(orbiter.times[-1]))
 
@@ -42,7 +42,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, even
         ax.set_ylabel('Distance between spacecraft and ' + planet)
         ax.plot(orbiter_planet.times, spacecraft_planet, label=planet + '-Spacecraft distance')
         if events is not None:
-            plot_event_info(ax, spacecraft_planet, events, spacecraft)
+            plot_event_info(ax, orbiter, spacecraft_planet, events, spacecraft)
     spacecraft_legend = ax.legend(loc=4)
     plt.gca().add_artist(spacecraft_legend)
 
@@ -51,17 +51,18 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, even
             _missing = datetime(year, month, 15)
             ax.axvline(x=_missing, linewidth=10, color='blue', alpha=0.2)
 
-    black_cross = mlines.Line2D([], [], color='k', marker='+', linestyle='None', label='Reconnection event density')
-    black_dot = mlines.Line2D([], [], color='k', marker='o', linestyle='None', label='Reconnection event speed')
+    black_cross = m_lines.Line2D([], [], color='k', marker='+', linestyle='None', label='Reconnection event density')
+    black_dot = m_lines.Line2D([], [], color='k', marker='o', linestyle='None', label='Reconnection event speed')
     patches = []
     for m in range(5):
-        patches.append(mpatches.Patch(color=plt.rcParams['axes.prop_cycle'].by_key()['color'][m], label=solar_types[m]))
+        patches.append(m_patches.Patch(color=plt.rcParams['axes.prop_cycle'].by_key()['color'][m],
+                                       label=solar_types[m]))
 
     ax.legend(handles=[black_cross, black_dot] + patches, loc=1)
     ax = ax.twinx()
 
     new_stat = {}
-    stat.pop('total number of reconnections', None)
+    stat.pop('total number of reconnection events', None)
     maximum_reconnection = 0
     for key in stat.keys():
         for key_m in stat[key].keys():
@@ -69,7 +70,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, even
             if stat[key][key_m] > maximum_reconnection:
                 maximum_reconnection = stat[key][key_m]
     print('Maximum number of reconnection events during a month', maximum_reconnection)
-    ax.set_ylabel('Number of reconnections /' + str(maximum_reconnection))
+    ax.set_ylabel('Number of reconnection events /' + str(maximum_reconnection))
     datetime_keys = []
     for key in new_stat.keys():
         k = str_to_datetime(key)
@@ -78,7 +79,7 @@ def plot_hist_dist(orbiter, spacecraft, stat, planet: Optional[str] = None, even
     plt.show()
 
 
-def plot_event_info(ax, spacecraft_planet: np.ndarray, events: List[datetime], spacecraft: int,
+def plot_event_info(ax, orbiter, spacecraft_planet: np.ndarray, events: List[datetime], spacecraft: int,
                     plot_each_point: bool = False):
     args = {}
     normal_size = 10
@@ -115,7 +116,7 @@ def str_to_datetime(date: str) ->datetime:
     """
     Transforms a date string to a datetime object
     :param date: date string
-    :return:
+    :return: the date as a datetime object
     """
     months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10,
               'nov': 11, 'dec': 12}
@@ -129,7 +130,7 @@ def get_events_dates(probe: int) ->List[datetime]:
     """
     Gets all events dates for a given probe
     :param probe: 1 or 2 for Helios 1 or 2
-    :return:
+    :return: list of events dates
     """
     if probe == 1:
         events = get_dates_from_csv('helios1_magrec2.csv')
@@ -146,15 +147,16 @@ def get_events_dates(probe: int) ->List[datetime]:
     return events
 
 
-def classify_wind(density, speed):
+def classify_wind(density: float, speed: float) ->List[str, str]:
     """
     Classifies characteristics of the solar wind
     :param density: proton density
     :param speed: speed of the solar wind
-    :return:
+    :return: list of the density and speed types
     """
     speed_types = [0, 300, 350, 400, 500]
     density_types = [0, 6, 30, 60, 150]
+    speed_type, density_type = 'place_holder', 'place_holder'
     for n in range(len(speed_types)):
         if speed > speed_types[n]:
             speed_type = solar_types[n]
@@ -166,11 +168,11 @@ def classify_wind(density, speed):
     return [density_type, speed_type]
 
 
-def find_color_from_type(solar_wind_characteristic: str):
+def find_color_from_type(solar_wind_characteristic: str) ->str:
     """
     Links a characteristic to a color
     :param solar_wind_characteristic: characteristic to associate a color to
-    :return:
+    :return: the color associated with the given type
     """
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     color_type_number = solar_types.index(solar_wind_characteristic)
@@ -184,7 +186,8 @@ def histogram_speed_density():
         _probe = loop + 1
         _events = get_events_dates(_probe)
         for _event in _events:
-            density, speed, radius, t_perp, t_par, t_tot, b_field = find_density_and_speed(_event, _probe, distance=True)
+            density, speed, radius, t_perp, t_par, t_tot, b_field = find_density_and_speed(_event, _probe,
+                                                                                           distance=True)
             n.append(density)
             v.append(speed)
             b.append(b_field)
@@ -226,12 +229,12 @@ def find_density_and_speed(event: datetime, probe: int, distance: bool = False):
         return density, speed
 
 
-def find_event_duration(event: datetime, probe: int):
+def find_event_duration(event: datetime, probe: int) ->float:
     """
     Finds the start and end of the event by looking at changes in temperature
     :param event: time and date of reconnection
     :param probe: 1 or 2 for Helios 1 or 2
-    :return:
+    :return: duration of the event
     """
     start_analysis = event - timedelta(hours=1)
     imported_data = HeliosData(start_date=start_analysis.strftime('%d/%m/%Y'), start_hour=start_analysis.hour,
@@ -283,17 +286,17 @@ def find_data_gaps(probe, start_time: str, end_time: str) -> list:
 
 
 if __name__ == '__main__':
-    probe = 1
-    start_time = '15/12/1974'
-    end_time = '15/08/1984'
-    # probe = 2
-    # start_time = '20/01/1976'
-    # end_time = '01/10/1979'
-    planet = 'Earth'
-    dates = get_events_dates(probe)
-    orbiter = get_orbiter(probe, start_time, end_time)
-    missing = find_data_gaps(probe, start_time, end_time)
+    space_probe = 1
+    probe_start_time = '15/12/1974'
+    probe_end_time = '15/08/1984'
+    # space_probe = 2
+    # probe_start_time = '20/01/1976'
+    # probe_end_time = '01/10/1979'
+    planet_to_plot = 'Earth'
+    dates = get_events_dates(space_probe)
+    spacecraft_orbiter = get_orbiter(space_probe, probe_start_time, probe_end_time)
+    missing_dates = find_data_gaps(space_probe, probe_start_time, probe_end_time)
     stats = time_stats(dates, mode='monthly')
-    plot_hist_dist(orbiter, probe, stats, planet, dates, missing)
-    # plot_hist_dist(orbiter, probe, stats, None, dates, missing, plot_sun=True)
+    plot_hist_dist(spacecraft_orbiter, space_probe, stats, planet_to_plot, dates, missing_dates)
+    # plot_hist_dist(spacecraft_orbiter, space_probe, stats, None, dates, missing_dates, plot_sun=True)
     histogram_speed_density()

@@ -1,7 +1,6 @@
-from datetime import timedelta
-
 import numpy as np
 import pandas as pd
+from datetime import timedelta
 from heliopy.data import ulysses
 
 from data_handler.data_importer.imported_data import ImportedData
@@ -54,8 +53,8 @@ class UlyssesData(ImportedData):
                 data_b.loc[index - timedelta(minutes=interval):index + timedelta(minutes=interval), 'Bz'])
 
             iteration += 1
-        self.data = combined_data
-        return self.data
+
+        return combined_data
 
 
 if __name__ == '__main__':

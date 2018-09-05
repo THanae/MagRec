@@ -38,7 +38,7 @@ def change_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.ndarra
     return B1_changed, B2_changed, v1_changed, v2_changed
 
 
-def get_alfven_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64) -> Tuple[
+def get_alfven_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.ndarray, rho_2: np.ndarray) -> Tuple[
                      float, float]:
     """
     Finds the Alfven speed at the boundaries of the exhaust
@@ -63,7 +63,7 @@ def get_alfven_speed(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: 
     return theoretical_v2_plus, theoretical_v2_minus
 
 
-def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.float64, rho_2: np.float64,
+def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.ndarray, rho_2: np.ndarray,
                minimum_fraction: float = 0.9, maximum_fraction: float = 1.1) -> bool:
     """
     Applied the Walen test at the boundaries of the exhaust
@@ -101,7 +101,7 @@ def walen_test(B1_L: float, B2_L: float, v1_L: float, v2_L: float, rho_1: np.flo
 
 
 def plot_walen_test(event_date: datetime, probe: int, duration: int = 4, outside_interval: int = 10,
-                    inside_interval: int = 2) ->List[List[Union[str, datetime, float]]]:
+                    inside_interval: int = 2) -> List[List[Union[str, datetime, float]]]:
     """
     Plots the expected Alfven speed at the boundaries of the exhaust (work in progress)
     :param event_date: date of the reconnection event
@@ -201,10 +201,10 @@ def changes_in_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.nd
 
     left_correlation = BL_diff.loc[
                        event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values * vL_diff.loc[
-                       event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values
+                                event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values
     right_correlation = BL_diff.loc[
                         event_date + timedelta(minutes=2):event_date + timedelta(minutes=15)].values * vL_diff.loc[
-                        event_date + timedelta(minutes=2):event_date + timedelta(minutes=15)].values
+                                event_date + timedelta(minutes=2):event_date + timedelta(minutes=15)].values
 
     if np.sign(np.mean(left_correlation)) != np.sign(np.mean(right_correlation)):
         reconnection_points = reconnection_points + 1
@@ -217,7 +217,7 @@ def changes_in_b_and_v(B1: np.ndarray, B2: np.ndarray, v1: np.ndarray, v2: np.nd
 
 
 def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.ndarray, event_date: datetime, probe: int,
-             boundaries: Optional[List[datetime]]=None, save: bool = False):
+             boundaries: Optional[List[datetime]] = None, save: bool = False):
     """
     Plots the magnetic field and velocity in LMN coordinates
     :param imported_data: ImportedData
@@ -258,7 +258,7 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
 
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], minimum_fraction: float,
-                          maximum_fraction: float, plot: bool = False, mode: str = 'static') ->List[datetime]:
+                          maximum_fraction: float, plot: bool = False, mode: str = 'static') -> List[datetime]:
     """
     Checks a list of type datetime to determine whether they are reconnection events
     :param event_dates: list of possible reconnection dates
@@ -285,30 +285,26 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
             if probe == 1 or probe == 2:
                 B = get_b(imported_data, event_date, 30)
                 L, M, N = mva(B)
-                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                           event_date, 10,
-                                                                                                           2)
+                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(
+                    imported_data, event_date, 10, 2)
                 min_len = 70
             elif probe == 'ulysses':
                 B = get_b(imported_data, event_date, 60)
                 L, M, N = mva(B)
-                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                           event_date, 30,
-                                                                                                           10)
+                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(
+                    imported_data, event_date, 30, 10)
                 min_len = 5
             elif probe == 'imp_8':
                 B = get_b(imported_data, event_date, 30)
                 L, M, N = mva(B)
-                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(imported_data,
-                                                                                                           event_date, 10,
-                                                                                                           2)
+                B1, B2, v1, v2, density_1, density_2, T_par_1, T_perp_1, T_par_2, T_perp_2 = get_side_data(
+                    imported_data, event_date, 10, 2)
                 min_len = 70
             else:
-                raise NotImplementedError('The probes that have been implemented so far are Helios 1, Helios 2, Imp 8 and '
-                                          'Ulysses')
+                raise NotImplementedError(
+                    'The probes that have been implemented so far are Helios 1, Helios 2, Imp 8 and Ulysses')
             L, M, N = hybrid(L, B1, B2)
-            print('LMN:', L, M, N)
-            print(np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
+            print('LMN:', L, M, N, np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
 
             B1_changed, B2_changed, v1_changed, v2_changed = change_b_and_v(B1, B2, v1, v2, L, M, N)
             B1_L, B2_L, B1_M, B2_M = B1_changed[0], B2_changed[0], B1_changed[1], B2_changed[1]
@@ -320,7 +316,8 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
                                                 event_date, L)
 
             print(walen, bl_check, b_and_v_checks)
-            if walen and bl_check and len(imported_data.data) > min_len and b_and_v_checks:  # avoid not enough data points
+            if walen and bl_check and len(
+                    imported_data.data) > min_len and b_and_v_checks:  # avoid not enough data points
                 print('RECONNECTION ON ', str(event_date))
                 if mode == 'static':
                     events_that_passed_test.append(event_date)
@@ -354,7 +351,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
 
 
 def test_reconnection_events_from_csv(file: str = 'reconnectionshelios2testdata1.csv', probe: Union[int, str] = 2,
-                                      to_csv: bool = False, plot: bool = False, mode: str ='static'):
+                                      to_csv: bool = False, plot: bool = False, mode: str = 'static'):
     """
     Tests reconnection events from a csv file
     :param file: name of the file

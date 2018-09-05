@@ -106,7 +106,7 @@ def get_events_relations(helios1_events: List[datetime], helios2_events: List[da
 
 
 def find_directions(event1: datetime, event2: datetime, probe1: int, probe2: int, allowed_error=0.2) -> List[
-    Union[datetime, int]]:
+                    Union[datetime, int]]:
     """
     Checks whether the solar wind could have travelled between the two probes by finding the distances between
     the probes in SSE and comparing them to the distance traveled by the solar wind
@@ -137,8 +137,8 @@ def find_directions(event1: datetime, event2: datetime, probe1: int, probe2: int
     time_between_events = (event2 - event1).total_seconds()
     v = np.array(
         [np.mean(data1.data['vp_x'].values), np.mean(data1.data['vp_y'].values), np.mean(data1.data['vp_z'].values)])
-    radius = data2.data.loc[event2:event2 + timedelta(minutes=2), 'r_sun'][0] - \
-             data1.data.loc[event1:event1 + timedelta(minutes=2), 'r_sun'][0]
+    interval = timedelta(minutes=2)
+    radius = data2.data.loc[event2:event2 + interval, 'r_sun'][0] - data1.data.loc[event1:event1 + interval, 'r_sun'][0]
     x_dist = time_between_events * v[0] * 6.68459e-9
     y_dist = time_between_events * v[1] * 6.68459e-9
     z_dist = time_between_events * v[2] * 6.68459e-9
@@ -155,7 +155,7 @@ def find_directions(event1: datetime, event2: datetime, probe1: int, probe2: int
 def get_alfven(event: datetime, probe: int) -> float:
     """
     Finds the Alfven speed at the event
-    :param event: event whose Alfven speed we wznt to find
+    :param event: event whose Alfven speed we want to find
     :param probe: probe corresponding to the event
     :return: Alfven speed
     """

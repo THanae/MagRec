@@ -1,11 +1,12 @@
-from data_handler.data_importer.data_import import get_probe_data
-from data_handler.data_importer.imported_data import ImportedData
-from data_handler.orbit_with_spice import get_orbiter
 import numpy as np
 import pandas as pd
 from datetime import timedelta
 import heliopy.spice as spice
 from typing import List
+
+from data_handler.data_importer.data_import import get_probe_data
+from data_handler.data_importer.imported_data import ImportedData
+from data_handler.orbit_with_spice import get_orbiter
 
 
 def find_radii(orbiter: spice.Trajectory, radius: float = 0.4) ->pd.DataFrame:
@@ -70,7 +71,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
     """
     Gets the data as ImportedData for the given start and end dates (a lot of data is missing for Helios 1)
     :param dates: list of start and end dates when the spacecraft is at a location smaller than the given radius
-    :param probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses'
+    :param probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses' or 'imp_8'
     :return: a list of ImportedData
     """
     imported_data = []
@@ -82,7 +83,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         try:
             _data = get_probe_data(probe=probe, start_date=start_date, duration=hours)
             imported_data.append(_data)
-        except Exception:
+        except RuntimeWarning:
             print('Previous method not working, switching to "day-to-day" method')
             hard_to_get_data = []
             interval = 24
@@ -91,7 +92,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
                 try:
                     hard_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
                     hard_to_get_data.append(hard_data)
-                except Exception:
+                except RuntimeWarning:
                     potential_end_time = start+timedelta(hours=interval)
                     print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
                 start = start + timedelta(hours=interval)
