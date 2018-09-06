@@ -171,16 +171,24 @@ def find_intervals(imported_data: ImportedData, event: datetime) ->Tuple:
     :return: duration of the event, start of the event, end of the event
     """
     duration = []
+    if imported_data.probe == 1 or imported_data.probe == 2:
+        max_interval = timedelta(minutes=2)
+        default_event_duration = 2
+    elif imported_data.probe == 'ulysses':
+        max_interval = timedelta(minutes=10)
+        default_event_duration = 10
+    else:
+        raise NotImplementedError('The implemented probes are Helios 1, Helios 2 and Ulysses')
     perp_outliers = get_outliers(get_derivative(imported_data.data['Tp_perp']), standard_deviations=1.5,
                                  reference='median')
     par_outliers = get_outliers(get_derivative(imported_data.data['Tp_par']), standard_deviations=1.5,
                                 reference='median')
     for n in range(len(perp_outliers)):
         if not np.isnan(perp_outliers[n]) and not np.isnan(par_outliers[n]):
-            if event - timedelta(minutes=2) < perp_outliers.index[n] < event + timedelta(minutes=2):
+            if event - max_interval < perp_outliers.index[n] < event + max_interval:
                 duration.append(perp_outliers.index[n])
     if len(duration) <= 1:
-        event_duration = 2
+        event_duration = default_event_duration
         if len(duration) == 0:
             event_start = event - timedelta(minutes=event_duration / 2)
             event_end = event + timedelta(minutes=event_duration / 2)
@@ -270,7 +278,12 @@ def get_n_b(event: datetime, probe: int, imported_data: ImportedData, left_inter
     :param guide_field: if True, returns bm_left and bm_right
     :return: the left and right L magnetic fields and densities, and the L, M, N vectors
     """
-    L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
+    if probe == 1 or probe == 2:
+        L, M, N = hybrid_mva(event, probe, outside_interval=5, inside_interval=1, mva_interval=10)
+    elif probe == 'ulysses':
+        L, M, N = hybrid_mva(event, probe, outside_interval=30, inside_interval=10, mva_interval=60)
+    else:
+        raise NotImplementedError('The implemented probes are Helios 1, Helios 2 and Ulysses')
     b_left = (np.array([np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bx']).values),
                         np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'By']).values),
                         np.mean((imported_data.data.loc[left_interval_start:left_interval_end, 'Bz']).values)]))
@@ -369,17 +382,18 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
 
 if __name__ == '__main__':
     # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios2_magrec2.csv', 2]])
-    events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
-    events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
-        [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
-    temperature_analysis(events=events_to_analyse)
-    # shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
-    # print('small shear angle', small_shear_angle)
-    # temperature_analysis(small_shear_angle)
-    # print('big shear angle', big_shear_angle)
-    # temperature_analysis(big_shear_angle)
-    # print('medium shear angle', medium_shear_angle)
-    # temperature_analysis(medium_shear_angle)
+    # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
+    # events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
+    #     [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
+    events_to_analyse = create_events_list_from_csv_files([['ulysses_mag_rec.csv', 'ulysses']])
+    # temperature_analysis(events=events_to_analyse)
+    shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
+    print('small shear angle', small_shear_angle)
+    temperature_analysis(small_shear_angle)
+    print('big shear angle', big_shear_angle)
+    temperature_analysis(big_shear_angle)
+    print('medium shear angle', medium_shear_angle)
+    temperature_analysis(medium_shear_angle)
     # n_to_shear()
 
     # print(get_shear_angle(

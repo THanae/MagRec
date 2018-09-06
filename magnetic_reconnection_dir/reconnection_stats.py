@@ -319,22 +319,25 @@ def plot_trend(stat: dict, mode='yearly'):
 
 if __name__ == '__main__':
     # mode = 'monthly'
-    # probe = 1
-    # analysis_start_date = '15/12/1974'
-    # analysis_end_date = '15/08/1984'
-    # events1 = create_events_list_from_csv_files([['helios1_magrec2.csv', None], ['helios1mag_rec3.csv', None]])
-    # stats = time_stats(events1, mode='monthly')
-    # plot_trend(stats, mode='monthly')
 
-    # probe = 2
-    # analysis_start_date = '17/01/1976'
-    # analysis_end_date = '17/01/1979'
-    # events2 = create_events_list_from_csv_files([['helios2_magrec2.csv', None],['helios2mag_rec3.csv', None]])
-    # stats = time_stats(events2, mode='monthly')
-    # plot_trend(stats, mode='monthly')
+    analysis = [{'probe': 1, 'start_date': '15/12/1974', 'end_date': '15/08/1984',
+                 'events': create_events_list_from_csv_files([['helios1_magrec2.csv', None], ['helios1mag_rec3.csv',
+                                                                                              None]])},
+                {'probe': 2, 'start_date': '17/01/1976', 'end_date': '17/01/1979',
+                 'events': create_events_list_from_csv_files([['helios2_magrec2.csv', None], ['helios2mag_rec3.csv',
+                                                                                              None]])},
+                {'probe': 'ulysses', 'start_date': '01/01/1992', 'end_date': '12/12/2009',
+                 'events': create_events_list_from_csv_files([['ulysses_mag_rec.csv', None]])}
+                ]
 
-    analyse_all_probes(mode='radius')
+    spacecraft_to_analyse = analysis[2]
+    space_probe, events = spacecraft_to_analyse['probe'], spacecraft_to_analyse['events']
+    analysis_start_date, analysis_end_date = spacecraft_to_analyse['start_date'], spacecraft_to_analyse['end_date']
+    stats = time_stats(events, mode='yearly')
+    plot_trend(stats, mode='yearly')
 
-    # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=probe)
+    # analyse_all_probes(mode='radius')
+
+    # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=space_probe)
     # print(st.pop('total time', None))
     # plot_trend(st, mode)
