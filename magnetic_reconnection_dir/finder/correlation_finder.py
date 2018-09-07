@@ -29,12 +29,12 @@ class CorrelationFinder(BaseFinder):
         :return: list of possible magnetic reconnection events
         """
         self.find_correlations(imported_data.data)
-        datetimes_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff,
-                                            minutes=minutes)
-        datetimes_list = self.b_changes(datetimes_list, imported_data.data, minutes_b=minutes_b)
+        possible_events_times_list = self.find_outliers(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff,
+                                                        minutes=minutes)
+        possible_events_times_list = self.b_changes(possible_events_times_list, imported_data.data, minutes_b=minutes_b)
         if nt_test:
-            datetimes_list = self.n_and_t_changes(datetimes_list, imported_data.data)
-        return datetimes_list
+            possible_events_times_list = self.n_and_t_changes(possible_events_times_list, imported_data.data)
+        return possible_events_times_list
 
     def b_changes(self, datetimes_list: list, data: pd.DataFrame, minutes_b: float) -> List[datetime]:
         """
@@ -54,7 +54,7 @@ class CorrelationFinder(BaseFinder):
                                                                                       data['B{}'.format(coordinate)]):
                         filtered_datetimes_list.append(_datetime)
                         break
-            except Exception:
+            except TypeError:
                 print('Some dates were in invalid format')  # There was a nan
 
         print('B sign change filter returned: ', filtered_datetimes_list)
@@ -63,7 +63,7 @@ class CorrelationFinder(BaseFinder):
     def n_and_t_changes(self, high_changes_datetime_list: List[datetime], data: pd.DataFrame) -> List[datetime]:
         """
         Checks whether there is a change in density and temperature at a time close to the event time
-        :param high_changes_datetime_list: lsit of possible events
+        :param high_changes_datetime_list: list of possible events
         :param data: ImportedData
         :return: filtered list of events
         """
