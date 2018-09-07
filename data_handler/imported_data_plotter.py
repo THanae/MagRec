@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union, Tuple
 import matplotlib.pyplot as plt
+
+from data_handler.data_importer.ace_data import AceData
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.data_importer.ulysses_data import UlyssesData
@@ -13,7 +15,8 @@ DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('b_magnitude', 'vp_magnitude')]
 
 
-def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] = DEFAULT_PLOTTED_COLUMNS, save=False,
+def plot_imported_data(imported_data: ImportedData,
+                       columns_to_plot: List[Union[str, Tuple[str, str]]] = DEFAULT_PLOTTED_COLUMNS, save=False,
                        event_date: Optional[datetime] = None, boundaries: Optional[List[datetime]] = None,
                        scatter_points: Optional[list] = None):
     """
@@ -44,6 +47,7 @@ def plot_imported_data(imported_data: ImportedData, columns_to_plot: List[str] =
                 columns_to_plot[ax_index])
             for column_to_plot in columns_to_plot[ax_index]:
                 plot_to_ax(imported_data, ax=ax, column_name=column_to_plot, colour=colours[subplot_plot_count])
+
                 if subplot_plot_count == 0:
                     if column_to_plot != 'Tp_perp' and column_to_plot != 'Tp_par':
                         ax = ax.twinx()  # creates new ax which shares x
@@ -100,4 +104,5 @@ if __name__ == '__main__':
     # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
     # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24))
     # plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6))
-    plot_imported_data(HeliosData(start_date='29/05/1981', start_hour=12, duration=6, probe=1))
+    # plot_imported_data(HeliosData(start_date='29/05/1981', start_hour=12, duration=6, probe=1))
+    plot_imported_data(AceData(start_date='01/01/2002', start_hour=12, duration=15))
