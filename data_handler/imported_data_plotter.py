@@ -2,10 +2,8 @@ from datetime import datetime
 from typing import List, Optional, Union, Tuple
 import matplotlib.pyplot as plt
 
-from data_handler.data_importer.ace_data import AceData
-from data_handler.data_importer.helios_data import HeliosData
+from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
-from data_handler.data_importer.ulysses_data import UlyssesData
 
 DEFAULT_PLOTTED_COLUMNS = ['n_p',
                            ('Tp_perp', 'Tp_par'),
@@ -29,7 +27,7 @@ def plot_imported_data(imported_data: ImportedData,
     :param scatter_points: points to be scattered on the plots
     :return:
     """
-    fig, axs = plt.subplots(len(columns_to_plot), 1, sharex=True, figsize=(15, 8.5))
+    fig, axs = plt.subplots(len(columns_to_plot), 1, sharex='all', figsize=(15, 8.5))
     # colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     colours = ['m', 'b'] + plt.rcParams['axes.prop_cycle'].by_key()['color']
     axs[0].set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
@@ -101,8 +99,10 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
 
 
 if __name__ == '__main__':
-    # plot_imported_data(HeliosData(start_date='09/02/1980', start_hour=0, duration=3, probe=1))
-    # plot_imported_data(UlyssesData(start_date='09/02/1998', duration=24))
-    # plot_imported_data(UlyssesData(start_date='15/02/2003', start_hour=20, duration=6))
-    # plot_imported_data(HeliosData(start_date='29/05/1981', start_hour=12, duration=6, probe=1))
-    plot_imported_data(AceData(start_date='01/01/2002', start_hour=12, duration=15))
+    data = get_probe_data(probe='ace', start_date='01/01/2002', start_hour=12, duration=15)
+    # data = get_probe_data(probe=1, start_date='09/02/1980', start_hour=0, duration=3)
+    # data = get_probe_data(probe=1, start_date='29/05/1981', start_hour=12, duration=6)
+    # data = get_probe_data(probe='ulysses', start_date='09/02/1998', duration=24)
+    # data = get_probe_data(probe='ulysses', start_date='15/02/2003', start_hour=20, duration=6)
+
+    plot_imported_data(data)
