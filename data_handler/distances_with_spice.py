@@ -72,7 +72,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
     Gets the data as ImportedData for the given start and end dates (a lot of data is missing for Helios 1)
     :param dates: list of start and end dates when the spacecraft is at a location smaller than the given radius
     :param probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses' or 'imp_8'
-    :return: a list of ImportedData
+    :return: a list of ImportedData for the given dates
     """
     imported_data = []
     for n in range(len(dates)):
@@ -83,7 +83,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         try:
             _data = get_probe_data(probe=probe, start_date=start_date, duration=hours)
             imported_data.append(_data)
-        except RuntimeWarning:
+        except (RuntimeWarning, RuntimeError):
             print('Previous method not working, switching to "day-to-day" method')
             hard_to_get_data = []
             interval = 24
@@ -92,7 +92,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
                 try:
                     hard_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
                     hard_to_get_data.append(hard_data)
-                except RuntimeWarning:
+                except (RuntimeWarning, RuntimeError):
                     potential_end_time = start+timedelta(hours=interval)
                     print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
                 start = start + timedelta(hours=interval)
@@ -108,7 +108,7 @@ def get_imported_data_sets(probe, orbiter: spice.Trajectory, radius: float) ->Li
     :param probe: probe to consider
     :param orbiter: orbiter of the given probe
     :param radius: radius to consider
-    :return:
+    :return: list of ImportedData with a radius smaller than a given radius
     """
     data = find_radii(orbiter, radius=radius)
     time_indices = get_time_indices(data)
