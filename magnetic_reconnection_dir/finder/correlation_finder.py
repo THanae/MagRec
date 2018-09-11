@@ -17,7 +17,7 @@ class CorrelationFinder(BaseFinder):
         # self.outlier_intersection_limit_minutes = outlier_intersection_limit_minutes
 
     def find_magnetic_reconnections(self, imported_data: ImportedData, sigma_sum: float = 3, sigma_diff: float = 2.5,
-                                    minutes_b: float = 3, minutes: float = 10, nt_test: bool = False) -> List[datetime]:
+                                    minutes_b: float = 3, minutes: float = 3, nt_test: bool = False) -> List[datetime]:
         """
         Finds possible events by running a series of tests on the data
         :param imported_data: ImportedData
@@ -55,7 +55,7 @@ class CorrelationFinder(BaseFinder):
                         filtered_datetimes_list.append(_datetime)
                         break
             except TypeError:
-                print('Some dates were in invalid format')  # There was a nan
+                pass  # There was a nan
 
         print('B sign change filter returned: ', filtered_datetimes_list)
         return filtered_datetimes_list
