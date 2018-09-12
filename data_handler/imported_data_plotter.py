@@ -76,8 +76,10 @@ def plot_imported_data(imported_data: ImportedData,
                                                                                 imported_data.start_datetime,
                                                                                 imported_data.duration),
                         bbox_inches='tight')
+            plt.close()
         else:
-            plt.savefig('h{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
+            plt.savefig('{}_{:%Y_%m_%d_%H_%M}_all.png'.format(imported_data.probe, event_date))
+            plt.close()
 
 
 def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
@@ -99,10 +101,11 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
 
 
 if __name__ == '__main__':
-    data = get_probe_data(probe='ace', start_date='01/01/2002', start_hour=12, duration=15)
+    data = get_probe_data(probe='wind', start_date='01/01/2002', start_hour=12, duration=15)
     # data = get_probe_data(probe=1, start_date='09/02/1980', start_hour=0, duration=3)
     # data = get_probe_data(probe=1, start_date='29/05/1981', start_hour=12, duration=6)
     # data = get_probe_data(probe='ulysses', start_date='09/02/1998', duration=24)
     # data = get_probe_data(probe='ulysses', start_date='15/02/2003', start_hour=20, duration=6)
 
-    plot_imported_data(data)
+    plot_imported_data(data, columns_to_plot=['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
+                                              ('b_magnitude', 'vp_magnitude')])
