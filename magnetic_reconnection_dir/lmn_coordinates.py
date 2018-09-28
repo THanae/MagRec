@@ -254,8 +254,13 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
     imported_data.data['v_l'], imported_data.data['v_m'], imported_data.data['v_n'] = vl, vm, vn
 
     # scatter_points = plot_walen_test(event_date=event_date, probe=probe)
-    plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
-                       save=save, event_date=event_date, boundaries=boundaries)
+    if probe != 'wind':
+        plot_imported_data(imported_data, DEFAULT_PLOTTED_COLUMNS + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
+                           save=save, event_date=event_date, boundaries=boundaries)
+    else:
+        plot_imported_data(imported_data, ['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
+                           ('b_magnitude', 'vp_magnitude')] + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
+                           save=save, event_date=event_date, boundaries=boundaries)
 
 
 def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], minimum_fraction: float,
@@ -283,7 +288,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
             imported_data = get_probe_data(probe=probe, start_date=start_time.strftime('%d/%m/%Y'),
                                            start_hour=start_time.hour, duration=duration)
             imported_data.data.dropna(inplace=True)
-            if probe == 1 or probe == 2:
+            if probe == 1 or probe == 2 or probe == 'imp_8' or probe == 'ace' or probe == 'wind':
                 b = get_b(imported_data, event_date, 30)
                 L, M, N = mva(b)
                 b1, b2, v1, v2, density_1, density_2, t_par_1, t_perp_1, t_par_2, t_perp_2 = get_side_data(
@@ -295,15 +300,9 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
                 b1, b2, v1, v2, density_1, density_2, t_par_1, t_perp_1, t_par_2, t_perp_2 = get_side_data(
                     imported_data, event_date, 30, 10)
                 min_len = 5
-            elif probe == 'imp_8':
-                b = get_b(imported_data, event_date, 30)
-                L, M, N = mva(b)
-                b1, b2, v1, v2, density_1, density_2, t_par_1, t_perp_1, t_par_2, t_perp_2 = get_side_data(
-                    imported_data, event_date, 10, 2)
-                min_len = 70
             else:
                 raise NotImplementedError(
-                    'The probes that have been implemented so far are Helios 1, Helios 2, Imp 8 and Ulysses')
+                    'The probes that have been implemented so far are Helios 1, Helios 2, Imp 8, Ace, Wind and Ulysses')
             L, M, N = hybrid(L, b1, b2)
             print('LMN:', L, M, N, np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
 
@@ -379,7 +378,10 @@ if __name__ == '__main__':
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_events_from_csv('reconnections_helios_ulysses_no_nt_3_25_30.csv', probe='ulysses', plot=True)
     # test_reconnection_lmn([datetime(2000, 11, 9, 1, 30)], 'ulysses', 0.7, 1.3, plot=True)
-    test_reconnection_events_from_csv('events_probe_imp_8_no_nt_3_25_2.csv', probe='imp_8', plot=True)
+    # test_reconnection_events_from_csv('events_probe_imp_8_no_nt_3_25_2.csv', probe='imp_8', plot=True)
+
+    test_reconnection_events_from_csv('events_probe_ace_27_19_5_2006.csv', probe='ace', plot=True)
+    # test_reconnection_events_from_csv('events_probe_wind_27_19_5_1998.csv', probe='wind', plot=True)
     # test_reconnection_events_from_csv('events_probe_imp_8_no_nt_27_19_5.csv', probe='imp_8', plot=True, to_csv=True)
     # test_reconnection_lmn([datetime(1977, 11, 25, 4, 47)], probe=1, minimum_fraction=0.9, maximum_fraction=1.1,
     #                       plot=True)

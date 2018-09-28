@@ -327,7 +327,7 @@ if __name__ == '__main__':
                  'events': create_events_list_from_csv_files([['helios2_magrec2.csv', None], ['helios2mag_rec3.csv',
                                                                                               None]])},
                 {'probe': 'ulysses', 'start_date': '01/01/1992', 'end_date': '12/12/2009',
-                 'events': create_events_list_from_csv_files([['ulysses_mag_rec.csv', None]])}
+                 'events': create_events_list_from_csv_files([['mag_rec_ulysses.csv', None]])}
                 ]
 
     spacecraft_to_analyse = analysis[2]

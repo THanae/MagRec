@@ -18,7 +18,7 @@ electron_charge = 1.6e-19
 k_b = 1.38e-23
 
 
-def temperature_analysis(events: List[List[Union[datetime, int]]]) ->List[float]:
+def temperature_analysis(events: List[List[Union[datetime, int]]]) -> List[float]:
     """
     Analyses the actual and theoretical temperature increases
     :param events: list of reconnection events dates and associated probes
@@ -96,7 +96,7 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]) ->List[float]
     return slopes
 
 
-def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->List[float]:
+def plot_relations(related_lists: List[list], slope: Optional[float] = None) -> List[float]:
     """
     Plots the relations between predicted increase in temperature and actual increase in temperature
     :param related_lists: list of lists of predicted increase vs actual increase
@@ -143,7 +143,7 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) ->L
     return slopes
 
 
-def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
+def find_predicted_temperature(b_l: List, n: List) -> Tuple[float, float]:
     """
     Finds the predicted change from the Alfven speed
     :param b_l: B in the L direction
@@ -163,7 +163,7 @@ def find_predicted_temperature(b_l: List, n: List) ->Tuple[float, float]:
     return predicted_increase, alfven_speed
 
 
-def find_intervals(imported_data: ImportedData, event: datetime) ->Tuple:
+def find_intervals(imported_data: ImportedData, event: datetime) -> Tuple:
     """
     Finds the start and end of the event by looking at changes in temperature
     :param imported_data: ImportedData
@@ -171,7 +171,7 @@ def find_intervals(imported_data: ImportedData, event: datetime) ->Tuple:
     :return: duration of the event, start of the event, end of the event
     """
     duration = []
-    if imported_data.probe == 1 or imported_data.probe == 2:
+    if imported_data.probe == 1 or imported_data.probe == 2 or imported_data.probe == 'ace' or imported_data.probe == 'wind':
         max_interval = timedelta(minutes=2)
         default_event_duration = 2
     elif imported_data.probe == 'ulysses':
@@ -179,32 +179,37 @@ def find_intervals(imported_data: ImportedData, event: datetime) ->Tuple:
         default_event_duration = 10
     else:
         raise NotImplementedError('The implemented probes are Helios 1, Helios 2 and Ulysses')
-    perp_outliers = get_outliers(get_derivative(imported_data.data['Tp_perp']), standard_deviations=1.5,
-                                 reference='median')
-    par_outliers = get_outliers(get_derivative(imported_data.data['Tp_par']), standard_deviations=1.5,
-                                reference='median')
-    for n in range(len(perp_outliers)):
-        if not np.isnan(perp_outliers[n]) and not np.isnan(par_outliers[n]):
-            if event - max_interval < perp_outliers.index[n] < event + max_interval:
-                duration.append(perp_outliers.index[n])
-    if len(duration) <= 1:
-        event_duration = default_event_duration
-        if len(duration) == 0:
-            event_start = event - timedelta(minutes=event_duration / 2)
-            event_end = event + timedelta(minutes=event_duration / 2)
+    try:
+        perp_outliers = get_outliers(get_derivative(imported_data.data['Tp_perp']), standard_deviations=1.5,
+                                     reference='median')
+        par_outliers = get_outliers(get_derivative(imported_data.data['Tp_par']), standard_deviations=1.5,
+                                    reference='median')
+        for n in range(len(perp_outliers)):
+            if not np.isnan(perp_outliers[n]) and not np.isnan(par_outliers[n]):
+                if event - max_interval < perp_outliers.index[n] < event + max_interval:
+                    duration.append(perp_outliers.index[n])
+        if len(duration) <= 1:
+            event_duration = default_event_duration
+            if len(duration) == 0:
+                event_start = event - timedelta(minutes=event_duration / 2)
+                event_end = event + timedelta(minutes=event_duration / 2)
+            else:
+                event_start = duration[0] - timedelta(minutes=event_duration / 2)
+                event_end = duration[0] + timedelta(minutes=event_duration / 2)
         else:
-            event_start = duration[0] - timedelta(minutes=event_duration / 2)
-            event_end = duration[0] + timedelta(minutes=event_duration / 2)
-    else:
-        event_duration = (duration[-1] - duration[0]).total_seconds() / 60
-        event_start = duration[0]
-        event_end = duration[-1]
+            event_duration = (duration[-1] - duration[0]).total_seconds() / 60
+            event_start = duration[0]
+            event_end = duration[-1]
+    except Exception:  # ftplib.error_perm: 550 /pub/data/ace/mag/level_2_cdaweb/mfi_h0/1994: No such file or directory
+        event_duration = default_event_duration
+        event_start = event - timedelta(minutes=default_event_duration / 2)
+        event_end = event + timedelta(minutes=default_event_duration / 2)
     return event_duration, event_start, event_end
 
 
 def find_temperature(imported_data: ImportedData, b_l: List, n: List, left_interval_start: datetime,
                      left_interval_end: datetime, right_interval_start: datetime, right_interval_end: datetime) -> \
-                     Tuple[float, float, float]:
+        Tuple[float, float, float]:
     """
     Finds the inflow and exhaust temperatures in order to find delta t
     :param imported_data: ImportedData
@@ -219,28 +224,28 @@ def find_temperature(imported_data: ImportedData, b_l: List, n: List, left_inter
     perpendicular_temperature, parallel_temperature = imported_data.data['Tp_perp'], imported_data.data['Tp_par']
     total_temperature = (2 * perpendicular_temperature + parallel_temperature) / 3
 
-    def kelvin_to_ev(temperature: float) ->float:
+    def kelvin_to_ev(temperature: float) -> float:
         return temperature * k_b / electron_charge
 
-    def get_inflow_temp_2b(temperature: pd.DataFrame, _n: List, _b_l: List) ->float:  # when we have b left and b right
+    def get_inflow_temp_2b(temperature: pd.DataFrame, _n: List, _b_l: List) -> float:  # when we have b left and b right
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (_n[0] * t_left / _b_l[0] + _n[1] * t_right / _b_l[1]) / (_n[0] / _b_l[0] + _n[1] / _b_l[1])
         return inflow
 
-    def get_inflow_temp_1b(temperature: pd.DataFrame) ->np.ndarray:
+    def get_inflow_temp_1b(temperature: pd.DataFrame) -> np.ndarray:
         t_left = np.mean((temperature.loc[left_interval_start:left_interval_end]).values)
         t_right = np.mean((temperature.loc[right_interval_start:right_interval_end]).values)
         inflow = (t_left + t_right) / 2
         return inflow
 
-    def get_t_exhaust(temperature: pd.DataFrame) ->float:
+    def get_t_exhaust(temperature: pd.DataFrame) -> float:
         density_inside = imported_data.data.loc[left_interval_end:right_interval_start, 'n_p'].values
         n_t_inside = (temperature.loc[left_interval_end:right_interval_start]).values * density_inside
         t_exhaust = np.percentile(n_t_inside, 90) / np.percentile(density_inside, 90)
         return t_exhaust
 
-    def get_delta_t(temperature: pd.DataFrame, t_inflow: float) ->float:
+    def get_delta_t(temperature: pd.DataFrame, t_inflow: float) -> float:
         t_exhaust = np.percentile((temperature.loc[left_interval_end:right_interval_start]).values, 90)
         # t_exhaust = get_t_exhaust(temperature)
         print(t_exhaust, np.max((temperature.loc[left_interval_end:right_interval_start]).values))
@@ -336,15 +341,18 @@ def n_to_shear():
 
 
 def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
-                    List[np.ndarray], List[list], List[list], List[list]]:
+    List[np.ndarray], List[list], List[list], List[list]]:
     """
     Finds the shear angle of events
     :param events_list: list of events to be analysed
     :return: shear angles, and lists of events with low, medium and high shear angles
     """
     shear, small_shear, big_shear, medium_shear = [], [], [], []
+    probe_for_title = []
     for event, probe in events_list:
         print(event)
+        if probe not in probe_for_title:
+            probe_for_title.append(probe)
         start = event - timedelta(hours=1)
         imported_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
                                        duration=2)
@@ -373,10 +381,19 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
         else:
             medium_shear.append([event, probe])
     print('shear', shear)
-    # plt.hist(shear, bins=10, width=10)
-    # plt.xlabel('Shear angle in degrees')
-    # plt.ylabel('Frequency')
-    # plt.show()
+    plt.hist(shear, bins=10, width=10)
+    plt.xlabel('Shear angle in degrees')
+    plt.ylabel('Frequency')
+    title_for_probe = ''
+    for loop in range(len(probe_for_title)):
+        if len(probe_for_title) == 1 or loop == len(probe_for_title):
+            comma = ''
+        else:
+            comma = ','
+        title_for_probe = title_for_probe + str(probe_for_title[loop]) + comma
+
+    plt.title('Shear angle analysis for probes' + title_for_probe)
+    plt.show()
     return shear, small_shear, big_shear, medium_shear
 
 
@@ -385,15 +402,19 @@ if __name__ == '__main__':
     # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     # events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
     #     [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
-    events_to_analyse = create_events_list_from_csv_files([['ulysses_mag_rec.csv', 'ulysses']])
+    events_to_analyse = create_events_list_from_csv_files([['mag_rec_ulysses.csv', 'ulysses']])
+    events_to_analyse += create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
+    events_to_analyse += create_events_list_from_csv_files([['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
+    events_to_analyse += create_events_list_from_csv_files([['mag_rec_ace.csv', 'ace']])
+    events_to_analyse += create_events_list_from_csv_files([['mag_rec_wind.csv', 'wind']])
     # temperature_analysis(events=events_to_analyse)
     shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
-    print('small shear angle', small_shear_angle)
-    temperature_analysis(small_shear_angle)
-    print('big shear angle', big_shear_angle)
-    temperature_analysis(big_shear_angle)
-    print('medium shear angle', medium_shear_angle)
-    temperature_analysis(medium_shear_angle)
+    # print('small shear angle', small_shear_angle)
+    # temperature_analysis(small_shear_angle)
+    # print('big shear angle', big_shear_angle)
+    # temperature_analysis(big_shear_angle)
+    # print('medium shear angle', medium_shear_angle)
+    # temperature_analysis(medium_shear_angle)
     # n_to_shear()
 
     # print(get_shear_angle(

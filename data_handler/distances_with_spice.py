@@ -83,7 +83,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
         try:
             _data = get_probe_data(probe=probe, start_date=start_date, duration=hours)
             imported_data.append(_data)
-        except (RuntimeWarning, RuntimeError):
+        except Exception:
             print('Previous method not working, switching to "day-to-day" method')
             hard_to_get_data = []
             interval = 24
@@ -92,7 +92,7 @@ def get_data(dates: list, probe: int = 2) -> List[ImportedData]:
                 try:
                     hard_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), duration=interval)
                     hard_to_get_data.append(hard_data)
-                except (RuntimeWarning, RuntimeError):
+                except Exception:
                     potential_end_time = start+timedelta(hours=interval)
                     print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
                 start = start + timedelta(hours=interval)

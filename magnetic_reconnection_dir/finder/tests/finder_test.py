@@ -129,7 +129,7 @@ def plot_csv(csv_file_name: str, interval: int = 6):
 def reconnection_detector_with_finder(probe: Union[int, str], parameters: dict, start_time: str, end_time: str,
                                       radius: float) -> List[list]:
     """
-    :param probe: 1 or 2 for Helios 1 or 2
+    :param probe: 1 or 2 for Helios 1 or 2, imp_8, ulysses, wind or ace
     :param parameters: dictionary of parameters for the finder
     :param start_time: start time of the analysis
     :param end_time:  end time of the analysis
@@ -169,7 +169,7 @@ def get_possible_reconnection_events(probe: Union[int, str], parameters: dict, s
                                      end_time: str = '21/12/1975', radius: float = 1, to_csv: bool = False,
                                      data_split: Optional[str] = None) -> List[list]:
     """
-    :param probe: 1 or 2 for Helios 1 or 2
+    :param probe: 1 or 2 for Helios 1 or 2, imp_8, ulysses, wind or ace
     :param parameters: dictionary of parameters for the finder
     :param start_time: time when the search starts
     :param end_time: time when the search ends
@@ -201,10 +201,10 @@ def get_possible_reconnection_events(probe: Union[int, str], parameters: dict, s
     print(start_time, end_time, 'reconnection number: ', str(len(all_reconnection_events)))
     print(all_reconnection_events)
     if to_csv:
-        sigma_sum, sigma_dif, minutes_b = parameters['sigma_sum'], parameters['sigma_dif'], parameters['minutes_b']
+        sigma_sum, sigma_dif, minutes_b = parameters['sigma_sum'], parameters['sigma_diff'], parameters['minutes_b']
         sigma_sum, sigma_dif, minutes_b = to_int_str(sigma_sum), to_int_str(sigma_dif), to_int_str(minutes_b)
         send_reconnection_events_to_csv(all_reconnection_events, 'events_probe_' + str(
-            probe) + '_' + sigma_sum + '_' + sigma_dif + '_' + minutes_b + '.csv')
+            probe) + '_' + sigma_sum + '_' + sigma_dif + '_' + minutes_b + '_2010.csv')
 
     return all_reconnection_events
 
@@ -218,8 +218,8 @@ def to_int_str(param):
 
 if __name__ == '__main__':
     # test_finder_with_known_events(CorrelationFinder())
-    # imported_data = HeliosData(start_date='23/04/1977', start_hour=0, duration=6, probe=2)
-    # test_finder_with_unknown_events(CorrelationFinder(), imported_data)
+    # imported_data = HeliosData(start_date='23/04/1977', start_hour=0, duration=123, probe=2)
+    # test_finder_with_unknown_events(CorrelationFinder(), imported_data,  [2.7, 1.9, 5])
 
     helios = 1
     # helios = 2
@@ -243,8 +243,11 @@ if __name__ == '__main__':
     #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
     #                            data_split='yearly')
 
-    get_possible_reconnection_events(probe='imp_8', parameters=parameters_imp, start_time='01/01/1974',
-                                     end_time='31/12/2000', radius=1, to_csv=True)
+    # get_possible_reconnection_events(probe='imp_8', parameters=parameters_helios, start_time='01/01/1974',
+    #                                  end_time='31/12/2000', radius=1, to_csv=True)
+
+    # get_possible_reconnection_events(probe='imp_8', parameters=parameters_imp, start_time='01/01/1974',
+    #                                  end_time='31/12/2000', radius=1, to_csv=True)
     # get_possible_reconnection_events(probe='ulysses',
     #                                  parameters={'sigma_sum': 1.5, 'sigma_diff': 1, 'minutes_b': 15, 'minutes': 20},
     #                                  start_time='09/02/1998', end_time='10/02/1998', radius=10, to_csv=False)
@@ -252,8 +255,18 @@ if __name__ == '__main__':
     #                                  parameters={'sigma_sum': 2, 'sigma_diff': 2.5, 'minutes_b': 15, 'minutes': 20},
     #                                  start_time='01/02/1992', end_time='01/01/2000', radius=10, to_csv=True)
 
-    # get_possible_reconnection_events(probe='ulysses', parameters=parameters_uly, start_time='01/02/1992',
-    #                                  end_time='11/02/2009', radius=10, to_csv=True, data_split='yearly')
+    # get_possible_reconnection_events(probe='ulysses',
+    #                                  parameters={'sigma_sum': 2.5, 'sigma_diff': 3, 'minutes_b': 20, 'minutes': 30},
+    #                                  start_time='01/02/1992', end_time='11/02/2009', radius=10, to_csv=True)
+
+    # get_possible_reconnection_events(probe='ace', parameters=parameters_helios, start_time='03/04/1998',
+    #                                  end_time='25/08/2018', radius=10, to_csv=True)
+
+    get_possible_reconnection_events(probe='ace', parameters=parameters_helios,
+                                     start_time='01/01/2010', end_time='01/01/2011', radius=10, to_csv=True)
+
+    # get_possible_reconnection_events(probe='wind', parameters=parameters_helios,
+    #                                  start_time='01/01/2007', end_time='01/01/2008', radius=10, to_csv=True)
 
     # for no temperature and density check
     # [0.6415029025857748, [2.6218234455767924, 3.095027734156329, 7.2593589782476995,

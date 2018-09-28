@@ -49,8 +49,12 @@ def get_side_data(imported_data: ImportedData, event_date: datetime, outside_int
     v1, v2 = np.array([v_x_1, v_y_1, v_z_1]), np.array([v_x_2, v_y_2, v_z_2])
 
     density_1, density_2 = np.mean(data_1['n_p'].values), np.mean(data_2['n_p'].values)
-    t_par_1, t_perp_1 = np.mean(data_1['Tp_par'].values), np.mean(data_1['Tp_perp'].values)
-    t_par_2, t_perp_2 = np.mean(data_2['Tp_par'].values), np.mean(data_2['Tp_perp'].values)
+    if imported_data.probe == 'wind':
+        t_par_1, t_perp_1 = np.array([0]), np.array([0])
+        t_par_2, t_perp_2 = np.array([0]), np.array([0])
+    else:
+        t_par_1, t_perp_1 = np.mean(data_1['Tp_par'].values), np.mean(data_1['Tp_perp'].values)
+        t_par_2, t_perp_2 = np.mean(data_2['Tp_par'].values), np.mean(data_2['Tp_perp'].values)
 
     return b1, b2, v1, v2, density_1, density_2, t_par_1, t_perp_1, t_par_2, t_perp_2
 
@@ -61,15 +65,15 @@ def mva(b: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     :param b: field around interval that will be considered
     :return: the L, M, and N vectors
     """
-    M_b = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+    magnetic_matrix = np.matrix([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
     for n in range(3):
         bn = np.array([b[n] for b in b])
         for m in range(3):
             bm = np.array([b[m] for b in b])
 
-            M_b[n, m] = np.mean(bn * bm) - np.mean(bn) * np.mean(bm)
+            magnetic_matrix[n, m] = np.mean(bn * bm) - np.mean(bn) * np.mean(bm)
 
-    w, v = la.eig(M_b)
+    w, v = la.eig(magnetic_matrix)
     w_max = np.argmax(w)  # maximum value gives L
     w_min = np.argmin(w)  # minimum eigenvalue gives N
     w_intermediate = np.min(np.delete([0, 1, 2], [w_min, w_max]))
@@ -83,17 +87,17 @@ def mva(b: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return L, M, N
 
 
-def hybrid(_L: np.ndarray, b1: np.ndarray, b2: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def hybrid(_l: np.ndarray, b1: np.ndarray, b2: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the other components of the new coordinates system, useful if eigenvalues not well resolved
-    :param _L: L vector found with mva
+    :param _l: L vector found with mva
     :param b1: mean magnetic field vector from inflow region 1
     :param b2: mean magnetic field vector from inflow region 2
     :return: L, M, N vectors
     """
     cross_of_b = np.cross(b1, b2)
     N = cross_of_b / np.sqrt(cross_of_b[0] ** 2 + cross_of_b[1] ** 2 + cross_of_b[2] ** 2)  # normalised vector
-    cross_n_l = np.cross(N, _L)
+    cross_n_l = np.cross(N, _l)
     M = cross_n_l / np.sqrt(cross_n_l[0] ** 2 + cross_n_l[1] ** 2 + cross_n_l[2] ** 2)
     L = np.cross(M, N)
     return L, M, N

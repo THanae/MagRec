@@ -7,7 +7,7 @@ from data_handler.data_importer.imported_data import ImportedData
 
 
 class AceData(ImportedData):
-    def __init__(self, start_date: str = '01/01/2001', duration: int = 15, start_hour: int = 0, probe: str = 'ace'):
+    def __init__(self, start_date: str = '01/01/2001', duration: int = 1, start_hour: int = 0, probe: str = 'ace'):
         """
         :param start_date: string of 'DD/MM/YYYY'
         :param duration: int in hours
@@ -27,7 +27,6 @@ class AceData(ImportedData):
                                                                                    len(self.data))
 
     def get_imported_data(self):
-        # only works with imp_8 so far
         data_b = ace.mfi_h0(self.start_datetime, self.end_datetime)
         data_b = data_b.data  # data_b was previously a time series
         data_v = ace.swe_h0(self.start_datetime, self.end_datetime)
@@ -63,4 +62,4 @@ class AceData(ImportedData):
 
 if __name__ == '__main__':
     x = AceData()
-    print(x.data)
+    print(x.data.dropna())
