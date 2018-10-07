@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import List, Optional, Union, Tuple
 import matplotlib.pyplot as plt
+import matplotlib.dates as md
 
+import data_handler.utils.plotting_utils
+from data_handler.utils.plotting_utils import tex_escape
 from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 
@@ -27,7 +30,7 @@ def plot_imported_data(imported_data: ImportedData,
     :param scatter_points: points to be scattered on the plots
     :return:
     """
-    fig, axs = plt.subplots(len(columns_to_plot), 1, sharex='all', figsize=(15, 8.5))
+    fig, axs = plt.subplots(len(columns_to_plot), 1, sharex='all', figsize=(15, 15))
     # colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     colours = ['m', 'b'] + plt.rcParams['axes.prop_cycle'].by_key()['color']
     axs[0].set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
@@ -37,6 +40,7 @@ def plot_imported_data(imported_data: ImportedData,
     for ax_index in range(len(columns_to_plot)):
         subplot_plot_count = 0
         ax = axs[ax_index]
+
         if isinstance(columns_to_plot[ax_index], str):
             column_to_plot = columns_to_plot[ax_index]
             plot_to_ax(imported_data, ax=ax, column_name=column_to_plot, colour=colours[subplot_plot_count])
@@ -70,7 +74,7 @@ def plot_imported_data(imported_data: ImportedData,
     if not save:
         plt.show()
     else:
-        fig.set_size_inches((15, 10), forward=False)
+        # fig.set_size_inches((15, 10), forward=False)
         if event_date is None:
             plt.savefig('helios_{}_{:%Y_%m_%d_%H}_interval_{}_hours.png'.format(imported_data.probe,
                                                                                 imported_data.start_datetime,
@@ -93,19 +97,28 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     """
     if column_name not in imported_data.data.columns.values:
         imported_data.create_processed_column(column_name)
+
     ax.plot(imported_data.data[column_name], 'o-', markersize=2, label=column_name, color=colour)
+    x_format = md.DateFormatter('%d/%m \n %H:%M')
+    ax.xaxis.set_major_formatter(x_format)
     if column_name == 'Tp_par':
         ax.yaxis.set_label_position("right")
-    ax.set_ylabel(column_name, color=colour)
+        ax.xaxis.set_ticklabels([])
+    ax.set_ylabel(tex_escape(column_name), color=colour)
     ax.grid()
 
 
 if __name__ == '__main__':
-    data = get_probe_data(probe='wind', start_date='01/01/2002', start_hour=12, duration=15)
-    # data = get_probe_data(probe=1, start_date='09/02/1980', start_hour=0, duration=3)
+    # data = get_probe_data(probe='wind', start_date='01/01/2002', start_hour=12, duration=15)
+    data = get_probe_data(probe=1, start_date='01/12/1976', start_hour=4, duration=5)
     # data = get_probe_data(probe=1, start_date='29/05/1981', start_hour=12, duration=6)
     # data = get_probe_data(probe='ulysses', start_date='09/02/1998', duration=24)
     # data = get_probe_data(probe='ulysses', start_date='15/02/2003', start_hour=20, duration=6)
 
-    plot_imported_data(data, columns_to_plot=['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
-                                              ('b_magnitude', 'vp_magnitude')])
+    plot_imported_data(data, columns_to_plot=DEFAULT_PLOTTED_COLUMNS,
+                       boundaries=[datetime(1976, 12, 1, 5, 49), datetime(1976, 12, 1, 6, 12),
+                                   datetime(1976, 12, 1, 7, 16),
+                                   datetime(1976, 12, 1, 6, 23), datetime(1976, 12, 1, 7, 31)])
+
+    # plot_imported_data(data, columns_to_plot=['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
+    #                                           ('b_magnitude', 'vp_magnitude')])

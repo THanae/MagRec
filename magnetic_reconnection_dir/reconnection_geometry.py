@@ -5,6 +5,7 @@ import numpy as np
 from numpy.linalg import inv
 from mpl_toolkits.mplot3d import Axes3D
 
+import data_handler.utils.plotting_utils
 from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
@@ -147,10 +148,15 @@ def plot_current_sheet(event: List[np.ndarray], weird: List[np.ndarray], event_d
 
     fig = plt.figure(1)
     ax = fig.add_subplot(111, projection='3d', aspect='equal')
-    plt.title(str(event_date))
+    plt.title(str(event_date), y=1.05)
     ax.set_xlabel('$X$', rotation=150)
     ax.set_ylabel('$Y$')
     ax.set_zlabel('$Z$', rotation=60)
+
+    # plt.locator_params(nbins=3)
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.zaxis.set_ticklabels([])
 
     normal_1, normal_2 = first[2], end[2]
     d = find_d_from_distance(distance, normal_2)
@@ -349,6 +355,9 @@ def plot_possible_folded_sheet(normal: List[np.ndarray], distances: List[float],
     ax.set_xlabel('$X$', rotation=150)
     ax.set_ylabel('$Y$')
     ax.set_zlabel('$Z$', rotation=60)
+    ax.xaxis.set_ticklabels([])
+    ax.yaxis.set_ticklabels([])
+    ax.zaxis.set_ticklabels([])
     xx, yy = np.meshgrid(np.arange(0, 7 * sum(distances), 7 * np.int(sum(distances)) - 1) - 3.5 * sum(distances),
                          np.arange(0, 3 * sum(distances), 3 * np.int(sum(distances)) - 1) - 1.5 * sum(distances))
     z = (-normal[0][0] * xx - normal[0][1] * yy) * 1. / normal[0][2]
@@ -380,8 +389,8 @@ if __name__ == '__main__':
     #
     # crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 5, 48), 'probe': 1,
     #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
-    crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
-                'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
+    # crossing = {'ev_date': datetime(1976, 12, 1, 6, 12), 'w_date': datetime(1976, 12, 1, 6, 23), 'probe': 1,
+    #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
     # crossing = {'ev_date': datetime(1976, 12, 1, 6, 23), 'w_date': datetime(1976, 12, 1, 7, 16), 'probe': 1,
     #             'comment': 'maybe three times crossing the same sheet? but no reconnection event :('}
     # crossing = {'ev_date': datetime(1976, 12, 1, 7, 16), 'w_date': datetime(1976, 12, 1, 7, 31), 'probe': 1,
@@ -395,8 +404,8 @@ if __name__ == '__main__':
     #             'comment': 'needs more analysis and very hard to see anything'}
     # crossing = {'ev_date': datetime(1975, 10, 31, 14, 42), 'w_date': datetime(1975, 10, 31, 14, 44), 'probe': 1,
     #             'comment': 'maybe not enough data for this one'}
-    # crossing = {'ev_date': datetime(1977, 2, 3, 5, 20), 'w_date': datetime(1977, 2, 3, 4, 27), 'probe': 1,
-    #             'comment': 'not totally parallel reconnection'}
+    crossing = {'ev_date': datetime(1977, 2, 3, 5, 20), 'w_date': datetime(1977, 2, 3, 4, 27), 'probe': 1,
+                'comment': 'not totally parallel reconnection'}
 
     # crossing = {'ev_date': datetime(1975, 3, 19, 0, 44), 'w_date': datetime(1975, 3, 19, 0, 14), 'probe': 1,
     #             'comment': 'close to sun'}
@@ -410,9 +419,9 @@ if __name__ == '__main__':
     event_lmn, weird_lmn = compare_lmn(ev_date, w_date, space_probe, 5, 1)
     print(event_lmn)
     print(weird_lmn)
-    plot_vectors_2d_3d(event_lmn, weird_lmn)
+    # plot_vectors_2d_3d(event_lmn, weird_lmn)
 
-    # plot_current_sheet(event_lmn, weird_lmn, ev_date, w_date, probe)
+    # plot_current_sheet(event_lmn, weird_lmn, ev_date, w_date, space_probe)
 
     # 06/12/1976
     # plot_possible_folded_sheet([np.array([0.39828885, 0.26623724, -0.87777202]),

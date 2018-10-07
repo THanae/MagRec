@@ -3,6 +3,7 @@ from typing import List, Union, Optional, Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import matplotlib.lines as m_lines
 from scipy.stats import linregress
 
@@ -11,6 +12,7 @@ from data_handler.data_importer.imported_data import ImportedData
 from data_handler.utils.column_processing import get_outliers, get_derivative
 from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
 from magnetic_reconnection_dir.mva_analysis import hybrid_mva
+import data_handler.utils.plotting_utils
 
 proton_mass = 1.67 * 10e-27
 mu_0 = np.pi * 4e-7
@@ -89,9 +91,9 @@ def temperature_analysis(events: List[List[Union[datetime, int]]]) -> List[float
             print('value error')
     print('satisfied test: ', satisfied_test)
 
-    slopes = plot_relations([[total_t, 'Proton temperature change versus ' + r'$mv^2$'],
-                             [par_t, 'Parallel proton temperature change versus ' + r'$mv^2$'],
-                             [perp_t, 'Perpendicular proton temperature change versus ' + r'$mv^2$'],
+    slopes = plot_relations([[total_t, 'Proton temperature change versus ' + r'$mv_A^2$'],
+                             [par_t, 'Parallel proton temperature change versus ' + r'$mv_A^2$'],
+                             [perp_t, 'Perpendicular proton temperature change versus ' + r'$mv_A^2$'],
                              [t_diff, 'Perpendicular versus parallel proton temperature changes']], 0.13)
     return slopes
 
@@ -113,7 +115,7 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) -> 
         print(np.median(np.array(b) / np.array(a)))
         slope_lin_reg, intercept, rvalue, p_value, stderr = linregress(a, b)
         slopes.append(slope_lin_reg)
-        plt.scatter(a, b, c=color, marker='+')
+        plt.scatter(a, b, c=color, marker='+', s=100)
         plt.title(related_lists[n][1])
         if slope is not None:
             plt.plot([np.min(a), np.max(a)], [slope * np.min(a), slope * np.max(a)],
@@ -126,15 +128,15 @@ def plot_relations(related_lists: List[list], slope: Optional[float] = None) -> 
             plt.xlabel(r'$\Delta T_{par}$' + ' (eV)')
             plt.ylabel(r'$\Delta T_{perp}$' + ' (eV)')
         else:
-            plt.xlabel(r'$mv^2$' + ' (eV)')
+            plt.xlabel(r'$mv_A^2$' + ' (eV)')
             plt.ylabel(r'$\Delta$' + 'T (eV)')
 
         blue_cross = m_lines.Line2D([], [], color='blue', marker='+', linestyle='None',
-                                    label='High shear angle ' + r'($\theta > 135\degree $)')
+                                    label='High shear angle ' + r'($\theta > 135^{\circ}$)')
         red_cross = m_lines.Line2D([], [], color='red', marker='+', linestyle='None',
-                                   label='Low shear angle ' + r'($\theta < 90\degree $)')
+                                   label='Low shear angle ' + r'($\theta < 90^{\circ} $)')
         green_cross = m_lines.Line2D([], [], color='green', marker='+', linestyle='None',
-                                     label='Medium shear angle ' + r'($90\degree < \theta < 135\degree $)')
+                                     label='Medium shear angle ' + r'($90^{\circ} < \theta < 135^{\circ} $)')
         plt.legend(handles=[blue_cross, red_cross, green_cross], loc=2)
 
         plt.xscale('log')
@@ -381,19 +383,19 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
         else:
             medium_shear.append([event, probe])
     print('shear', shear)
-    plt.hist(shear, bins=10, width=10)
-    plt.xlabel('Shear angle in degrees')
-    plt.ylabel('Frequency')
-    title_for_probe = ''
-    for loop in range(len(probe_for_title)):
-        if len(probe_for_title) == 1 or loop == len(probe_for_title):
-            comma = ''
-        else:
-            comma = ','
-        title_for_probe = title_for_probe + str(probe_for_title[loop]) + comma
-
-    plt.title('Shear angle analysis for probes' + title_for_probe)
-    plt.show()
+    # plt.hist(shear, bins=10, width=10)
+    # plt.xlabel('Shear angle in degrees')
+    # plt.ylabel('Frequency')
+    # title_for_probe = ''
+    # for loop in range(len(probe_for_title)):
+    #     if len(probe_for_title) == 1 or loop == len(probe_for_title)-1:
+    #         comma = ''
+    #     else:
+    #         comma = ','
+    #     title_for_probe = title_for_probe + str(probe_for_title[loop]) + comma
+    #
+    # plt.title('Shear angle analysis for probes ' + title_for_probe)
+    # plt.show()
     return shear, small_shear, big_shear, medium_shear
 
 
@@ -402,13 +404,14 @@ if __name__ == '__main__':
     # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     # events_to_analyse = events_to_analyse + create_events_list_from_csv_files(
     #     [['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
-    events_to_analyse = create_events_list_from_csv_files([['mag_rec_ulysses.csv', 'ulysses']])
-    events_to_analyse += create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
+
+    events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
     events_to_analyse += create_events_list_from_csv_files([['helios2_magrec2.csv', 2], ['helios2mag_rec3.csv', 2]])
-    events_to_analyse += create_events_list_from_csv_files([['mag_rec_ace.csv', 'ace']])
-    events_to_analyse += create_events_list_from_csv_files([['mag_rec_wind.csv', 'wind']])
-    # temperature_analysis(events=events_to_analyse)
-    shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
+    # events_to_analyse += create_events_list_from_csv_files([['mag_rec_ulysses.csv', 'ulysses']])
+    # events_to_analyse += create_events_list_from_csv_files([['mag_rec_ace.csv', 'ace']])
+    # events_to_analyse += create_events_list_from_csv_files([['mag_rec_wind.csv', 'wind']])
+    temperature_analysis(events=events_to_analyse)
+    # shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
     # print('small shear angle', small_shear_angle)
     # temperature_analysis(small_shear_angle)
     # print('big shear angle', big_shear_angle)
