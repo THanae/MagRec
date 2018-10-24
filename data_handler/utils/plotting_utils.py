@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 matplotlib.rcParams.update({'font.size': 22})
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
-matplotlib.rcParams['text.latex.unicode'] = True
+# matplotlib.rcParams['text.latex.unicode']
 
 
 def tex_escape(name: str):
