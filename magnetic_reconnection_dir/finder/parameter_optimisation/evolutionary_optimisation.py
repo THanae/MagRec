@@ -37,10 +37,10 @@ test_data = []  # try best elements on test data too to avoid over-fitting
 DEFAULT_GENES = [[1, 4], [1, 4], [3, 8], [0.5, 0.95], [1.05, 1.5]]
 
 
-def genetic_algorithm(genes_dict: dict, first_population_size: int = 10, best_samples_size: int = 3,
-                      randomly_chosen_sample_size: int = 3, number_of_descendants: int = 2,
-                      mutation_probability: float = 0.1, event_list_split: int = 30, iterations: int = 40,
-                      finder: BaseFinder = CorrelationFinder()):
+def evolution_algorithm(genes_dict: dict, first_population_size: int = 10, best_samples_size: int = 3,
+                        randomly_chosen_sample_size: int = 3, number_of_descendants: int = 2,
+                        mutation_probability: float = 0.1, event_list_split: int = 30, iterations: int = 40,
+                        finder: BaseFinder = CorrelationFinder()):
     genes_keys = list(genes_dict.keys())
     genes = [genes_dict[key] for key in genes_keys]
 
@@ -262,9 +262,10 @@ if __name__ == '__main__':
     sigma_sum = [1, 3]
     sigma_diff = [1, 3]
     minutes_b = [3, 4, 5, 6, 7, 8]
+    minutes = [3, 4, 5, 6, 7, 8]
     maximum_walen_fraction = [1.05, 1.5]
     minimum_walen_fraction = [0.5, 0.95]
     # be careful, fitness is defined to take only two lmn arguments so far
-    genes_dictionary = {'sigma sum': sigma_sum, 'sigma diff': sigma_diff, 'minutes b': minutes_b,
+    genes_dictionary = {'sigma sum': sigma_sum, 'sigma diff': sigma_diff, 'minutes b': minutes_b, minutes: 'minutes',
                         'minimum walen': minimum_walen_fraction, 'maximum walen': maximum_walen_fraction}
-    genetic_algorithm(genes_dictionary)
+    evolution_algorithm(genes_dictionary)
