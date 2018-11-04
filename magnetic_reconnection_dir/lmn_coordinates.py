@@ -1,15 +1,20 @@
+import matplotlib
 import numpy as np
 from datetime import datetime
 from datetime import timedelta
 import pandas as pd
 from typing import List, Tuple, Union, Optional
+import logging
 
 from data_handler.data_importer.data_import import get_probe_data
 from data_handler.data_importer.imported_data import ImportedData
 from data_handler.imported_data_plotter import plot_imported_data, DEFAULT_PLOTTED_COLUMNS
 from data_handler.utils.column_processing import get_derivative
 from magnetic_reconnection_dir.csv_utils import get_dates_from_csv, send_dates_to_csv
-from magnetic_reconnection_dir.mva_analysis import get_b, mva, hybrid, get_side_data
+from magnetic_reconnection_dir.mva_analysis import get_b, mva, hybrid, get_side_data, hybrid_mva
+import data_handler.utils.plotting_utils
+
+logger = logging.getLogger(__name__)
 
 mu_0 = 4e-7 * np.pi
 k = 1.38e-23
@@ -39,7 +44,7 @@ def change_b_and_v(b1: np.ndarray, b2: np.ndarray, v1: np.ndarray, v2: np.ndarra
 
 
 def get_alfven_speed(b1_L: float, b2_L: float, v1_L: float, v2_L: float, rho_1: np.ndarray, rho_2: np.ndarray) -> Tuple[
-                     float, float]:
+    float, float]:
     """
     Finds the Alfven speed at the boundaries of the exhaust
     :param b1_L: left B_L
@@ -79,7 +84,7 @@ def walen_test(b1_L: float, b2_L: float, v1_L: float, v2_L: float, rho_1: np.nda
     """
     theoretical_v2_plus, theoretical_v2_minus = get_alfven_speed(b1_L, b2_L, v1_L, v2_L, rho_1, rho_2)
 
-    print(theoretical_v2_plus, theoretical_v2_minus, v2_L)
+    logger.debug(theoretical_v2_plus, theoretical_v2_minus, v2_L)
     # the true v2 must be close to the predicted one, we will take the ones with same sign for comparison
     # if they all have the same sign, we compare to both v_plus and v_minus
     if np.sign(v2_L) == np.sign(theoretical_v2_plus) and np.sign(v2_L) == np.sign(theoretical_v2_minus):
@@ -96,7 +101,7 @@ def walen_test(b1_L: float, b2_L: float, v1_L: float, v2_L: float, rho_1: np.nda
                 theoretical_v2_minus):
             return True
     else:
-        print('wrong result')
+        logger.debug('wrong result')
     return False
 
 
@@ -122,7 +127,7 @@ def plot_walen_test(event_date: datetime, probe: int, duration: int = 4, outside
                                                                                                outside_interval,
                                                                                                inside_interval)
     L, M, N = hybrid(L, b1, b2)
-    print('LMN:', L, M, N)
+    logger.debug('LMN:', L, M, N)
 
     b1_changed, b2_changed, v1_changed, v2_changed = change_b_and_v(b1, b2, v1, v2, L, M, N)
     b1_L, b2_L, b1_M, b2_M = b1_changed[0], b2_changed[0], b1_changed[1], b2_changed[1]
@@ -170,7 +175,7 @@ def changes_in_b_and_v(b1: np.ndarray, b2: np.ndarray, v1: np.ndarray, v2: np.nd
     if np.sign(b1_L) != np.sign(b2_L):
         reconnection_points = reconnection_points + 1
     else:
-        print('sign error')
+        logger.debug('sign error')
         return False
 
     # bn is small and nearly constant
@@ -178,14 +183,14 @@ def changes_in_b_and_v(b1: np.ndarray, b2: np.ndarray, v1: np.ndarray, v2: np.nd
     if np.abs(b1_N) < 10e-15 and np.abs(b2_N) < 10e-15:
         reconnection_points = reconnection_points + 1
     else:
-        print('bn too big')
+        logger.debug('bn too big')
 
     # changes in vm and vn are small compared to changes in vl
     delta_v = np.abs(v1 - v2)
     if delta_v[0] > delta_v[1] and delta_v[0] > delta_v[2]:
         reconnection_points = reconnection_points + 1
     else:
-        print('v wrong')
+        logger.debug('v wrong')
 
     # changes in bl and vl are correlated on one side and anti-correlated on the other side
     bL, vL = [], []
@@ -201,15 +206,19 @@ def changes_in_b_and_v(b1: np.ndarray, b2: np.ndarray, v1: np.ndarray, v2: np.nd
 
     left_correlation = bL_diff.loc[
                        event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values * vL_diff.loc[
-                                event_date - timedelta(minutes=15): event_date - timedelta(minutes=2)].values
+                                                                            event_date - timedelta(
+                                                                                minutes=15): event_date - timedelta(
+                                                                                minutes=2)].values
     right_correlation = bL_diff.loc[
                         event_date + timedelta(minutes=2):event_date + timedelta(minutes=15)].values * vL_diff.loc[
-                                event_date + timedelta(minutes=2):event_date + timedelta(minutes=15)].values
+                                                                            event_date + timedelta(
+                                                                                minutes=2):event_date + timedelta(
+                                                                                minutes=15)].values
 
     if np.sign(np.mean(left_correlation)) != np.sign(np.mean(right_correlation)):
         reconnection_points = reconnection_points + 1
     else:
-        print('correlation error')
+        logger.debug('correlation error')
     if reconnection_points > 1:
         return True
     else:
@@ -259,7 +268,8 @@ def plot_lmn(imported_data: ImportedData, L: np.ndarray, M: np.ndarray, N: np.nd
                            save=save, event_date=event_date, boundaries=boundaries)
     else:
         plot_imported_data(imported_data, ['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
-                           ('b_magnitude', 'vp_magnitude')] + [('Bl', 'v_l'), ('Bm', 'v_m'), ('Bn', 'v_n')],
+                                           ('b_magnitude', 'vp_magnitude')] + [('Bl', 'v_l'), ('Bm', 'v_m'),
+                                                                               ('Bn', 'v_n')],
                            save=save, event_date=event_date, boundaries=boundaries)
 
 
@@ -280,7 +290,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
         raise NotImplementedError('This mode is not implemented.')
     duration = 4
     events_that_passed_test = []
-    known_events = get_dates_from_csv('helios2_magrec2.csv')
+    known_events = []  # get_dates_from_csv('helios2_magrec2.csv')
     rogue_events = []  # if mode == 'interactive'
     for event_date in event_dates:
         try:
@@ -304,7 +314,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
                 raise NotImplementedError(
                     'The probes that have been implemented so far are Helios 1, Helios 2, Imp 8, Ace, Wind and Ulysses')
             L, M, N = hybrid(L, b1, b2)
-            print('LMN:', L, M, N, np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
+            logger.debug('LMN:', L, M, N, np.dot(L, M), np.dot(L, N), np.dot(M, N), np.dot(np.cross(L, M), N))
 
             b1_changed, b2_changed, v1_changed, v2_changed = change_b_and_v(b1, b2, v1, v2, L, M, N)
             b1_L, b2_L, b1_M, b2_M = b1_changed[0], b2_changed[0], b1_changed[1], b2_changed[1]
@@ -315,7 +325,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
             b_and_v_checks = changes_in_b_and_v(b1_changed, b2_changed, v1_changed, v2_changed, imported_data,
                                                 event_date, L)
 
-            print(walen, bl_check, b_and_v_checks)
+            logger.debug(walen, bl_check, b_and_v_checks)
             if walen and bl_check and len(
                     imported_data.data) > min_len and b_and_v_checks:  # avoid not enough data points
                 print('RECONNECTION ON ', str(event_date))
@@ -342,7 +352,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
             else:
                 print('NO RECONNECTION ON ', str(event_date))
         except ValueError:
-            print('could not take care of mva analysis')
+            logger.debug('could not take care of mva analysis')
 
     if mode == 'interactive':
         print('rogue events: ', rogue_events)
@@ -367,20 +377,24 @@ def test_reconnection_events_from_csv(file: str = 'events_probe_imp_8_no_nt_3_25
     events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot, mode=mode)
     print('number of reconnection events: ', len(events_that_passed_test))
     if to_csv:
-        filename = file + '_lmn'
+        filename = file[:len(file) - 4] + '_lmn'
         send_dates_to_csv(filename=filename, events_list=events_that_passed_test, probe=probe)
 
 
 if __name__ == '__main__':
     # test_reconnection_events_from_csv('helios2mag_rec3.csv', 2, plot=True, mode='static')
     # test_reconnection_events_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
+    # test_reconnection_lmn([datetime(1978, 8, 26, 16, 20)], 2, 0.9, 1.1, plot=True)
+    # test_reconnection_lmn([datetime(1977, 11, 23, 9, 27)], 2, 0.9, 1.1, plot=True)
+    test_reconnection_lmn([datetime(1977, 11, 25, 4, 48)], 1, 0.9, 1.1, plot=True)
+    test_reconnection_lmn([datetime(1977, 2, 5, 18, 33)], 2, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_events_from_csv('reconnections_helios_ulysses_no_nt_3_25_30.csv', probe='ulysses', plot=True)
     # test_reconnection_lmn([datetime(2000, 11, 9, 1, 30)], 'ulysses', 0.7, 1.3, plot=True)
     # test_reconnection_events_from_csv('events_probe_imp_8_no_nt_3_25_2.csv', probe='imp_8', plot=True)
 
-    test_reconnection_events_from_csv('events_probe_ace_27_19_5_2006.csv', probe='ace', plot=True)
+    # test_reconnection_events_from_csv('events_probe_ace_27_19_5_2018.csv', probe='ace', plot=True)
     # test_reconnection_events_from_csv('events_probe_wind_27_19_5_1998.csv', probe='wind', plot=True)
     # test_reconnection_events_from_csv('events_probe_imp_8_no_nt_27_19_5.csv', probe='imp_8', plot=True, to_csv=True)
     # test_reconnection_lmn([datetime(1977, 11, 25, 4, 47)], probe=1, minimum_fraction=0.9, maximum_fraction=1.1,
