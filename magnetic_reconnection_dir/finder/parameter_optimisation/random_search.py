@@ -58,7 +58,7 @@ def parameters_from_hypersphere(parameters: dict, max_radius: float = 2) -> dict
     :param max_radius: radius of the sphere in the parameters hyperspace
     :return: new set of parameters within the sphere
     """
-    radius = 100
+    radius = max_radius + 1
     new_parameters = {}
     while radius > max_radius:
         new_parameters = {'sigma_sum': np.random.uniform(1.9, 3.1), 'sigma_diff': np.random.uniform(1.9, 3.1),
@@ -71,6 +71,7 @@ def parameters_from_hypersphere(parameters: dict, max_radius: float = 2) -> dict
 def radius_of_parameters(parameters1: dict, parameters2: dict) -> float:
     """
     Finds the distance between two sets of parameters in the parameter hyperspace
+    Moves through the parameter hyperspace by finding the best MCC possible
     :param parameters1: center set of parameters
     :param parameters2: outer set of parameters
     :return: distance between the two sets of parameters
@@ -86,8 +87,15 @@ if __name__ == '__main__':
     mcc1 = random_algorithm()
     # mcc2 = random_algorithm()
     # mcc3 = random_algorithm()
+    # TODO plot progression
 
     # best value so far
     # MCC 0.7377111135633175
     # {'sigma_sum': 2.3855388099995887, 'sigma_diff': 2.9083100667153365, 'minutes_b': 4.916354076654231,
     # 'minutes': 6.746805442993062, 'minimum walen': 0.9875196009186451, 'maximum walen': 1.1388006476154153}
+
+    # MCC 0.727392967453308 {
+    # 'sigma_sum': 2.5222794675781595, 'sigma_diff': 2.143576206512366, 'minutes_b': 2.9919360555722805,
+    # 'minutes': 2.31662854136248, 'minimum walen': 0.9828548867351294, 'maximum walen': 1.3454892957314142}
+
+
