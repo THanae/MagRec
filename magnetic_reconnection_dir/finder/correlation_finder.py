@@ -60,7 +60,7 @@ class CorrelationFinder(BaseFinder):
             except TypeError:
                 pass  # There was a nan
 
-        logger.debug('B sign change filter returned: ', filtered_datetimes_list)
+        logger.debug(f'B sign change filter returned: {filtered_datetimes_list}')
         return filtered_datetimes_list
 
     def n_and_t_changes(self, high_changes_datetime_list: List[datetime], data: pd.DataFrame) -> List[datetime]:
@@ -84,7 +84,7 @@ class CorrelationFinder(BaseFinder):
                                       reference='median')
             if (np.isfinite(n_outliers)).any() and (np.isfinite(t_outliers)).any():
                 n_and_t_datetime_list.append(_datetime)
-        logger.debug('Density and temperature changes filter returned: ', n_and_t_datetime_list)
+        logger.debug(f'Density and temperature changes filter returned: {n_and_t_datetime_list}')
         return n_and_t_datetime_list
 
     def find_correlations(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -161,7 +161,7 @@ class CorrelationFinder(BaseFinder):
             maximum_in_group = data.loc[group, 'correlation_diff_outliers']  # find max correlation_diff_outliers
             datetimes_list.append(maximum_in_group.idxmax())
 
-        logger.debug('Outliers check returned: ', datetimes_list)
+        logger.debug(f'Outliers check returned: {datetimes_list}')
         return datetimes_list
 
 
