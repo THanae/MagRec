@@ -1,0 +1,78 @@
+The purpose of this code is to detect and analyse magnetic reconnection 
+events in the solar wind. The code is divided in two parts: **data handler**, 
+which takes care of the data import and transformation, and **magnetic_reconnection_dir**, 
+which detects reconnection events, optimises parameters and analyses the data.
+
+**Data handler**
+
+_data_importer_: this part of the code obtains the probe data from 
+Heliopy and converts them to a standardised data type (ImportedData) 
+used in the rest of the code. The function used in the rest of the code 
+is `get_probe_data(probe, start_date, start_hour, duration)`. 
+
+_utils_: in utils, methods for the processing of ImportedData columns, 
+and for plotting legends standards are implemented. The magnitudes of 
+the magnetic field and velocity can be obtained, and derivatives of 
+columns, as well as outlying elements, can be returned.
+
+`orbit_with_spice`: this part of the code gets the Spice kernels of 
+probes (`get_orbiter(planet, start_date, end_date,interval`) 
+and planets (`get_planet_orbit(planet, start_date, end_date,interval`), 
+which are useful to determine the distance between an object and the Sun 
+rapidly. However, not all probes are implemented in Heliopy, so these 
+methods cannot always be used.
+
+`distance_with_spice`: this code obtains all the ImportedData of a probe 
+within a certain radius of the Sun. As mentioned before, this method 
+is not always useful as it requires an existing Spice kernel downloadable 
+from Heliopy.
+
+`imported_data_plotter`: as its name indicates, this file helps plotting 
+the data with `plot_imported_data(imported_data, columns_to_plot, **kwargs)`.
+The columns to plot are all the columns available by default.
+
+
+**Magnetic Reconnection Directory**
+
+`base_finder` and `correlation_finder`: these files define the reconnection 
+searching part of the algorithm. They use known features of reconnection, 
+and optimisation of parameters, to determine which events are reconnection 
+events and which events are not
+
+`finder_test`: this code detects reconnection events (with detection fo changes
+in correlation) with 
+`get_possible_reconnection_events(probe, parameters, start_time, 
+end_time, radius, **kwargs)`, where radius is the maximum radius 
+we are interested in. The events are returned in a csv file for more 
+analysis.
+
+`lmn_coordinates` and `mva_analysis`: additional tests are then run on the data 
+transformed to LMN coordinates, and a final set of possible events are 
+returned and plotted.
+
+`mag_rec_finder`: code returning all events for a given probe with 
+`df_magnetic_reconnection_events(probe, parameters, min_walen, 
+max_walen, start_date, end_date, **kwargs)`. Both the correlation tests 
+and the LMN tests are run with this function.
+
+_parameter_optimisation_: grid searching and random searching have been 
+implemented to determine the maximum Matthews Correlation Coefficient (MCC) 
+of a given set of parameters.
+
+`reconnection_geometry, find_same_event, reconnection_temperature, 
+distances_from_the_sun_statistics, reconnection_stats`: 
+analysis methods were implemented to visualize the geometry of current 
+sheets, find the same event detected by two probes (necessitating Spice 
+kernels), and to investigate relations between the Alfven speed anf changes 
+in temperature at the reconnection event. The code can also detetmine how long 
+the probe spent at given distances from the Sun, and the number of reconnection 
+events detected at given radii or given times.
+
+
+
+
+ 
+
+
+
+
