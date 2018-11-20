@@ -5,6 +5,7 @@ from typing import List
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
+# import data_handler.utils.plotting_utils  # plotting_utils are useful for large legends
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator, get_orbiter
 from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
@@ -14,6 +15,13 @@ months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'augus
 radii_divisions = [0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 radii_names = ['less than 0.3 au', '0.3 to 0.4 au', '0.4 to 0.5 au', '0.5 to 0.6 au', '0.6 to 0.7 au', '0.7 to 0.8 au',
                '0.8 to 0.9 au', 'above 0.9 au']
+
+
+global helios_dir
+helios_dir = r"C:\Users\Hanae\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios"
+potential_files = [files for r, d, files in os.walk(helios_dir+ str(1) + '\\' + str(1974))]
+if not potential_files:
+    raise ValueError('Please enter the location of the helios files on your computer')
 
 
 def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = True) -> dict:
@@ -43,7 +51,7 @@ def distances_stats(events_list: List[datetime], probe: int, only_stats: bool = 
                 break
     for key in times_and_radii.keys():
         if only_stats:
-            times_and_radii[key] = (str(len(times_and_radii[key])))
+            times_and_radii[key] = len(times_and_radii[key])
         else:
             times_and_radii[key].append(str(len(times_and_radii[key])))
     times_and_radii['total number of reconnection events'] = len(events_list)
@@ -99,7 +107,7 @@ def time_spent_at_distances(probe: int, start_date: str, end_date: str) -> dict:
     time_spent['total time'] = len(radii[np.all([radii < 1.2], axis=0)])
     for n in range(len(orbiter.times)):
         date = orbiter.times[n]
-        _dir = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios"
+        _dir = helios_dir
         directory = _dir + str(probe) + '\\' + str(date.year)
         fls = [files for r, d, files in os.walk(directory) if files]
         day_of_year = date.strftime('%j')
@@ -235,8 +243,7 @@ def filecount(probe: int, year: int = 0):
     :param year: year ot analyse, if within the probe mission dates, counts only the files in that year
     :return:
     """
-    directory = r"C:\Users\tilquin\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios" + str(
-        probe)
+    directory = helios_dir + str(probe)
     if probe == 1:
         if 1974 <= year <= 1984:
             directory = directory + '\\' + str(year)
@@ -260,6 +267,7 @@ def analyse_all_probes(mode: str = 'radius'):
     :return:
     """
     events1 = create_events_list_from_csv_files([['helios1_magrec2.csv', None], ['helios1mag_rec3.csv', None]])
+    events1 = [event for event in events1 if event.year < 1981 or (event.year + event.month) < 1990]  # before oct 1981
     events2 = create_events_list_from_csv_files([['helios2_magrec2.csv', None], ['helios2mag_rec3.csv', None]])
     if mode == 'radius':
         dis1, dis2 = distances_stats(events1, probe=1), distances_stats(events2, probe=2)
@@ -267,7 +275,8 @@ def analyse_all_probes(mode: str = 'radius'):
             if key in dis2.keys():
                 dis1[key] = int(dis1[key]) + int(dis2[key])
         print(dis1)
-        time_analysed1 = time_spent_at_distances(probe=1, start_date='15/12/1974', end_date='15/08/1984')
+        time_analysed1 = time_spent_at_distances(probe=1, start_date='15/12/1974', end_date='15/09/1981')
+        # time_analysed1 = time_spent_at_distances(probe=1, start_date='15/12/1974', end_date='15/08/1984')
         time_analysed2 = time_spent_at_distances(probe=2, start_date='17/01/1976', end_date='17/01/1979')
         for key in time_analysed1.keys():
             if key in time_analysed2.keys():
@@ -301,8 +310,9 @@ def plot_trend(stat: dict, mode='yearly'):
     """
     implemented_modes = ['yearly', 'monthly', 'radius']
     if mode == 'yearly' or mode == 'radius':
-        plt.bar(range(len(stat)), stat.values(), align='center')
-        plt.xticks(range(len(stat)), list(stat.keys()))
+        # stat.pop('total number of reconnection events')
+        plt.bar(range(len(stat)), list(stat.values()), align='center')
+        plt.xticks(range(len(stat)), list(stat.keys()), rotation=20)
     elif mode == 'monthly':
         new_stat = {}
         stat.pop('total number of reconnection events', None)
@@ -320,23 +330,23 @@ def plot_trend(stat: dict, mode='yearly'):
 if __name__ == '__main__':
     # mode = 'monthly'
 
-    analysis = [{'probe': 1, 'start_date': '15/12/1974', 'end_date': '15/08/1984',
-                 'events': create_events_list_from_csv_files([['helios1_magrec2.csv', None], ['helios1mag_rec3.csv',
-                                                                                              None]])},
-                {'probe': 2, 'start_date': '17/01/1976', 'end_date': '17/01/1979',
-                 'events': create_events_list_from_csv_files([['helios2_magrec2.csv', None], ['helios2mag_rec3.csv',
-                                                                                              None]])},
-                {'probe': 'ulysses', 'start_date': '01/01/1992', 'end_date': '12/12/2009',
-                 'events': create_events_list_from_csv_files([['mag_rec_ulysses.csv', None]])}
-                ]
+    # analysis = [{'probe': 1, 'start_date': '15/12/1974', 'end_date': '15/08/1984',
+    #              'events': create_events_list_from_csv_files([['helios1_magrec2.csv', None], ['helios1mag_rec3.csv',
+    #                                                                                           None]])},
+    #             {'probe': 2, 'start_date': '17/01/1976', 'end_date': '17/01/1979',
+    #              'events': create_events_list_from_csv_files([['helios2_magrec2.csv', None], ['helios2mag_rec3.csv',
+    #                                                                                           None]])},
+    #             {'probe': 'ulysses', 'start_date': '01/01/1992', 'end_date': '12/12/2009',
+    #              'events': create_events_list_from_csv_files([['mag_rec_ulysses.csv', None]])}
+    #             ]
 
-    spacecraft_to_analyse = analysis[2]
-    space_probe, events = spacecraft_to_analyse['probe'], spacecraft_to_analyse['events']
-    analysis_start_date, analysis_end_date = spacecraft_to_analyse['start_date'], spacecraft_to_analyse['end_date']
-    stats = time_stats(events, mode='yearly')
-    plot_trend(stats, mode='yearly')
+    # spacecraft_to_analyse = analysis[2]
+    # space_probe, events = spacecraft_to_analyse['probe'], spacecraft_to_analyse['events']
+    # analysis_start_date, analysis_end_date = spacecraft_to_analyse['start_date'], spacecraft_to_analyse['end_date']
+    # stats = time_stats(events, mode='yearly')
+    # plot_trend(stats, mode='yearly')
 
-    # analyse_all_probes(mode='radius')
+    analyse_all_probes(mode='radius')
 
     # st = time_spent_at_date(start_date=analysis_start_date, end_date=analysis_end_date, probe=space_probe)
     # print(st.pop('total time', None))
