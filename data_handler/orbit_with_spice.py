@@ -84,6 +84,8 @@ def get_orbiter(probe: int = 1, start_time: str = '15/12/1974', end_time: str = 
     :param interval: time interval in days between data probing
     :return: orbiter of the spacecraft
     """
+    if probe == 1 and datetime.strptime(end_time, '%d/%m/%Y') > datetime(1981, 9, 30):
+        raise NotImplementedError('the Helios 1 Spice kernel only runs until 30/09/1981 ')
     orbiter = kernel_loader(probe)
     times = orbit_times_generator(start_date=start_time, end_date=end_time, interval=interval)
     orbit_generator(orbiter, times)
