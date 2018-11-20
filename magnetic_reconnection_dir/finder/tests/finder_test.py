@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 from typing import List, Optional, Union
 import csv
 import numpy as np
+import logging
 
 from data_handler.data_importer.data_import import get_probe_data
 from data_handler.distances_with_spice import get_imported_data_sets, get_data
@@ -13,6 +14,9 @@ from magnetic_reconnection_dir.finder.base_finder import BaseFinder
 from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from magnetic_reconnection_dir.finder.tests.known_events import get_known_magnetic_reconnection_events
 from magnetic_reconnection_dir.magnetic_reconnection import MagneticReconnection
+
+
+logger = logging.getLogger(__name__)
 
 
 def test_finder_with_known_events(finder: BaseFinder):
@@ -204,7 +208,7 @@ def get_possible_reconnection_events(probe: Union[int, str], parameters: dict, s
         sigma_sum, sigma_dif, minutes_b = parameters['sigma_sum'], parameters['sigma_diff'], parameters['minutes_b']
         sigma_sum, sigma_dif, minutes_b = to_int_str(sigma_sum), to_int_str(sigma_dif), to_int_str(minutes_b)
         send_reconnection_events_to_csv(all_reconnection_events, 'events_probe_' + str(
-            probe) + '_' + sigma_sum + '_' + sigma_dif + '_' + minutes_b + '_2010.csv')
+            probe) + '_' + sigma_sum + '_' + sigma_dif + '_' + minutes_b + '.csv')
 
     return all_reconnection_events
 
@@ -217,13 +221,14 @@ def to_int_str(param):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     # test_finder_with_known_events(CorrelationFinder())
     # imported_data = HeliosData(start_date='23/04/1977', start_hour=0, duration=123, probe=2)
     # test_finder_with_unknown_events(CorrelationFinder(), imported_data,  [2.7, 1.9, 5])
 
     helios = 1
     # helios = 2
-    parameters_helios = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 5}
+    parameters_helios = {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes':5.95}
     # parameters_uly = {'sigma_sum': 2.7, 'sigma_diff': 1.9, 'minutes_b': 30, 'minutes': 30}
     parameters_uly = {'sigma_sum': 3, 'sigma_diff': 2.5, 'minutes_b': 30, 'minutes': 30}
     parameters_imp = {'sigma_sum': 3, 'sigma_diff': 2.5, 'minutes_b': 2, 'minutes': 2}
@@ -235,9 +240,10 @@ if __name__ == '__main__':
     analysis_end_date = '15/08/1984'
     radius_to_consider = 1
 
-    # get_possible_reconnection_events(probe=helios, parameters=parameters_helios, start_time=analysis_start_date,
-    #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
-    #                            data_split='yearly')
+    get_possible_reconnection_events(probe=1, parameters=parameters_helios, start_time=analysis_start_date,
+                                     end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
+                                     data_split='yearly')
+    # get_possible_reconnection_events(probe split='yearly')
 
     # get_possible_reconnection_events(probe=helios, parameters=parameters_helios, start_time=analysis_start_date,
     #                            end_time=analysis_end_date, radius=radius_to_consider, to_csv=True,
@@ -262,8 +268,8 @@ if __name__ == '__main__':
     # get_possible_reconnection_events(probe='ace', parameters=parameters_helios, start_time='03/04/1998',
     #                                  end_time='25/08/2018', radius=10, to_csv=True)
 
-    get_possible_reconnection_events(probe='ace', parameters=parameters_helios,
-                                     start_time='01/01/2010', end_time='01/01/2011', radius=10, to_csv=True)
+    # get_possible_reconnection_events(probe='ace', parameters=parameters_helios,
+    #                                  start_time='01/01/2017', end_time='01/01/2018', radius=10, to_csv=True)
 
     # get_possible_reconnection_events(probe='wind', parameters=parameters_helios,
     #                                  start_time='01/01/2007', end_time='01/01/2008', radius=10, to_csv=True)
