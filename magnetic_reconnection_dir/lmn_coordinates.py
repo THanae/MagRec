@@ -328,7 +328,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
             logger.debug(walen, bl_check, b_and_v_checks)
             if walen and bl_check and len(
                     imported_data.data) > min_len and b_and_v_checks:  # avoid not enough data points
-                print('RECONNECTION ON ', str(event_date))
+                logger.info('RECONNECTION ON ', str(event_date))
                 if mode == 'static':
                     events_that_passed_test.append(event_date)
                 elif mode == 'interactive':
@@ -350,7 +350,7 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
                     plot_lmn(imported_data, L, M, N, event_date, probe=probe, save=True)
 
             else:
-                print('NO RECONNECTION ON ', str(event_date))
+                logger.info('NO RECONNECTION ON ', str(event_date))
         except ValueError:
             logger.debug('could not take care of mva analysis')
 
@@ -361,11 +361,14 @@ def test_reconnection_lmn(event_dates: List[datetime], probe: Union[int, str], m
 
 
 def test_reconnection_events_from_csv(file: str = 'events_probe_imp_8_no_nt_3_25_2.csv', probe: Union[int, str] = 2,
+                                      min_walen: float = 0.998, max_walen: float = 1.123,
                                       to_csv: bool = False, plot: bool = False, mode: str = 'static'):
     """
     Tests reconnection events from a csv file
     :param file: name of the file
     :param probe: probe that detected the events
+    :param min_walen: minimum walen fraction
+    :param max_walen: maximum walen fraction
     :param to_csv: if True, sends the found reconnection events to a csv file if they pass the tests
     :param plot: if True, plots the events that passed tests
     :param mode: defaults to static, if interactive, asks the person if the found event is an event
@@ -373,7 +376,6 @@ def test_reconnection_events_from_csv(file: str = 'events_probe_imp_8_no_nt_3_25
     """
     event_dates = get_dates_from_csv(file)
     probe = probe
-    min_walen, max_walen = 0.7, 1.3
     events_that_passed_test = test_reconnection_lmn(event_dates, probe, min_walen, max_walen, plot=plot, mode=mode)
     print('number of reconnection events: ', len(events_that_passed_test))
     if to_csv:
@@ -382,12 +384,13 @@ def test_reconnection_events_from_csv(file: str = 'events_probe_imp_8_no_nt_3_25
 
 
 if __name__ == '__main__':
+    test_reconnection_events_from_csv('events_probe_2_22_23_64.csv', 2, plot=True, to_csv=True)
     # test_reconnection_events_from_csv('helios2mag_rec3.csv', 2, plot=True, mode='static')
     # test_reconnection_events_from_csv('helios2_magrec.csv', 2, plot=True, mode='static')
     # test_reconnection_lmn([datetime(1978, 8, 26, 16, 20)], 2, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1977, 11, 23, 9, 27)], 2, 0.9, 1.1, plot=True)
-    test_reconnection_lmn([datetime(1977, 11, 25, 4, 48)], 1, 0.9, 1.1, plot=True)
-    test_reconnection_lmn([datetime(1977, 2, 5, 18, 33)], 2, 0.9, 1.1, plot=True)
+    # test_reconnection_lmn([datetime(1977, 11, 25, 4, 48)], 1, 0.9, 1.1, plot=True)
+    # test_reconnection_lmn([datetime(1977, 2, 5, 18, 33)], 2, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1976, 12, 1, 6, 23)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_lmn([datetime(1978, 3, 3, 10, 56)], 1, 0.9, 1.1, plot=True)
     # test_reconnection_events_from_csv('reconnections_helios_ulysses_no_nt_3_25_30.csv', probe='ulysses', plot=True)
