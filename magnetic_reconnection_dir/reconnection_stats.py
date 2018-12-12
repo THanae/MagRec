@@ -1,11 +1,12 @@
 import os
 import pprint
 import numpy as np
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
-
+from scipy.stats import chi2
 # import data_handler.utils.plotting_utils  # plotting_utils are useful for large legends
+
 from data_handler.data_importer.helios_data import HeliosData
 from data_handler.orbit_with_spice import kernel_loader, orbit_times_generator, orbit_generator, get_orbiter
 from magnetic_reconnection_dir.csv_utils import create_events_list_from_csv_files
@@ -16,10 +17,9 @@ radii_divisions = [0, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 radii_names = ['less than 0.3 au', '0.3 to 0.4 au', '0.4 to 0.5 au', '0.5 to 0.6 au', '0.6 to 0.7 au', '0.7 to 0.8 au',
                '0.8 to 0.9 au', 'above 0.9 au']
 
-
 global helios_dir
 helios_dir = r"C:\Users\Hanae\heliopy\data\helios\E1_experiment\New_proton_corefit_data_2017\ascii\helios"
-potential_files = [files for r, d, files in os.walk(helios_dir+ str(1) + '\\' + str(1974))]
+potential_files = [files for r, d, files in os.walk(helios_dir + str(1) + '\\' + str(1974))]
 if not potential_files:
     raise ValueError('Please enter the location of the helios files on your computer')
 
@@ -284,12 +284,30 @@ def analyse_all_probes(mode: str = 'radius'):
         print(time_analysed1)
 
         reconnection_per_radius = {}
+
+        def confidence_interval_poisson(k, alpha=0.36):
+            down = 0.5 * chi2.ppf(alpha / 2, 2 * k) if k != 0 else 0
+            up = 0.5 * chi2.ppf(1 - alpha / 2, 2 * k + 2)
+            return down, up
+        poisson_errors = []
         for key in time_analysed1.keys():
             if key in dis1.keys():
-                reconnection_per_radius[key] = float(dis1[key]) / float(time_analysed1[key])
+                _lambda = float(dis1[key]) / float(time_analysed1[key])
+                time_t = float(time_analysed1[key])
+                reconnection_per_radius[key] = _lambda
+                lower, upper = confidence_interval_poisson(dis1[key])
+                poisson_errors.append(tuple([_lambda - lower/time_t, upper/time_t - _lambda]))
+        poisson_errors = [_ for _ in zip(*poisson_errors)]
         pprint.pprint(reconnection_per_radius)
+        fig1 = plt.figure()
+        plot_trend(reconnection_per_radius, errors=poisson_errors)
+        plt.title('Normalised rate of reconnection events ')
+        plt.ylabel('Rate per day')
+        fig2 = plt.figure()
         plot_trend(dis1)
+        fig3 = plt.figure()
         plot_trend(time_analysed1)
+        plt.show()
     elif mode == 'time':
         # not very sensible to use it as Helios 2 was working only part of the time when Helios 1 was working
         time1 = time_stats(events1)
@@ -301,7 +319,7 @@ def analyse_all_probes(mode: str = 'radius'):
         plot_trend(time1)
 
 
-def plot_trend(stat: dict, mode='yearly'):
+def plot_trend(stat: dict, mode='yearly', errors: Optional[List] = None):
     """
     Plots histograms of the obtained data sets
     :param stat: dictionary of stats that will be plotted
@@ -311,7 +329,10 @@ def plot_trend(stat: dict, mode='yearly'):
     implemented_modes = ['yearly', 'monthly', 'radius']
     if mode == 'yearly' or mode == 'radius':
         # stat.pop('total number of reconnection events')
-        plt.bar(range(len(stat)), list(stat.values()), align='center')
+        if errors is None:
+            plt.bar(range(len(stat)), list(stat.values()), align='center')
+        else:
+            plt.bar(range(len(stat)), list(stat.values()), align='center', yerr=errors)
         plt.xticks(range(len(stat)), list(stat.keys()), rotation=20)
     elif mode == 'monthly':
         new_stat = {}
@@ -324,7 +345,7 @@ def plot_trend(stat: dict, mode='yearly'):
         plt.xticks(range(len(new_stat)), list(new_stat.keys()))
     else:
         print('THIS MODE IS NOT IMPLEMENTED, CHOOSE FROM ', implemented_modes)
-    plt.show()
+    # plt.show()
 
 
 if __name__ == '__main__':
