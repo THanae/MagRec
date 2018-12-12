@@ -399,6 +399,33 @@ def get_shear_angle(events_list: List[List[Union[datetime, int]]]) -> Tuple[
     return shear, small_shear, big_shear, medium_shear
 
 
+def plot_temperature_as_function_of_dist(events: List[List[Union[datetime, int]]]):
+    temp, dist = [], []
+    for event, probe in events:
+        try:
+            start = event - timedelta(hours=2)
+            imported_data = get_probe_data(probe=probe, start_date=start.strftime('%d/%m/%Y'), start_hour=start.hour,
+                                           duration=4)
+            imported_data.data.dropna(inplace=True)
+            radius = imported_data.data.loc[event - timedelta(minutes=4):event, 'r_sun'][0]
+            duration, event_start, event_end = find_intervals(imported_data, event)
+            left_interval_end, right_interval_start = event_start, event_end
+            perpendicular_temperature, parallel_temperature = imported_data.data['Tp_perp'], imported_data.data[
+                'Tp_par']
+            total_temperature = (2 * perpendicular_temperature + parallel_temperature) / 3
+            t_exhaust = np.percentile((total_temperature.loc[left_interval_end:right_interval_start]).values, 90)
+            print(event, probe, t_exhaust)
+            dist.append(radius)
+            temp.append(t_exhaust)
+        except ValueError:
+            print('Value error')
+    plt.plot(dist, temp, '.')
+    plt.title('Exhaust temperature against distance from the sun')
+    plt.xlabel('Distance from the sun [AU]')
+    plt.ylabel('Exhaust temperature [K]')
+    plt.show()
+
+
 if __name__ == '__main__':
     # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios2_magrec2.csv', 2]])
     # events_to_analyse = create_events_list_from_csv_files([['helios1_magrec2.csv', 1], ['helios1mag_rec3.csv', 1]])
@@ -410,7 +437,7 @@ if __name__ == '__main__':
     # events_to_analyse += create_events_list_from_csv_files([['mag_rec_ulysses.csv', 'ulysses']])
     # events_to_analyse += create_events_list_from_csv_files([['mag_rec_ace.csv', 'ace']])
     # events_to_analyse += create_events_list_from_csv_files([['mag_rec_wind.csv', 'wind']])
-    temperature_analysis(events=events_to_analyse)
+    # temperature_analysis(events=events_to_analyse)
     # shear_angle, small_shear_angle, big_shear_angle, medium_shear_angle = get_shear_angle(events_to_analyse)
     # print('small shear angle', small_shear_angle)
     # temperature_analysis(small_shear_angle)
@@ -426,3 +453,4 @@ if __name__ == '__main__':
     # temperature_analysis(events=[[datetime(1976, 12, 1, 5, 48), 1], [datetime(1976, 12, 1, 6, 12), 1],
     #                              [datetime(1976, 12, 1, 6, 23), 1],
     #      [datetime(1976, 12, 1, 7, 16), 1], [datetime(1976, 12, 1, 7, 31), 1]])
+    plot_temperature_as_function_of_dist(events_to_analyse)
