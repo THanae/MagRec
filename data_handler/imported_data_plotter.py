@@ -33,13 +33,24 @@ def plot_imported_data(imported_data: ImportedData,
     fig, axs = plt.subplots(len(columns_to_plot), 1, sharex='all', figsize=(15, 15))
     # colours = plt.rcParams['axes.prop_cycle'].by_key()['color']
     colours = ['m', 'b'] + plt.rcParams['axes.prop_cycle'].by_key()['color']
-    axs[0].set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
-        imported_data.start_datetime.strftime('%d/%m/%Y')) + ' and ' + str(
-        imported_data.end_datetime.strftime('%d/%m/%Y')) + ' at ' + str(
-        imported_data.data['r_sun'].values[0]) + ' astronomical units')
+    if len(columns_to_plot) == 1:
+        axs.set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
+            imported_data.start_datetime.strftime('%d/%m/%Y')) + ' and ' + str(
+            imported_data.end_datetime.strftime('%d/%m/%Y')) + ' at ' + str(
+            imported_data.data['r_sun'].values[0]) + ' astronomical units')
+    else:
+
+        axs[0].set_title('Probe ' + str(imported_data.probe) + ' between ' + str(
+            imported_data.start_datetime.strftime('%d/%m/%Y')) + ' and ' + str(
+            imported_data.end_datetime.strftime('%d/%m/%Y')) + ' at ' + str(
+            imported_data.data['r_sun'].values[0]) + ' astronomical units')
+    imported_data.data.dropna(inplace=True)
     for ax_index in range(len(columns_to_plot)):
         subplot_plot_count = 0
-        ax = axs[ax_index]
+        if len(columns_to_plot) == 1:
+            ax = axs
+        else:
+            ax = axs[ax_index]
 
         if isinstance(columns_to_plot[ax_index], str):
             column_to_plot = columns_to_plot[ax_index]
@@ -98,7 +109,7 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
     if column_name not in imported_data.data.columns.values:
         imported_data.create_processed_column(column_name)
 
-    ax.plot(imported_data.data[column_name], 'o-', markersize=2, label=column_name, color=colour)
+    ax.plot(imported_data.data[column_name], '-o', markersize=2, label=column_name, color=colour)
     x_format = md.DateFormatter('%d/%m \n %H:%M')
     ax.xaxis.set_major_formatter(x_format)
     if column_name == 'Tp_par':
@@ -110,15 +121,18 @@ def plot_to_ax(imported_data: ImportedData, ax, column_name: str, colour='b'):
 
 if __name__ == '__main__':
     # data = get_probe_data(probe='wind', start_date='01/01/2002', start_hour=12, duration=15)
-    data = get_probe_data(probe=1, start_date='01/12/1976', start_hour=4, duration=5)
+    # data = get_probe_data(probe=1, start_date='01/12/1976', start_hour=4, duration=5)
+    # data = get_probe_data(probe=1, start_date='05/03/1975', start_hour=0, duration=7)
+    data = get_probe_data(probe=1, start_date='19/01/1979', start_hour=20, duration=3)
     # data = get_probe_data(probe=1, start_date='29/05/1981', start_hour=12, duration=6)
     # data = get_probe_data(probe='ulysses', start_date='09/02/1998', duration=24)
     # data = get_probe_data(probe='ulysses', start_date='15/02/2003', start_hour=20, duration=6)
 
-    plot_imported_data(data, columns_to_plot=DEFAULT_PLOTTED_COLUMNS,
-                       boundaries=[datetime(1976, 12, 1, 5, 49), datetime(1976, 12, 1, 6, 12),
-                                   datetime(1976, 12, 1, 7, 16),
-                                   datetime(1976, 12, 1, 6, 23), datetime(1976, 12, 1, 7, 31)])
+    # plot_imported_data(data, columns_to_plot=DEFAULT_PLOTTED_COLUMNS,
+    #                    boundaries=[datetime(1976, 12, 1, 5, 49), datetime(1976, 12, 1, 6, 12),
+    #                                datetime(1976, 12, 1, 7, 16),
+    #                                datetime(1976, 12, 1, 6, 23), datetime(1976, 12, 1, 7, 31)])
+    plot_imported_data(data, columns_to_plot=DEFAULT_PLOTTED_COLUMNS, boundaries=[datetime(1979, 1, 19, 21, 27)])
 
     # plot_imported_data(data, columns_to_plot=['n_p', ('Bx', 'vp_x'), ('By', 'vp_y'), ('Bz', 'vp_z'),
     #                                           ('b_magnitude', 'vp_magnitude')])
