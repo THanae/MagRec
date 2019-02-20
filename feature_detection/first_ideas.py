@@ -1,4 +1,5 @@
 from data_handler.data_importer.data_import import get_probe_data
+# from feature_detection.classification_metrics import ClassificationMetrics
 from feature_detection.training_events import all_events
 
 from datetime import datetime, timedelta
@@ -9,8 +10,67 @@ import random
 import pandas as pd
 
 
-# TODO add more training data
 random.shuffle(all_events)
+
+validation_cutoff = int(0.2 * len(all_events))
+validation_events = all_events[:validation_cutoff]
+all_events = all_events[validation_cutoff:]
+print(f"validation_cutoff {validation_cutoff}")
+val_data = []
+val_labels = []
+
+
+def save_data_to_pickle(events_tuple):
+    """
+    Saves test data to pickle file for faster recollection
+    :return:
+    """
+    for _event, _probe, _happened in events_tuple:
+        probe_data = get_probe_data(_probe, _event.strftime('%d/%m/%Y'),
+                                    start_hour=(_event - timedelta(hours=2)).hour, duration=4)
+        probe_data.create_processed_column('b_magnitude')
+        probe_data.create_processed_column('vp_magnitude')
+        new_data = probe_data.data.resample('40S').bfill()
+        new_data.fillna(method='ffill', inplace=True)
+        new_data.dropna(inplace=True)
+        new_data.to_pickle(
+            f'{_event.year}_{_event.month}_{_event.day}_{_event.hour}_{_event.minute}_{_event.second}_{_probe}.pkl')
+
+
+save_data_to_pickle(validation_events)
+save_data_to_pickle(all_events)
+
+for _event, _probe, _number_of_events in validation_events:
+    new_data = pd.read_pickle(
+        f'{_event.year}_{_event.month}_{_event.day}_{_event.hour}_{_event.minute}_{_event.second}_{_probe}.pkl')
+    time_before = 3600  # 6*40, 7200-240
+    data = new_data[_event - timedelta(seconds=time_before): _event + timedelta(seconds=7200 - time_before)]
+    vec_b, vec_v = data['b_magnitude'], data['vp_magnitude']
+    vec_b_x, vec_v_x = data['Bx'], data['vp_x']
+    vec_b_y, vec_v_y = data['By'], data['vp_y']
+    vec_b_z, vec_v_z = data['Bz'], data['vp_z']
+    _b_v_array = [vec_b / np.max(vec_b),
+                  vec_v / np.max(vec_v),
+                  vec_b_x / np.max(vec_b_x),
+                  vec_v_x / np.max(vec_v_x),
+                  vec_b_y / np.max(vec_b_y),
+                  vec_v_y / np.max(vec_v_y),
+                  vec_b_z / np.max(vec_b_z),
+                  vec_v_z / np.max(vec_v_z)]
+    if len(_b_v_array[0]) != 178:
+        change = 178 - len(_b_v_array[0])
+        if np.sign(change) > 0:
+            for i in range(len(_b_v_array)):
+                _b_v_array[i] = list(_b_v_array[i]) + [0 for _ in range(change)]
+        else:
+            for i in range(len(_b_v_array)):
+                _b_v_array[i] = list(_b_v_array[i])[:change]
+    _b_v_array = np.array(_b_v_array).transpose((1, 0))
+    target = 1 if _number_of_events else 0
+    val_data.append(_b_v_array)
+    val_labels.append(target)
+val_data = np.array(val_data)
+val_labels = np.array(val_labels)
 
 
 def generator_data():
@@ -21,7 +81,7 @@ def generator_data():
     while True:
         data_set = []
         target_set = []
-        for loop in range(100):
+        for loop in range(150):
 
             number = np.int(np.random.uniform(0, len(all_events)))
             _event, _probe, _number_of_events = all_events[number]
@@ -174,39 +234,25 @@ test_data = test_data.transpose((0, 2, 1))
 test_labels = np.load('test_labels.npy')
 
 
-def save_data_to_pickle():
-    """
-    Saves test data to pickle file for faster recollection
-    :return:
-    """
-    for _event, _probe, _happened in all_events:
-        probe_data = get_probe_data(_probe, _event.strftime('%d/%m/%Y'),
-                                    start_hour=(_event - timedelta(hours=2)).hour, duration=4)
-        probe_data.create_processed_column('b_magnitude')
-        probe_data.create_processed_column('vp_magnitude')
-        new_data = probe_data.data.resample('40S').bfill()
-        new_data.fillna(method='ffill', inplace=True)
-        new_data.dropna(inplace=True)
-        new_data.to_pickle(
-            f'{_event.year}_{_event.month}_{_event.day}_{_event.hour}_{_event.minute}_{_event.second}_{_probe}.pkl')
-
-
 if __name__ == '__main__':
+    # save_data_to_pickle()
     model = tf.keras.Sequential()
     model.add(layers.Conv1D(128, kernel_size=24, activation='relu', input_shape=(178, 8), padding='same'))
     model.add(layers.Flatten())
     model.add(layers.Dense(48, activation='relu'))
     model.add(layers.Dropout(0.5))
-    # model.add(layers.Dense(48, activation='relu'))
     model.add(layers.Dense(1, activation='sigmoid'))
     print(model.summary())
-    model.compile(optimizer=tf.train.AdamOptimizer(learning_rate=0.001), loss='binary_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=tf.train.AdamOptimizer(learning_rate=0.001), loss='binary_crossentropy',
+                  metrics=['accuracy'])
 
     # model.fit(data, labels, epochs=200, batch_size=48, validation_data=(val_data, val_labels))
     # model.fit_generator(generator_data(), steps_per_epoch=48, epochs=200, validation_data=(val_data, val_labels))
-    model.fit_generator(generator_data(), steps_per_epoch=48, epochs=100)
+    # model.fit_generator(generator_data(), steps_per_epoch=150, epochs=200, validation_data=(val_data, val_labels),
+    #                     callbacks=[ClassificationMetrics()])
+    model.fit_generator(generator_data(), steps_per_epoch=150, epochs=200, validation_data=(val_data, val_labels))
 
-    tf.keras.models.save_model(model, 'test_model.h5')
+    tf.keras.models.save_model(model, 'test_model8.h5')
     # new_model = tf.keras.models.load_model('test_model.h5')
 
     result = model.predict(test_data, batch_size=48)
