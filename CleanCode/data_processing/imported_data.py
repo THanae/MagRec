@@ -17,7 +17,7 @@ def probe_import(start_date: str = '27/01/1976', duration: int = 15, start_hour:
         raise NameError('The program is not currently working with that probe')
 
 
-def return_class(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
+def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
     data = probe_import(start_date, duration, start_hour, probe)
     if len(data) == 0:
         raise RuntimeWarning('Created ImportedData object has retrieved no data: {}'.format(start_date))
@@ -27,6 +27,7 @@ def return_class(start_date: str = '27/01/1976', duration: int = 15, start_hour:
 
 
 if __name__ == '__main__':
-    a = return_class()
+    a = get_classed_data()
     print(a)
     print(a.data)
+    print(a.probe)
