@@ -7,6 +7,14 @@ from typing import Union
 
 
 def probe_import(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
+    """
+    Imports the data of a given probe for a given date
+    :param start_date: start time for download
+    :param duration: duration of the data to be downloaded
+    :param start_hour: hour to start at (defaults at zero)
+    :param probe: probe to use
+    :return:
+    """
     if probe == 1 or probe == 2:
         return helios_data(start_date, duration, start_hour, probe)
     elif probe == 'ulysses':
@@ -18,6 +26,14 @@ def probe_import(start_date: str = '27/01/1976', duration: int = 15, start_hour:
 
 
 def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
+    """
+    Returns the data in AllData class
+    :param start_date: start date of the data
+    :param duration: duration fo the data
+    :param start_hour: start hour of the data
+    :param probe: probe to use
+    :return:
+    """
     data = probe_import(start_date, duration, start_hour, probe)
     if len(data) == 0:
         raise RuntimeWarning('Created ImportedData object has retrieved no data: {}'.format(start_date))

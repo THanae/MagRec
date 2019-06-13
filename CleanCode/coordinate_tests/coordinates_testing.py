@@ -2,16 +2,24 @@ from typing import List
 from datetime import datetime, timedelta
 import numpy as np
 
-
-from CleanCode.coordinate_tests.coordinates_tests import magnetic_field_tests, average_magnetic_field_tests, outliers_test
+from CleanCode.coordinate_tests.coordinates_tests import magnetic_field_tests, outliers_test
 from CleanCode.coordinate_tests.coordinates_utils import find_correlations
 
 
 def find_reconnection_list_xyz(imported_data, sigma_sum: float = 3, sigma_diff: float = 2.5,
-                                    minutes_b: float = 3, minutes: float = 3) -> List[datetime]:
+                               minutes_b: float = 3, minutes: float = 3) -> List[datetime]:
+    """
+    Finds reconnection events in xyz coordinates (first part of the tests)
+    :param imported_data: data to test
+    :param sigma_sum: sigma faction used in finding the high changes in the total (summed) correlations
+    :param sigma_diff: sigma faction used in finding the high changes in the difference of the total (summed) correlations
+    :param minutes_b: number of minutes around the potential event where b will be considered
+    :param minutes: minutes during which the data will be considered for the outliers tests
+    :return:
+    """
     find_correlations(imported_data.data)
     possible_events = outliers_test(imported_data.data, sigma_sum=sigma_sum, sigma_diff=sigma_diff,
-                                                    minutes=minutes)
+                                    minutes=minutes)
     if possible_events:
         possible_events = magnetic_field_tests(possible_events, imported_data.data, minutes_b=minutes_b)
     else:
@@ -23,6 +31,7 @@ def find_reconnection_list_xyz(imported_data, sigma_sum: float = 3, sigma_diff: 
 if __name__ == '__main__':
     # TODO remove test below when sure it works
     from CleanCode.data_processing.imported_data import get_classed_data
+
 
     def get_data(dates: list, probe: int = 2):
         """
@@ -48,7 +57,7 @@ if __name__ == '__main__':
                 for loop in range(number_of_loops):
                     try:
                         hard_data = get_classed_data(probe=probe, start_date=start.strftime('%d/%m/%Y'),
-                                                   duration=interval)
+                                                     duration=interval)
                         hard_to_get_data.append(hard_data)
                     except Exception:
                         potential_end_time = start + timedelta(hours=interval)

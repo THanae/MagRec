@@ -7,6 +7,12 @@ COORDINATES = ['x', 'y', 'z']
 
 
 def get_moving_average(data_column: pd.Series, minutes: int = 10) -> pd.Series:
+    """
+    Get the average of the data around a certain point
+    :param data_column: column to average
+    :param minutes: minutes to the right and to the left that will be considered when taking the moving average
+    :return:
+    """
     moving_average = pd.Series(np.zeros_like(data_column.values), index=data_column.index)
     for index, value in data_column.iteritems():
         start_time = index - timedelta(minutes=minutes)
@@ -16,11 +22,26 @@ def get_moving_average(data_column: pd.Series, minutes: int = 10) -> pd.Series:
 
 
 def get_derivative(data_column: pd.Series) -> pd.Series:
+    """
+    Returns the derivative of the column.
+    Derivative is given as difference of two consecutive data points divided by the time between them
+    :param data_column: column to derive
+    :return:
+    """
     return data_column.diff() / data_column.index.to_series().diff().dt.total_seconds()
 
 
 def get_outliers(data_column: pd.Series, minutes: float = 10, standard_deviations: float = 2,
                  ignore_minutes_around: float = 0, reference='median') -> pd.Series:
+    """
+    Find outliers in a given column
+    :param data_column: column to analyse
+    :param minutes: minutes during which the data will be considered for the outliers tests
+    :param standard_deviations: standard deviations that will be used when comparing data points to surrounding points
+    :param ignore_minutes_around: number of minutes around potential events (to the right and to the left) to ignore
+    :param reference: reference to use in comparison (median of value to consider or 0)
+    :return:
+    """
     outliers = pd.Series(np.zeros_like(data_column.values), index=data_column.index)
 
     for index, value in data_column.iteritems():
@@ -50,6 +71,12 @@ def get_outliers(data_column: pd.Series, minutes: float = 10, standard_deviation
 
 
 def find_correlations(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Find the columns of correlations.
+    Consists in finding C, given by delta_b / std_b * delta_v / std_v, where the std are there for normalisation
+    :param data: data to use
+    :return:
+    """
     coordinate_correlation_column_names = []
 
     for coordinate in COORDINATES:

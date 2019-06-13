@@ -1,20 +1,20 @@
 from datetime import datetime, timedelta
-from typing import List, Union
+from typing import List
 import pandas as pd
 import numpy as np
 import logging
 
-from CleanCode.coordinate_tests.coordinates_utils import COORDINATES, get_derivative, get_moving_average, get_outliers
+from CleanCode.coordinate_tests.coordinates_utils import COORDINATES, get_moving_average, get_outliers
 
 logger = logging.getLogger(__name__)
 
 
-def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: float)-> List[datetime]:
+def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: float) -> List[datetime]:
     """
     Determines whether there are changes in the magnetic field sign before and after the data point
-    :param date_times_list:
+    :param date_times_list: dates to test
     :param data:
-    :param minutes_b:
+    :param minutes_b: number of minutes around the potential event where b will be considered
     :return:
     """
     approved_date_times = []
@@ -23,7 +23,8 @@ def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: f
             interval = timedelta(minutes=minutes_b)
             for coordinate in COORDINATES:
                 b = data['B{}'.format(coordinate)].loc[_time - interval:_time + interval].dropna()
-                if (b < 0).any() and (b > 0).any() and average_magnetic_field_tests(_time, data['B{}'.format(coordinate)]):
+                if (b < 0).any() and (b > 0).any() and average_magnetic_field_tests(_time,
+                                                                                    data['B{}'.format(coordinate)]):
                     approved_date_times.append(_time)
                     break
         except TypeError:
@@ -32,12 +33,13 @@ def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: f
     return approved_date_times
 
 
-def average_magnetic_field_tests(date_time, data_column: pd.DataFrame, minutes_around: int = 10) -> List[datetime]:
+def average_magnetic_field_tests(date_time: datetime, data_column: pd.DataFrame, minutes_around: int = 10) -> List[
+    datetime]:
     """
     Tests whether there are changes in the magnetic field average before and after the data point
-    :param date_time:
-    :param data_column:
-    :param minutes_around:
+    :param date_time: dates to test
+    :param data_column: column to test (one of the magnetic field column, but the coordinate is pre-set)
+    :param minutes_around: number of minutes around the event which are considered
     :return:
     """
     approved_date_times = []
@@ -57,13 +59,13 @@ def average_magnetic_field_tests(date_time, data_column: pd.DataFrame, minutes_a
 
 
 def outliers_test(data: pd.DataFrame, sigma_sum: float, sigma_diff: float, minutes: float = 10) -> List[
-                      datetime]:
+                datetime]:
     """
     Checks whether there are changes in the correlation between b and v before and after supposed event
-    :param data:
-    :param sigma_sum:
-    :param sigma_diff:
-    :param minutes:
+    :param data: data to test
+    :param sigma_sum: sigma faction used in finding the high changes in the total (summed) correlations
+    :param sigma_diff: sigma faction used in finding the high changes in the difference of the total (summed) correlations
+    :param minutes: minutes during which the data will be considered for the outliers tests
     :return:
     """
     data['correlation_sum_outliers'] = get_outliers(data['correlation_sum'], standard_deviations=sigma_sum,
@@ -71,34 +73,31 @@ def outliers_test(data: pd.DataFrame, sigma_sum: float, sigma_diff: float, minut
     data['correlation_diff_outliers'] = get_outliers(data['correlation_diff'], standard_deviations=sigma_diff,
                                                      minutes=minutes)
 
-    outlier_datetimes = []
+    outlier_date_time = []
     for index, value in data['correlation_diff_outliers'].iteritems():
         index: pd.Timestamp = index
         interval = timedelta(minutes=minutes)
         sum_outliers = data.loc[index - interval:index + interval, 'correlation_sum_outliers']
         # ensure there is a positive and a negative value in sum_outliers
         if (sum_outliers > 0).any() and (sum_outliers < 0).any():
-            outlier_datetimes.append(index.to_pydatetime())
+            outlier_date_time.append(index.to_pydatetime())
 
     n, groups = 0, 0
     grouped_outliers = []
-    while n < len(outlier_datetimes) - 1:
+    while n < len(outlier_date_time) - 1:
         grouped_outliers.append([])
-        grouped_outliers[groups].append(outlier_datetimes[n])
+        grouped_outliers[groups].append(outlier_date_time[n])
         n += 1
-        while (outlier_datetimes[n] - outlier_datetimes[n - 1]).total_seconds() < 130 and n < len(
-                outlier_datetimes) - 1:
-            grouped_outliers[groups].append(outlier_datetimes[n])
+        while (outlier_date_time[n] - outlier_date_time[n - 1]).total_seconds() < 130 and n < len(
+                outlier_date_time) - 1:
+            grouped_outliers[groups].append(outlier_date_time[n])
             n += 1
         groups = groups + 1
 
-    datetimes_list = []
+    possible_date_times = []
     for group in grouped_outliers:
         maximum_in_group = data.loc[group, 'correlation_diff_outliers']  # find max correlation_diff_outliers
-        datetimes_list.append(maximum_in_group.idxmax())
+        possible_date_times.append(maximum_in_group.idxmax())
 
-    logger.debug(f'Outliers check returned: {datetimes_list}')
-    return datetimes_list
-
-# after each one, if no then not event
-# requires columns of correlations
+    logger.debug(f'Outliers check returned: {possible_date_times}')
+    return possible_date_times
