@@ -98,7 +98,7 @@ def hybrid_mva(imported_data, event_date, outside_interval: int = 10, inside_int
     return L, M, N
 
 
-def change_coordinates_to_lmn(imported_data, L, M=None, N=None):
+def change_coordinates_to_lmn(imported_data, L, M=None, N=None) -> None:
     """
     Creates new columns for the magnetic field and the velocity in LMN coordinates
     :param imported_data: data to perform analysis on
@@ -111,7 +111,6 @@ def change_coordinates_to_lmn(imported_data, L, M=None, N=None):
     vl, vm, vn = [], [], []
     for n in range(len(imported_data.data)):
         b = np.array([imported_data.data['Bx'][n], imported_data.data['By'][n], imported_data.data['Bz'][n]])
-        # print(imported_data.data.index[n], b)
         v = np.array([imported_data.data['vp_x'][n], imported_data.data['vp_y'][n], imported_data.data['vp_z'][n]])
         if M is None and N is None:  # sometimes just L is required, then m and N are not needed
             M, N = [0, 0, 0], [0, 0, 0]
@@ -131,7 +130,3 @@ def change_coordinates_to_lmn(imported_data, L, M=None, N=None):
 
     imported_data.data['Bl'], imported_data.data['Bm'], imported_data.data['Bn'] = bl, bm, bn
     imported_data.data['v_l'], imported_data.data['v_m'], imported_data.data['v_n'] = vl, vm, vn
-
-# start_time = event_date - timedelta(hours=duration / 2)
-#     imported_data = get_probe_data(probe=probe, start_date=start_time.strftime('%d/%m/%Y'), start_hour=start_time.hour,
-#                                    duration=duration)
