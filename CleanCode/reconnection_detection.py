@@ -33,8 +33,8 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     for n in range(len(imported_data_sets)):
         imported_data = imported_data_sets[n]
         print(f'{imported_data} Duration {imported_data.duration}')
-        params = [parameters[key] for key in list(parameters.keys())]
-        reconnection_events = find_reconnection_list_xyz(imported_data, *params)
+        # params = [parameters[key] for key in list(parameters.keys())]
+        reconnection_events = find_reconnection_list_xyz(imported_data, **parameters['xyz'])
         if reconnection_events:
             for event in reconnection_events:
                 all_reconnection_events.append(event)
@@ -48,7 +48,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
         _start_time = event - timedelta(hours=duration / 2)
         imported_data = get_classed_data(probe=_probe, start_date=_start_time.strftime('%d/%m/%Y'),
                                          start_hour=_start_time.hour,duration=duration)
-        if lmn_testing(imported_data, event, 0.95, 1.123):
+        if lmn_testing(imported_data, event, **parameters['lmn']):
             lmn_approved_events.append(event)
             if to_plot:
                 plot_imported_data(imported_data, event_date=event)
@@ -70,7 +70,8 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
 if __name__ == '__main__':
     # Can be changed by user if desired
     probe = 1
-    parameters_helios = {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes': 5.95}
+    parameters_helios = {'xyz': {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes': 5.95},
+                         'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
     start_time = '13/12/1974'
     end_time = '17/12/1974'
     plot_events = False
