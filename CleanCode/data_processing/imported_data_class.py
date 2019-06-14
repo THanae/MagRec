@@ -1,6 +1,8 @@
 from typing import Union
 from datetime import datetime, timedelta
 from pandas import DataFrame
+import pandas as pd
+import numpy as np
 
 
 class AllData:
@@ -23,3 +25,26 @@ class AllData:
                                                                                    self.start_datetime,
                                                                                    self.probe,
                                                                                    len(self.data))
+
+    def create_processed_column(self, column_to_create: str):
+        if column_to_create not in SUPPORTED_COLUMNS:
+            raise Exception(
+                'Column: %s not supported. Supported columns are: %s' % (column_to_create, SUPPORTED_COLUMNS))
+        else:
+            self.data = SUPPORTED_COLUMNS[column_to_create](self.data)
+
+
+def create_vp_magnitude_column(data: pd.DataFrame)-> pd.DataFrame:
+    data['vp_magnitude'] = np.sqrt((data['vp_x']) ** 2 + (data['vp_y']) ** 2 + (data['vp_z']) ** 2)
+    return data
+
+
+def create_b_magnitude_column(data: pd.DataFrame) -> pd.DataFrame:
+    data['b_magnitude'] = np.sqrt((data['Bx']) ** 2 + (data['By']) ** 2 + (data['Bz']) ** 2)
+    return data
+
+
+SUPPORTED_COLUMNS = {
+    'vp_magnitude': create_vp_magnitude_column,
+    'b_magnitude': create_b_magnitude_column,
+}
