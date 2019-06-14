@@ -8,13 +8,13 @@ from CleanCode.lmn_tests.lmn_tests import b_largest_in_l_direction, multiple_tes
 logger = logging.getLogger(__name__)
 
 
-def lmn_testing(imported_data, event_date: datetime, minimum_fraction: float, maximum_fraction: float) -> bool:
+def lmn_testing(imported_data, event_date: datetime, minimum_walen: float, maximum_walen: float) -> bool:
     """
     Merges all the LMN tests together for an event. Returns true if the LMN tests are passed
     :param imported_data: data to test on
     :param event_date: possible event date
-    :param minimum_fraction: minimum walen fraction
-    :param maximum_fraction: maximum walen fraction
+    :param minimum_walen: minimum walen fraction
+    :param maximum_walen: maximum walen fraction
     :return:
     """
     # try:
@@ -55,7 +55,7 @@ def lmn_testing(imported_data, event_date: datetime, minimum_fraction: float, ma
         return False
     if not multiple_tests(b1, b2, v1, v2, imported_data, event_date, L):
         return False
-    if not walen_test(b1_L, b2_L, v1_L, v2_L, rho_1, rho_2, minimum_fraction, maximum_fraction):
+    if not walen_test(b1_L, b2_L, v1_L, v2_L, rho_1, rho_2, minimum_walen, maximum_walen):
         return False
     return True
     # except ValueError:
