@@ -13,7 +13,7 @@ def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: f
     """
     Determines whether there are changes in the magnetic field sign before and after the data point
     :param date_times_list: dates to test
-    :param data:
+    :param data: data to test on
     :param minutes_b: number of minutes around the potential event where b will be considered
     :return:
     """
@@ -34,7 +34,7 @@ def magnetic_field_tests(date_times_list: list, data: pd.DataFrame, minutes_b: f
 
 
 def average_magnetic_field_tests(date_time: datetime, data_column: pd.DataFrame, minutes_around: int = 10) -> List[
-    datetime]:
+                                 datetime]:
     """
     Tests whether there are changes in the magnetic field average before and after the data point
     :param date_time: dates to test
@@ -64,7 +64,7 @@ def outliers_test(data: pd.DataFrame, sigma_sum: float, sigma_diff: float, minut
     Checks whether there are changes in the correlation between b and v before and after supposed event
     :param data: data to test
     :param sigma_sum: sigma faction used in finding the high changes in the total (summed) correlations
-    :param sigma_diff: sigma faction used in finding the high changes in the difference of the total (summed) correlations
+    :param sigma_diff: sigma faction used in finding high changes in the difference of the total (summed) correlations
     :param minutes: minutes during which the data will be considered for the outliers tests
     :return:
     """

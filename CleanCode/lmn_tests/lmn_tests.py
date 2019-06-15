@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Tuple
 import logging
 
-from CleanCode.lmn_tests.change_to_lmn import change_coordinates_to_lmn, hybrid_mva, get_side_data_v_and_b
+from CleanCode.lmn_tests.change_to_lmn import change_coordinates_to_lmn
 
 logger = logging.getLogger(__name__)
 MU_0 = 4e-7 * np.pi

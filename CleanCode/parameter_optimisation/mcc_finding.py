@@ -33,7 +33,6 @@ def mcc_from_parameters(mcc_parameters: dict, event_list=events_list) -> List[Un
     """
     Returns the mcc with corresponding sigma_sum, sigma_diff and minutes_b
     :param mcc_parameters: dictionary of the parameters to be tested
-    :param finder: finder to be used in the tests
     :param event_list: list of events from which the mcc is calculated
     :return: list containing the mcc and associated parameters
     """

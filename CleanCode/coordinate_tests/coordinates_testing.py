@@ -11,7 +11,7 @@ def find_reconnection_list_xyz(imported_data, sigma_sum: float = 3, sigma_diff: 
     Finds reconnection events in xyz coordinates (first part of the tests)
     :param imported_data: data to test
     :param sigma_sum: sigma faction used in finding the high changes in the total (summed) correlations
-    :param sigma_diff: sigma faction used in finding the high changes in the difference of the total (summed) correlations
+    :param sigma_diff: sigma faction used in finding high changes in the difference of the total (summed) correlations
     :param minutes_b: number of minutes around the potential event where b will be considered
     :param minutes: minutes during which the data will be considered for the outliers tests
     :return:

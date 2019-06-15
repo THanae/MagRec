@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Dict
 import numpy as np
 
 from CleanCode.parameter_optimisation.mcc_finding import mcc_from_parameters
@@ -51,7 +51,7 @@ def random_algorithm(maximum_iterations: int = 100) -> List[Union[float, dict]]:
     return max_mcc
 
 
-def parameters_from_hypersphere(parameters: dict, max_radius: float = 2) -> dict:
+def parameters_from_hypersphere(parameters: dict, max_radius: float = 2) -> Dict[Dict, Dict]:
     """
     Generates set of parameters within the sphere of radius max_radius, centered at parameters
     :param parameters: parameters at the center of the sphere
@@ -80,7 +80,6 @@ def radius_of_parameters(parameters1: dict, parameters2: dict) -> float:
     radius = 0
     params_1 = {**parameters1['xyz'], **parameters1['lmn']}
     params_2 = {**parameters2['xyz'], **parameters2['lmn']}
-    print(params_2)
     for key in params_1.keys():
         radius += (params_1[key] - params_2[key]) ** 2
     radius = np.sqrt(radius)

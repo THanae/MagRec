@@ -52,7 +52,7 @@ def mva(b: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 
     L, N, M = np.zeros(3), np.zeros(3), np.zeros(3)
     for coordinate in range(len(v[:, w_max])):
-        L[coordinate]= v[:, w_max][coordinate]
+        L[coordinate] = v[:, w_max][coordinate]
         N[coordinate] = v[:, w_min][coordinate]
         M[coordinate] = v[:, w_intermediate][coordinate]
 
