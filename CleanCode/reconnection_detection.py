@@ -1,15 +1,18 @@
 from datetime import datetime, timedelta
 import csv
 from typing import Union, List
+import logging
 
 from CleanCode.data_processing.imported_data import get_classed_data, get_data_by_all_means
 from CleanCode.coordinate_tests.coordinates_testing import find_reconnection_list_xyz
 from CleanCode.lmn_tests.lmn_testing import lmn_testing
 from CleanCode.plots.data_plotter import plot_imported_data
 
+logger = logging.getLogger(__name__)
+
 
 def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_time: str, _end_time: str,
-                           to_plot: bool) -> List[datetime]:
+                           to_plot: bool = False, to_csv: bool = False) -> List[datetime]:
     """
     Find magnetic reconnection events with the given parameters
     :param _probe: probe to analyse
@@ -17,6 +20,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     :param _start_time: start time of the analysis
     :param _end_time: end time of the analysis
     :param to_plot: if True, plots the possible events
+    :param to_csv: if True, sends potential reconnection events to csv file
     :return:
     """
     # get data
@@ -32,14 +36,13 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     all_reconnection_events = []
     for n in range(len(imported_data_sets)):
         imported_data = imported_data_sets[n]
-        print(f'{imported_data} Duration {imported_data.duration}')
-        # params = [parameters[key] for key in list(parameters.keys())]
+        logger.debug(f'{imported_data} Duration {imported_data.duration}')
         reconnection_events = find_reconnection_list_xyz(imported_data, **parameters['xyz'])
         if reconnection_events:
             for event in reconnection_events:
                 all_reconnection_events.append(event)
-    print(_start_time, _end_time, 'reconnection number: ', str(len(all_reconnection_events)))
-    print(all_reconnection_events)
+    logger.debug(_start_time, _end_time, 'reconnection number: ', str(len(all_reconnection_events)))
+    logger.debug(all_reconnection_events)
 
     # find events with lmn tests
     lmn_approved_events = []
@@ -47,15 +50,16 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     for event in all_reconnection_events:
         _start_time = event - timedelta(hours=duration / 2)
         imported_data = get_classed_data(probe=_probe, start_date=_start_time.strftime('%d/%m/%Y'),
-                                         start_hour=_start_time.hour,duration=duration)
+                                         start_hour=_start_time.hour, duration=duration)
         if lmn_testing(imported_data, event, **parameters['lmn']):
             lmn_approved_events.append(event)
             if to_plot:
                 plot_imported_data(imported_data, event_date=event)
-    print(lmn_approved_events)
+    logger.debug(lmn_approved_events)
 
     # send to csv
-    with open(f'reconnection_events_{_probe}' + '.csv', 'w', newline='') as csv_file:
+    if to_csv:
+        with open(f'reconnection_events_{_probe}' + '.csv', 'w', newline='') as csv_file:
             fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds']
             writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
             writer.writeheader()
@@ -63,7 +67,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
                 year, month, day = reconnection_date.year, reconnection_date.month, reconnection_date.day
                 hour, minutes, seconds = reconnection_date.hour, reconnection_date.minute, reconnection_date.second
                 writer.writerow(
-                        {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds})
+                    {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds})
     return lmn_approved_events
 
 
@@ -74,6 +78,7 @@ if __name__ == '__main__':
                          'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
     start_time = '13/12/1974'
     end_time = '17/12/1974'
-    plot_events = False
-    get_events_with_params(_probe=probe, parameters=parameters_helios, _start_time=start_time, _end_time=end_time,
-                           to_plot=plot_events)
+    plot_events, send_to_csv = False, False
+    possible_events = get_events_with_params(_probe=probe, parameters=parameters_helios, _start_time=start_time,
+                                             _end_time=end_time, to_plot=plot_events, to_csv=send_to_csv)
+    print(possible_events)
