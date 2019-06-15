@@ -22,6 +22,6 @@ def find_reconnection_list_xyz(imported_data, sigma_sum: float = 3, sigma_diff: 
     if possible_events:
         possible_events = magnetic_field_tests(possible_events, imported_data.data, minutes_b=minutes_b)
     else:
-        print('No outlier event found')
+        # print('No outlier event found')
         return []
     return possible_events
