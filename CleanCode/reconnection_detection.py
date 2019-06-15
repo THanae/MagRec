@@ -35,6 +35,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     # find reconnection events with xyz tests
     all_reconnection_events = []
     for n in range(len(imported_data_sets)):
+        print(f'Testing data set number {n+1} out of {len(imported_data_sets)}')
         imported_data = imported_data_sets[n]
         logger.debug(f'{imported_data} Duration {imported_data.duration}')
         reconnection_events = find_reconnection_list_xyz(imported_data, **parameters['xyz'])
@@ -42,7 +43,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
             for event in reconnection_events:
                 all_reconnection_events.append(event)
     logger.debug(_start_time, _end_time, 'reconnection number: ', str(len(all_reconnection_events)))
-    logger.debug(all_reconnection_events)
+    logger.info(f'xyz coordinates test returned {all_reconnection_events}')
 
     # find events with lmn tests
     lmn_approved_events = []
@@ -55,7 +56,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
             lmn_approved_events.append(event)
             if to_plot:
                 plot_imported_data(imported_data, event_date=event)
-    logger.debug(lmn_approved_events)
+    logger.info(f'lmn coordinates test returned {lmn_approved_events}')
 
     # send to csv
     if to_csv:
@@ -73,11 +74,12 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
 
 if __name__ == '__main__':
     # Can be changed by user if desired
+    # logging.basicConfig(level=logging.INFO)
     probe = 1
     parameters_helios = {'xyz': {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes': 5.95},
                          'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
     start_time = '13/12/1974'
-    end_time = '17/12/1974'
+    end_time = '17/12/1976'
     plot_events, send_to_csv = False, False
     possible_events = get_events_with_params(_probe=probe, parameters=parameters_helios, _start_time=start_time,
                                              _end_time=end_time, to_plot=plot_events, to_csv=send_to_csv)
