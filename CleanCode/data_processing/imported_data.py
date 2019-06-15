@@ -1,11 +1,11 @@
+from typing import Union, List
+from datetime import timedelta
+import numpy as np
+
 from CleanCode.data_processing.imported_data_class import AllData
 from CleanCode.data_processing.probes_import.helios import helios_data
 from CleanCode.data_processing.probes_import.ulysses import ulysses_data
 from CleanCode.data_processing.probes_import.wind import wind_data
-
-from typing import Union
-import numpy as np
-from datetime import timedelta
 
 
 def probe_import(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
@@ -27,7 +27,8 @@ def probe_import(start_date: str = '27/01/1976', duration: int = 15, start_hour:
         raise NameError('The program is not currently working with that probe')
 
 
-def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0, probe: Union[int, str] = 2):
+def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_hour: int = 0,
+                     probe: Union[int, str] = 2) -> AllData:
     """
     Returns the data in AllData class
     :param start_date: start date of the data
@@ -44,7 +45,7 @@ def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_h
     return all_data
 
 
-def get_data_by_all_means(dates: list, _probe: int = 2):
+def get_data_by_all_means(dates: list, _probe: int = 2) -> List[AllData]:
     """
     Gets the data as AllData for the given start and end dates (a lot of data is missing for Helios 1)
     :param dates: list of start and end dates when the spacecraft is at a location smaller than the given radius
@@ -60,8 +61,7 @@ def get_data_by_all_means(dates: list, _probe: int = 2):
         try:
             _data = get_classed_data(probe=_probe, start_date=start_date, duration=hours)
             _imported_data.append(_data)
-        except Exception:
-            print(Exception)
+        except (RuntimeError, RuntimeWarning):
             print('Previous method not working, switching to "day-to-day" method')
             hard_to_get_data = []
             interval = 24
@@ -71,8 +71,7 @@ def get_data_by_all_means(dates: list, _probe: int = 2):
                     hard_data = get_classed_data(probe=_probe, start_date=start.strftime('%d/%m/%Y'),
                                                  duration=interval)
                     hard_to_get_data.append(hard_data)
-                except Exception:
-                    print(Exception)
+                except (RuntimeError, RuntimeWarning):
                     potential_end_time = start + timedelta(hours=interval)
                     print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
                 start = start + timedelta(hours=interval)
