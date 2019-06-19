@@ -45,13 +45,13 @@ def get_classed_data(start_date: str = '27/01/1976', duration: int = 15, start_h
     return all_data
 
 
-def get_data_by_all_means(dates: list, _probe: int = 2) -> List[AllData]:
+def get_data_time_basis(dates: list, _probe: int = 2) -> List[AllData]:
     """
-    Gets the data as AllData for the given start and end dates (a lot of data is missing for Helios 1)
-    :param dates: list of start and end dates when the spacecraft is at a location smaller than the given radius
-    :param _probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses' or 'imp_8'
-    :return: a list of ImportedData for the given dates
-    """
+        Gets the daily data as AllData for the given start and end dates
+        :param dates: list of start and end dates
+        :param _probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses' or 'imp_8'
+        :return: a list of ImportedData for the given dates
+        """
     _imported_data = []
     for _n in range(len(dates)):
         start, end = dates[_n][0], dates[_n][1]
@@ -62,22 +62,7 @@ def get_data_by_all_means(dates: list, _probe: int = 2) -> List[AllData]:
             _data = get_classed_data(probe=_probe, start_date=start_date, duration=hours)
             _imported_data.append(_data)
         except (RuntimeError, RuntimeWarning):
-            print('Previous method not working, switching to "day-to-day" method')
-            hard_to_get_data = []
-            interval = 24
-            number_of_loops = np.int(hours / interval)
-            for loop in range(number_of_loops):
-                try:
-                    hard_data = get_classed_data(probe=_probe, start_date=start.strftime('%d/%m/%Y'),
-                                                 duration=interval)
-                    hard_to_get_data.append(hard_data)
-                except (RuntimeError, RuntimeWarning):
-                    potential_end_time = start + timedelta(hours=interval)
-                    print('Not possible to download data between ' + str(start) + ' and ' + str(potential_end_time))
-                start = start + timedelta(hours=interval)
-
-            for loop in range(len(hard_to_get_data)):
-                _imported_data.append(hard_to_get_data[_n])
+            print(f'Not possible to download data between {start} and {end}')
     return _imported_data
 
 
