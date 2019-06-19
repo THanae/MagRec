@@ -1,12 +1,12 @@
 from datetime import datetime, timedelta
-import csv
 from typing import Union, List
 import logging
 
-from CleanCode.data_processing.imported_data import get_classed_data, get_data_by_all_means
+from CleanCode.data_processing.imported_data import get_classed_data, get_data_time_basis
 from CleanCode.coordinate_tests.coordinates_testing import find_reconnection_list_xyz
 from CleanCode.lmn_tests.lmn_testing import lmn_testing
 from CleanCode.plots.data_plotter import plot_imported_data
+from CleanCode.utils.csv_utils import send_data_to_csv
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     while _start_time < _end_time:
         times.append([_start_time, _start_time + timedelta(days=1)])
         _start_time = _start_time + timedelta(days=1)
-    imported_data_sets = get_data_by_all_means(dates=times, _probe=_probe)
+    imported_data_sets = get_data_time_basis(dates=times, _probe=_probe)
 
     # find reconnection events with xyz tests
     all_reconnection_events = []
@@ -60,26 +60,23 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
 
     # send to csv
     if to_csv:
-        with open(f'reconnection_events_{_probe}' + '.csv', 'w', newline='') as csv_file:
-            fieldnames = ['year', 'month', 'day', 'hours', 'minutes', 'seconds']
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            writer.writeheader()
-            for reconnection_date in lmn_approved_events:
-                year, month, day = reconnection_date.year, reconnection_date.month, reconnection_date.day
-                hour, minutes, seconds = reconnection_date.hour, reconnection_date.minute, reconnection_date.second
-                writer.writerow(
-                    {'year': year, 'month': month, 'day': day, 'hours': hour, 'minutes': minutes, 'seconds': seconds})
+        send_data_to_csv(f'reconnection_events_{_probe}', lmn_approved_events)
     return lmn_approved_events
 
 
 if __name__ == '__main__':
     # Can be changed by user if desired
     # logging.basicConfig(level=logging.INFO)
-    probe = 1
+    probe = 2
+    # probe = 'ulysses'
     parameters_helios = {'xyz': {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes': 5.95},
                          'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
-    start_time = '13/12/1974'
-    end_time = '17/12/1976'
+    # parameters_helios = {'xyz': {'sigma_sum': 2, 'sigma_diff': 2.2, 'minutes_b': 15, 'minutes': 20},
+    #                      'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
+    start_time = '13/12/1978'
+    # start_time = '17/02/1992'
+    end_time = '17/02/1979'
+    # end_time = '17/02/1993'
     plot_events, send_to_csv = False, False
     possible_events = get_events_with_params(_probe=probe, parameters=parameters_helios, _start_time=start_time,
                                              _end_time=end_time, to_plot=plot_events, to_csv=send_to_csv)
