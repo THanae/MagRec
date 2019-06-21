@@ -1,6 +1,6 @@
 from typing import Union, List
-from datetime import timedelta
 import numpy as np
+import ftplib
 
 from CleanCode.data_processing.imported_data_class import AllData
 from CleanCode.data_processing.probes_import.helios import helios_data
@@ -63,6 +63,39 @@ def get_data_time_basis(dates: list, _probe: int = 2) -> List[AllData]:
             _imported_data.append(_data)
         except (RuntimeError, RuntimeWarning):
             print(f'Not possible to download data between {start} and {end}')
+    return _imported_data
+
+
+def get_separated_data(dates: list, _probe: int = 2) -> List[AllData]:
+    """
+        Gets the daily data as AllData for the given start and end dates
+        :param dates: list of start and end dates
+        :param _probe: 1 or 2 for Helios 1 or 2, can also be 'ulysses' or 'imp_8'
+        :return: a list of ImportedData for the given dates
+        """
+    _imported_data = []
+    start, end = dates[0][0], dates[len(dates)-1][1]
+    delta_t = end - start
+    hours = np.int(delta_t.total_seconds() / 3600)
+    start_date = start.strftime('%d/%m/%Y')
+    try:
+        _data = get_classed_data(probe=_probe, start_date=start_date, duration=hours)
+        _indices = _data.data.index
+        indices = [str(i)[:10] for i in _indices]
+        indices = list(set(indices))
+        for _n in range(len(dates)):
+            _start, _end = dates[_n][0], dates[_n][1]
+            delta_t = _end - _start
+            hours = np.int(delta_t.total_seconds() / 3600)
+            # print(indices)
+            # print(_start.strftime('%Y-%m-%d'))
+            if _start.strftime('%Y-%m-%d') in indices:
+                imported_data_subset = AllData(_start.strftime('%d/%m/%Y'), duration=hours, start_hour=_start.hour, probe=_data.probe)
+                imported_data_subset.data = _data.data.loc[_start: _end]
+                _imported_data.append(imported_data_subset)
+    except (RuntimeError, RuntimeWarning, ftplib.error_perm):
+        print(f'Not possible to download data between {start} and {end}')
+
     return _imported_data
 
 

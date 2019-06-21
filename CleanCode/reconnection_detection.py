@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Union, List
 import logging
 
-from CleanCode.data_processing.imported_data import get_classed_data, get_data_time_basis
+from CleanCode.data_processing.imported_data import get_classed_data, get_data_time_basis, get_separated_data
 from CleanCode.coordinate_tests.coordinates_testing import find_reconnection_list_xyz
 from CleanCode.lmn_tests.lmn_testing import lmn_testing
 from CleanCode.plots.data_plotter import plot_imported_data
@@ -28,9 +28,14 @@ def get_events_with_params(_probe: Union[int, str], parameters: dict, _start_tim
     _end_time = datetime.strptime(_end_time, '%d/%m/%Y')
     times = []
     while _start_time < _end_time:
+        # times.append([_start_time, _start_time + timedelta(hours=23) + timedelta(minutes=59) + timedelta(seconds=59)])
         times.append([_start_time, _start_time + timedelta(days=1)])
         _start_time = _start_time + timedelta(days=1)
-    imported_data_sets = get_data_time_basis(dates=times, _probe=_probe)
+    try:  # faster method, but not fully tested yet
+        imported_data_sets = get_separated_data(dates=times, _probe=_probe)
+    except Exception as ex:  # if there are exceptions they will be caught here, and the slower method will be used
+        print(ex)
+        imported_data_sets = get_data_time_basis(dates=times, _probe=_probe)
 
     # find reconnection events with xyz tests
     all_reconnection_events = []
@@ -68,14 +73,14 @@ if __name__ == '__main__':
     # Can be changed by user if desired
     # logging.basicConfig(level=logging.INFO)
     probe = 2
-    # probe = 'ulysses'
+    probe = 'wind'
     parameters_helios = {'xyz': {'sigma_sum': 2.29, 'sigma_diff': 2.34, 'minutes_b': 6.42, 'minutes': 5.95},
                          'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
     # parameters_helios = {'xyz': {'sigma_sum': 2, 'sigma_diff': 2.2, 'minutes_b': 15, 'minutes': 20},
     #                      'lmn': {'minimum_walen': 0.95, 'maximum_walen': 1.123}}
-    start_time = '13/12/1978'
+    start_time = '13/12/1976'
     # start_time = '17/02/1992'
-    end_time = '17/02/1979'
+    end_time = '17/02/1980'
     # end_time = '17/02/1993'
     plot_events, send_to_csv = False, False
     possible_events = get_events_with_params(_probe=probe, parameters=parameters_helios, _start_time=start_time,
