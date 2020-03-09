@@ -4,6 +4,7 @@ import numpy as np
 
 from data_handler.data_importer.data_import import get_probe_data
 from magnetic_reconnection_dir.finder.base_finder import BaseFinder
+from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
 from magnetic_reconnection_dir.lmn_coordinates import test_reconnection_lmn
 
 events_list = (
@@ -31,7 +32,7 @@ events_list = (
 )
 
 
-def mcc_from_parameters(mcc_parameters: dict, finder: BaseFinder, event_list=events_list) -> List[Union[float, dict]]:
+def mcc_from_parameters(mcc_parameters: dict, finder: BaseFinder = CorrelationFinder(), event_list=events_list) -> List[Union[float, dict]]:
     """
     Returns the mcc with corresponding sigma_sum, sigma_diff and minutes_b
     :param mcc_parameters: dictionary of the parameters to be tested
@@ -41,6 +42,7 @@ def mcc_from_parameters(mcc_parameters: dict, finder: BaseFinder, event_list=eve
     """
     f_n, t_n, t_p, f_p = 0, 0, 0, 0
     for event, probe, reconnection_number in event_list:
+        print(event, reconnection_number)
         interval = 3
         start_time = event - timedelta(hours=interval / 2)
         start_hour = event.hour
@@ -62,18 +64,30 @@ def mcc_from_parameters(mcc_parameters: dict, finder: BaseFinder, event_list=eve
             if len(reconnection) < reconnection_number:  # not enough detected
                 f_n += reconnection_number - len(reconnection)
                 t_p += len(reconnection)
+                print(reconnection_number, len(reconnection))
             elif len(reconnection) == reconnection_number:  # just enough events detected
                 t_p += len(reconnection)
             else:  # more detected than real
                 f_p += len(reconnection) - reconnection_number
                 t_p += reconnection_number
+    print(f' true positives: {t_p}\n true negatives: {t_n}\n false positives: {f_p}\n false negatives: {f_n}')
     mcc_value = get_mcc(t_p, t_n, f_p, f_n)
     print('MCC', mcc_value, mcc_parameters)
     return [mcc_value, mcc_parameters]
 
 
 def get_mcc(true_positives: int, true_negatives: int, false_positives: int, false_negatives: int) -> float:
-    mcc_value = (true_positives * true_negatives + false_positives * false_negatives) / np.sqrt(
-        (true_positives + false_positives) * (true_positives + false_negatives) * (true_negatives + false_negatives) * (
-                true_positives + false_positives))
+    mcc_value = (true_positives * true_negatives - false_positives * false_negatives) / np.sqrt(
+        (true_positives + false_positives) * (true_positives + false_negatives) * (true_negatives + false_positives) * (
+                true_negatives + false_negatives))
     return mcc_value
+
+
+if __name__ == '__main__':
+    from magnetic_reconnection_dir.finder.correlation_finder import CorrelationFinder
+
+    params = {'sigma_sum': 2.3855388099995887, 'sigma_diff': 2.9083100667153365, 'minutes_b': 4.916354076654231,
+              'minutes': 6.746805442993062, 'minimum walen': 0.9875196009186451, 'maximum walen': 1.1388006476154153}
+    # params = {'sigma_sum': 2.2934901104435563, 'sigma_diff': 2.341167733031799, 'minutes_b': 6.423477634796884,
+    #           'minutes': 5.95254175223024, 'minimum walen': 0.998439140410528, 'maximum walen': 1.1233507452974116}
+    mcc_from_parameters(params, CorrelationFinder())

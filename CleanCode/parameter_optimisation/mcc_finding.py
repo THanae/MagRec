@@ -65,7 +65,7 @@ def mcc_from_parameters(mcc_parameters: dict, event_list=events_list) -> List[Un
 
 
 def get_mcc(true_positives: int, true_negatives: int, false_positives: int, false_negatives: int) -> float:
-    mcc_value = (true_positives * true_negatives + false_positives * false_negatives) / np.sqrt(
+    mcc_value = (true_positives * true_negatives - false_positives * false_negatives) / np.sqrt(
         (true_positives + false_positives) * (true_positives + false_negatives) * (true_negatives + false_negatives) * (
-                true_positives + false_positives))
+                true_negatives + false_positives))
     return mcc_value
